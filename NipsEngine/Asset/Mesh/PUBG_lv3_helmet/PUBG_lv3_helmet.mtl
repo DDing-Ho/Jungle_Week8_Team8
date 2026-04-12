@@ -1,12 +1,16 @@
-# MTL file - created by a modified js OBJExporter
+# Blender 5.1.0 MTL File: 'None'
+# www.blender.org
 
-newmtl TT_checker_2048x2048_UV_GRID
-Tr 0.0000
-Tf 1.0000 1.0000 1.0000
-illum 1
-Pr 0.5
-Pds 1
-Pl 1
-Ka 1 1 1
-Kd 0.800000011920929 0.800000011920929 0.800000011920929
-Ke 0 0 0
+newmtl TT_checker_2048x2048_UV_GRID.002
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+map_Kd Helmet_BaseColor.png
+map_Ks Helmet_Metallic.png
+map_Ns Helmet_Roughness.png
+map_Bump Helmet_Normal.png
