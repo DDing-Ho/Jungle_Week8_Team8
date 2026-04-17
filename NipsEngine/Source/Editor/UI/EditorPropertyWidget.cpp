@@ -9,7 +9,6 @@
 #include "Component/SubUVComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Movement/RotatingMovementComponent.h"
-#include "Component/FireballComponent.h"
 #include "Component/Movement/ProjectileMovementComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
 #include "Component/Movement/PursuitMovementComponent.h"
@@ -184,14 +183,6 @@ static const TArray<FComponentMenuEntry> ComponentMenuRegistry = {
 			Comp->SetFogInscatteringColor(FVector4(0.72f, 0.8f, 0.9f, 1.0f));
 			Comp->SetHeightFalloff(0);
 			Comp->SetFogHeight(0);
-			return Comp;
-		}
-	},
-	
-	{
-		"Fireball Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UFireballComponent* Comp = Actor->AddComponent<UFireballComponent>();
 			return Comp;
 		}
 	},

@@ -33,7 +33,6 @@ enum class EPrimitiveType
 	EPT_SubUV, // SubUVComponent     — MeshBuffer 없음, SubUVBatcher가 처리
 	EPT_FOG,
 	EPT_Decal,
-	EPT_Fireball,
     MAX
 };
 
@@ -53,4 +52,13 @@ enum class ERenderPass : uint32
 	DepthLess,
     PostProcessOutline,
 	MAX
+};
+
+enum class ELightType
+{
+    LightType_Directional = 0,
+	LightType_Point = 1,
+	LightType_Spot = 2,
+	LightType_AmbientLight = 3,
+	Max
 };

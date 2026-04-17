@@ -1,6 +1,5 @@
 ﻿#include "GameFramework/PrimitiveActors.h"
 
-#include "Component/FireballComponent.h"
 #include "Component/DecalComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/TextRenderComponent.h"
@@ -46,9 +45,6 @@ REGISTER_FACTORY(ABillboardActor)
 
 DEFINE_CLASS(ADecalActor, AActor)
 REGISTER_FACTORY(ADecalActor)
-
-DEFINE_CLASS(AFireballActor, AActor)
-REGISTER_FACTORY(AFireballActor)
 
 DEFINE_CLASS(ASpotLightActor, AActor)
 REGISTER_FACTORY(ASpotLightActor)
@@ -233,28 +229,6 @@ void ADecalActor::InitDefaultComponents()
 	TextUUID->SetEditorOnly(true);
 	FVector Extent = TextUUID->GetWorldAABB().GetExtent();
 	TextUUID->SetRelativeLocation(FVector(0.0f, 0.0f, Extent.Y * 0.6f));
-}
-
-void AFireballActor::InitDefaultComponents()
-{
-	// Base for debugging and demonstration. Remove this later
-    auto* Sphere = AddComponent<UStaticMeshComponent>();
-    Sphere->SetStaticMesh(FResourceManager::Get().LoadStaticMesh(FireballMeshPath));
-	Sphere->SetEnableCull(false);
-    SetRootComponent(Sphere);
-
-	// Nametag
-    UTextRenderComponent* Text = AddComponent<UTextRenderComponent>();
-    Text->SetFont(FName("Default"));
-    Text->AttachToComponent(Sphere);
-    Text->SetText("UUID: " + std::to_string(GetUUID()));
-    Text->SetTransient(true);
-    Text->SetEditorOnly(true);
-    Text->SetRelativeLocation(FVector(0.0f, 0.0f, 1.0f));
-
-	// Flare
-    UFireballComponent* Fireball = AddComponent<UFireballComponent>();
-	Fireball->AttachToComponent(Sphere);
 }
 
 void ASpotLightActor::InitDefaultComponents() {

@@ -95,14 +95,6 @@ public:
 	void InitDefaultComponents();
 };
 
-class AFireballActor : public AActor {
-public:
-    DECLARE_CLASS(AFireballActor, AActor)
-	AFireballActor() = default;
-	
-	void InitDefaultComponents();
-};
-
 class ASpotLightActor : public AActor {
 public:
 	DECLARE_CLASS(ASpotLightActor, AActor)

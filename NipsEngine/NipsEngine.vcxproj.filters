@@ -296,9 +296,6 @@
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\FireballComponent.cpp">
-      <Filter>Source\Engine\Component</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Component\GizmoComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
@@ -654,6 +651,7 @@
     <ClCompile Include="Source\Engine\Serialization\JsonReader.h" />
     <ClCompile Include="Source\Engine\Serialization\JsonWriter.cpp" />
     <ClCompile Include="Source\Engine\Serialization\JsonReader.cpp" />
+    <ClCompile Include="Source\Engine\Component\Light\LightComponent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -765,9 +763,6 @@
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\DecalComponent.h">
-      <Filter>Source\Engine\Component</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Component\FireballComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\GizmoComponent.h">
@@ -1262,5 +1257,6 @@
     <ClInclude Include="Source\Engine\Serialization\Archive.h" />
     <ClInclude Include="Source\Engine\Serialization\MemoryWriter.h" />
     <ClInclude Include="Source\Engine\Serialization\JsonWriter.h" />
+    <ClInclude Include="Source\Engine\Component\Light\LightComponent.h" />
   </ItemGroup>
 </Project>

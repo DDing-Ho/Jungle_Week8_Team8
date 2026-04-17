@@ -233,9 +233,9 @@
     <ClCompile Include="Source\Engine\Component\BillboardComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\CameraComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp" />
-    <ClCompile Include="Source\Engine\Component\FireballComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\GizmoComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\HeightFogComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Light\LightComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\LineBatchComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\MeshComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\PrimitiveComponent.cpp" />
@@ -394,9 +394,9 @@
     <ClInclude Include="Source\Engine\Component\BillboardComponent.h" />
     <ClInclude Include="Source\Engine\Component\CameraComponent.h" />
     <ClInclude Include="Source\Engine\Component\DecalComponent.h" />
-    <ClInclude Include="Source\Engine\Component\FireballComponent.h" />
     <ClInclude Include="Source\Engine\Component\GizmoComponent.h" />
     <ClInclude Include="Source\Engine\Component\HeightFogComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Light\LightComponent.h" />
     <ClInclude Include="Source\Engine\Component\LineBatchComponent.h" />
     <ClInclude Include="Source\Engine\Component\MeshComponent.h" />
     <ClInclude Include="Source\Engine\Component\PostProcess\Light\LightComponent.h" />
