@@ -265,8 +265,10 @@ void FEditorMainPanel::RenderViewportHostWindow()
         GuiState.bViewportHostVisible = true;
         GuiState.ViewportHostRect = HostRect;
         EditorEngine->GetViewportLayout().SetHostRect(HostRect);
+		
+		uint32 ViewportNum = EditorEngine->GetViewportLayout().IsSingleViewportMode() ? 1 : 4;
 
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < ViewportNum; i++)
         {
             auto& VP = EditorEngine->GetViewportLayout().GetSceneViewport(i);
 
