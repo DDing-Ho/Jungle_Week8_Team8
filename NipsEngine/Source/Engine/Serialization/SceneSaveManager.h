@@ -39,11 +39,22 @@ public:
 
 	static std::wstring GetSceneDirectory() { return FPaths::SceneDir(); }
 
+	/**
+	 * Legacy 직렬화 코드
+	 */
 	// CameraState 는 nullable — nullptr 이면 카메라 섹션을 무시합니다 (게임/PIE 호환)
 	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext,
 	                            const FEditorCameraState* CameraState = nullptr);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext,
 	                              FEditorCameraState* OutCameraState = nullptr);
+
+	/**
+	 * FArchive 기반 직렬화
+	 */
+	static void Save(const FString& FilePath, FWorldContext& WorldContext,
+					 const FEditorCameraState* CameraState = nullptr);
+	static void Load(const FString& FilePath, FWorldContext& OutWorldContext,
+					 FEditorCameraState* OutCameraState = nullptr);
 
 	static TArray<FString> GetSceneFileList();
 
