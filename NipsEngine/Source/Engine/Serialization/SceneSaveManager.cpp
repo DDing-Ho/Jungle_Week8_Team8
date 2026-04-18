@@ -317,15 +317,6 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 		return JSON(*static_cast<int32*>(Prop.ValuePtr));
 	}
 
-	case EPropertyType::Material: {
-		const auto& Arr = *static_cast<const TArray<UMaterialInterface*>*>(Prop.ValuePtr);
-		JSON arr = json::Array();
-		for (const UMaterialInterface* s : Arr) {
-			arr.append(s->GetName());
-		}
-		return arr;
-	}
-
 	default:
 		return JSON();
 	}
@@ -935,16 +926,16 @@ void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json
 		break;
 	}
 
-	case EPropertyType::Material: {
-		auto& Arr = *static_cast<TArray<UMaterialInterface*>*>(Prop.ValuePtr);
-		Arr.clear();
-		for (auto& elem : Value.ArrayRange())
-		{
-			UMaterialInterface* Mat = FResourceManager::Get().GetMaterialInterface(elem.ToString());
-			Arr.push_back(Mat);
-		}
-		break;
-	}
+	// case EPropertyType::Material: {
+	// 	auto& Arr = *static_cast<TArray<UMaterialInterface*>*>(Prop.ValuePtr);
+	// 	Arr.clear();
+	// 	for (auto& elem : Value.ArrayRange())
+	// 	{
+	// 		UMaterialInterface* Mat = FResourceManager::Get().GetMaterialInterface(elem.ToString());
+	// 		Arr.push_back(Mat);
+	// 	}
+	// 	break;
+	// }
 
 	default:
 		break;

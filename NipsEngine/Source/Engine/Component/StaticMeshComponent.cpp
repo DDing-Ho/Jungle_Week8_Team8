@@ -102,7 +102,6 @@ void UStaticMeshComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Ou
 {
     UMeshComponent::GetEditableProperties(OutProps);
     OutProps.push_back({ "StaticMesh", EPropertyType::String, &StaticMeshAssetPath });
-	OutProps.push_back({ "Materials", EPropertyType::Material, &Materials });
 }
 
 void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
