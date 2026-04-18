@@ -212,19 +212,19 @@ void FEditorViewportLayout::InitViewportRect(uint32 Width, uint32 Height)
 	// 50:50 초기 분할 (이후 BuildViewportLayout → SyncViewportRects 에서 최종 반영)
 	const int32 HalfW = W / 2;
 	const int32 HalfH = H / 2;
-    
+
 	FViewportRect Rects[4] = {
         { 0, 0, HalfW, HalfH },
         { HalfW, 0, W - HalfW, HalfH },
         { 0, HalfH, HalfW, H - HalfH },
         { HalfW, HalfH, W - HalfW, H - HalfH }
     };
-	
-	for (int32 i = 0; i < MaxViewports; ++i)
-	{
+
+    for (int32 i = 0; i < MaxViewports; ++i)
+    {
         ViewportWidgets[i].GetSceneViewport().SetRect(Rects[i]);
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportSize(Rects[i].Width, Rects[i].Height);
-	}
+        ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportSize(static_cast<float>(Rects[i].Width), static_cast<float>(Rects[i].Height));
+    }
 }
 
 //  Viewport Layout 생성 (2 x 2)
