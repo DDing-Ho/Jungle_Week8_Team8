@@ -3,6 +3,7 @@
 #include "Core/EngineTypes.h"
 #include "Core/ResourceManager.h"
 #include "Math/Utils.h"
+#include "Render/Scene/RenderBus.h"
 
 #include <algorithm>
 #include <cmath>
@@ -449,7 +450,7 @@ void FLineBatcher::Clear()
 	Indices.clear();
 }
 
-void FLineBatcher::Flush(ID3D11DeviceContext* Context)
+void FLineBatcher::Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus)
 {
 	if (!Context || !Device)
 	{
@@ -500,7 +501,7 @@ void FLineBatcher::Flush(ID3D11DeviceContext* Context)
 	memcpy(MappedResource.pData, Indices.data(), sizeof(uint32) * RequiredIndexCount);
 	Context->Unmap(IndexBuffer.Get(), 0);
 
-	Material->Bind(Context);
+	Material->Bind(Context, RenderBus);
 
 	UINT Stride = sizeof(FLineVertex);
 	UINT Offset = 0;

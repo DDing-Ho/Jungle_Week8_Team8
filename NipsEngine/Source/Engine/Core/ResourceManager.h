@@ -75,6 +75,7 @@ class FResourceManager : public TSingleton<FResourceManager>
 
 public:
 	void SetCachedDevice(ID3D11Device* Device) { CachedDevice = Device; }
+	ID3D11Device* GetCachedDevice() const { return CachedDevice.Get(); }
 
 	void LoadFromAssetDirectory(const FString& Path);
 	void RefreshFromAssetDirectory(const FString& Path);

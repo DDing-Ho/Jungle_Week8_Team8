@@ -43,7 +43,7 @@ bool FPostProcessOutlineRenderPass::DrawCommand(const FRenderPassContext* Contex
     {
         if (Cmd.Material != nullptr)
         {
-            Cmd.Material->Bind(Context->DeviceContext);
+            Cmd.Material->Bind(Context->DeviceContext, Context->RenderBus);
         }
         Context->DeviceContext->Draw(3, 0);
     }

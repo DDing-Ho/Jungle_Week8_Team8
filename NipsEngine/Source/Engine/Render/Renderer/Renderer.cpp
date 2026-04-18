@@ -39,12 +39,6 @@ void FRenderer::Create(HWND hWindow)
 
 void FRenderer::CreateResources()
 {
-	Resources.PerObjectConstantBuffer.Create(Device.GetDevice(), sizeof(FPerObjectConstants));
-	Resources.FrameBuffer.Create(Device.GetDevice(), sizeof(FFrameConstants));
-	Resources.FogPassConstantBuffer.Create(Device.GetDevice(), sizeof(FFogPassConstants));
-	Resources.FXAAConstantBuffer.Create(Device.GetDevice(), sizeof(FFXAAConstants));
-	Resources.LightPassConstantBuffer.Create(Device.GetDevice(), sizeof(FLightPassConstants));
-
 	//	MeshManager init
 	FMeshManager::Initialize();
 
@@ -71,12 +65,6 @@ void FRenderer::Release()
 
 	RenderPipeline.Release();
     RenderPassContext.reset();
-
-	Resources.PerObjectConstantBuffer.Release();
-	Resources.FrameBuffer.Release();
-    Resources.FogPassConstantBuffer.Release();
-    Resources.FXAAConstantBuffer.Release();
-    Resources.LightPassConstantBuffer.Release();
 
 	FGPUProfiler::Get().Shutdown();
 
@@ -191,9 +179,6 @@ void FRenderer::InvalidateSceneFinalTargets()
 //	RenderBus에 담긴 모든 RenderCommand에 대해서 Draw Call 수행 (GPU)
 void FRenderer::Render(const FRenderBus& InRenderBus)
 {
-	ID3D11DeviceContext* Context = Device.GetDeviceContext();
-	UpdateFrameBuffer(Context, InRenderBus);
-
 	/** Opaque 만 테스트 */
     
 	RenderPassContext->Device = Device.GetDevice();
@@ -448,19 +433,4 @@ void FRenderer::EndFrame()
 	FGPUProfiler::Get().EndFrame();
 #endif
 	Device.EndFrame();
-}
-
-void FRenderer::UpdateFrameBuffer(ID3D11DeviceContext* Context, const FRenderBus& InRenderBus)
-{
-	FFrameConstants frameConstantData;
-	frameConstantData.View = InRenderBus.GetView();
-	frameConstantData.Projection = InRenderBus.GetProj();
-	frameConstantData.CameraPosition = InRenderBus.GetCameraPosition();
-	frameConstantData.bIsWireframe = (InRenderBus.GetViewMode() == EViewMode::Wireframe);
-	frameConstantData.WireframeColor = InRenderBus.GetWireframeColor();
-
-	Resources.FrameBuffer.Update(Context, &frameConstantData, sizeof(FFrameConstants));
-	ID3D11Buffer* b0 = Resources.FrameBuffer.GetBuffer();
-	Context->VSSetConstantBuffers(0, 1, &b0);
-	Context->PSSetConstantBuffers(0, 1, &b0);
 }

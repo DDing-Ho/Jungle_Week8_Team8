@@ -6,16 +6,9 @@
 */
 
 #include "Render/Resource/Shader.h"
-#include "Render/Resource/Buffer.h"
 
 struct FRenderResources
 {
-	FConstantBuffer FrameBuffer;					// b0
-    FConstantBuffer PerObjectConstantBuffer;        // b1
-
-    FConstantBuffer LightPassConstantBuffer;		// b7
-    FConstantBuffer FogPassConstantBuffer;		// b9
-    FConstantBuffer FXAAConstantBuffer;                     // b10
 };
 
 enum class ESamplerType

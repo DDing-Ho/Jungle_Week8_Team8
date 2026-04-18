@@ -10,6 +10,7 @@ struct ID3D11Device;
 struct ID3D11DeviceContext;
 struct ID3D11Buffer;
 struct ID3D11SamplerState;
+class FRenderBus;
 
 // Texture Atlas UV 정보
 struct FCharacterInfo
@@ -56,7 +57,7 @@ public:
 
 	// Dynamic VB 업로드 + 드로우콜 1회
 	// Resource — FontBatcher가 사용할 FontAtlas 리소스 (ResourceManager 소유)
-	void Flush(ID3D11DeviceContext* Context, const FFontResource* Resource, bool bWireframe = false);
+	void Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FFontResource* Resource, bool bWireframe = false);
 
     uint32 GetQuadCount() const { return static_cast<uint32>(Vertices.size() / 4); }
 

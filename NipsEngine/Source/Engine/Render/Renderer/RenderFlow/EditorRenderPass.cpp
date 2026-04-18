@@ -29,7 +29,7 @@ bool FEditorRenderPass::DrawCommand(const FRenderPassContext* Context)
         return true;
     }
 
-    Context->EditorLineBatcher->Flush(Context->DeviceContext);
+    Context->EditorLineBatcher->Flush(Context->DeviceContext, Context->RenderBus);
     return true;
 }
 

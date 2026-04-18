@@ -33,7 +33,7 @@ bool FFontRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     const FFontResource* FontRes = FResourceManager::Get().FindFont(FName("Default"));
     const bool bWireframe = (Context->RenderBus != nullptr) && (Context->RenderBus->GetViewMode() == EViewMode::Wireframe);
-    Context->FontBatcher->Flush(Context->DeviceContext, FontRes, bWireframe);
+    Context->FontBatcher->Flush(Context->DeviceContext, Context->RenderBus, FontRes, bWireframe);
     return true;
 }
 

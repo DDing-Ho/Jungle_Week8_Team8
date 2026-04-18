@@ -78,7 +78,7 @@ public:
 	virtual const FString& GetFilePath() const = 0;
 	virtual FString& GetFilePathRef() = 0;
 	
-	virtual void Bind(ID3D11DeviceContext* Context) const = 0;
+	virtual void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const = 0;
 	virtual bool GetParam(const FString& Name, FMaterialParamValue& OutValue) const = 0;
 
 	virtual void SetParam(const FString& Name, const FMaterialParamValue& Value) = 0;
@@ -108,6 +108,7 @@ public:
 	TMap<FString, FMaterialParamValue> MaterialParams;
 
 	UShader* Shader = nullptr;
+	mutable std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 
 	ESamplerType SamplerType = ESamplerType::EST_Linear;
 	EDepthStencilType DepthStencilType = EDepthStencilType::Default;
@@ -123,7 +124,7 @@ public:
 	void SetShader(UShader* InShader)
 	{
 		Shader = InShader;
-		if (!Shader) return;
+		ShaderBinding.reset();
 	}
 
 	void SetParam(const FString& Name, const FMaterialParamValue& Value)
@@ -141,17 +142,20 @@ public:
 		return false;
 	}
 
-	virtual void Bind(ID3D11DeviceContext* Context) const override;
+	virtual void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const override;
 
-	void ApplyParams(ID3D11DeviceContext* Context, const TMap<FString, FMaterialParamValue>& Params) const;
+	void ApplyParams(FShaderBindingInstance& Binding, const TMap<FString, FMaterialParamValue>& Params) const;
 
-	void GatherAllParams(TMap<FString, FMaterialParamValue>& OutParams) const
+	void GatherAllParams(TMap<FString, FMaterialParamValue>& OutParams) const override
 	{
 		for (const auto& [Key, Param] : MaterialParams)
 		{
 			OutParams[Key] = Param;
 		}
 	}
+
+	ID3D11SamplerState* ApplyRenderStates(ID3D11DeviceContext* Context) const;
+	void EnsureShaderBinding(ID3D11Device* Device) const;
 };
 
 class UMaterialInstance : public UMaterialInterface
@@ -163,6 +167,7 @@ public:
 	FString FilePath;
 
 	UMaterial* Parent = nullptr;
+	mutable std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 
 	TMap<FString, FMaterialParamValue> OverridedParams;
 
@@ -193,9 +198,9 @@ public:
 		return Parent ? Parent->GetParam(Name, OutValue) : false;
 	}
 
-	void Bind(ID3D11DeviceContext* Context) const override;
+	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const override;
 
-	void GatherAllParams(TMap<FString, FMaterialParamValue>& OutParams) const
+	void GatherAllParams(TMap<FString, FMaterialParamValue>& OutParams) const override
 	{
 		if (Parent)
 		{

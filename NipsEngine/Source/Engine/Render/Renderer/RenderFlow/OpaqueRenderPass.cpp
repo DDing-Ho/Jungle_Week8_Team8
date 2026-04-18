@@ -40,11 +40,6 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     for (const FRenderCommand& Cmd : Commands)
     {
-        Context->RenderResources->PerObjectConstantBuffer.Update(Context->DeviceContext, &Cmd.PerObjectConstants, sizeof(FPerObjectConstants));
-        ID3D11Buffer* cb1 = Context->RenderResources->PerObjectConstantBuffer.GetBuffer();
-        Context->DeviceContext->VSSetConstantBuffers(1, 1, &cb1);
-        Context->DeviceContext->PSSetConstantBuffers(1, 1, &cb1);
-
         if (Cmd.Type == ERenderCommandType::PostProcessOutline)
         {
             continue;
@@ -71,7 +66,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
         if (Cmd.Material)
         {
-            Cmd.Material->Bind(Context->DeviceContext);
+            Cmd.Material->Bind(Context->DeviceContext, Context->RenderBus, &Cmd.PerObjectConstants);
         }
 
 		CheckOverrideViewMode(Context);

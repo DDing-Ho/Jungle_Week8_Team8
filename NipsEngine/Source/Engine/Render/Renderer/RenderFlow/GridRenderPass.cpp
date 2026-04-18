@@ -29,7 +29,7 @@ bool FGridRenderPass::DrawCommand(const FRenderPassContext* Context)
         return true;
     }
 
-    Context->GridLineBatcher->Flush(Context->DeviceContext);
+    Context->GridLineBatcher->Flush(Context->DeviceContext, Context->RenderBus);
     return true;
 }
 

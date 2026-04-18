@@ -3,6 +3,7 @@
 #include "Core/CoreTypes.h"
 #include "Core/ResourceManager.h"
 #include "Render/Resource/RenderResources.h"
+#include "Render/Scene/RenderBus.h"
 
 void FFontBatcher::Create(ID3D11Device* InDevice)
 {
@@ -215,7 +216,7 @@ void FFontBatcher::Clear()
 	Indices.clear();
 }
 
-void FFontBatcher::Flush(ID3D11DeviceContext* Context, const FFontResource* Resource, bool bWireframe)
+void FFontBatcher::Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FFontResource* Resource, bool bWireframe)
 {
 	if (!Resource || !Resource->IsLoaded()) return;
 	if (Vertices.empty() || !VertexBuffer || !IndexBuffer) return;
@@ -246,7 +247,7 @@ void FFontBatcher::Flush(ID3D11DeviceContext* Context, const FFontResource* Reso
 	Context->Unmap(IndexBuffer.Get(), 0);
 
 	// 셰이더 바인딩
-	FontMaterial->Bind(Context);
+	FontMaterial->Bind(Context, RenderBus);
     if (bWireframe)
     {
         ID3D11RasterizerState* WireRS = FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::WireFrame);

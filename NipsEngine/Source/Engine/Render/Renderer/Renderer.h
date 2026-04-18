@@ -137,7 +137,6 @@ public:
 
 private:
 	void InitializePassBatchers();
-	void UpdateFrameBuffer(ID3D11DeviceContext* Context, const FRenderBus& InRenderBus);
 
 private:
 	FD3DDevice Device;

@@ -1,20 +1,64 @@
-﻿#pragma once
+#pragma once
 
 /*
 	Shader들을 관리하는 Class입니다.
 	추후에 Geometry Shader, Compute Shader 등 다양한 Shader들을 관리하는 Class로 확장할 수 있습니다.
 */
 
+#include "Render/Common/ComPtr.h"
 #include "Render/Common/RenderTypes.h"
 
 #include "Core/CoreTypes.h"
 #include "Object/Object.h"
 
-struct FShaderVariableInfo
+class FRenderBus;
+class UTexture;
+class FShaderBindingInstance;
+struct FPerObjectConstants;
+
+enum class EShaderStage : uint8
 {
-	uint32 BufferSlot = 0;
-	uint32 Offset = 0;
+	Vertex = 0,
+	Pixel,
+	Geometry,
+	Hull,
+	Domain,
+	Compute,
+	Count
+};
+
+struct FShaderVariableDesc
+{
+	uint32 StartOffset = 0;
 	uint32 Size = 0;
+};
+
+struct FConstantBufferDesc
+{
+	FString Name;
+	uint32 BindPoint = 0;
+	uint32 BufferSize = 0;
+
+	TMap<FString, FShaderVariableDesc> Variables;
+};
+
+struct FTextureBindDesc
+{
+	FString Name;
+	uint32 BindPoint = 0;
+};
+
+struct FSamplerBindDesc
+{
+	FString Name;
+	uint32 BindPoint = 0;
+};
+
+struct FReflectResult
+{
+	TMap<FString, FConstantBufferDesc> CBuffers;
+	TMap<FString, FTextureBindDesc> Textures;
+	TMap<FString, FSamplerBindDesc> Samplers;
 };
 
 //	Shader Set
@@ -23,8 +67,6 @@ struct FShader
 	ID3D11VertexShader* VS = nullptr;
 	ID3D11PixelShader* PS = nullptr;
 	ID3D11InputLayout* InputLayout = nullptr;
-
-	ID3D11Buffer* ConstantBuffer = nullptr;
 
 	void Release()
 	{
@@ -43,11 +85,6 @@ struct FShader
 			InputLayout->Release();
 			InputLayout = nullptr;
 		}
-		if (ConstantBuffer)
-		{
-			ConstantBuffer->Release();
-			ConstantBuffer = nullptr;
-		}
 	}
 };
 
@@ -59,54 +96,83 @@ public:
 	{
 		ShaderData.Release();
 	}
-	
-	void Bind(ID3D11DeviceContext* Context)
+
+	void Bind(ID3D11DeviceContext* Context) const
 	{
 		Context->IASetInputLayout(ShaderData.InputLayout);
 		Context->VSSetShader(ShaderData.VS, nullptr, 0);
 		Context->PSSetShader(ShaderData.PS, nullptr, 0);
 	}
 
-	void UpdateAndBindCBuffer(ID3D11DeviceContext* Context, const void* Data, uint32 Slot, uint32 Size)
-	{
-		if (!ShaderData.ConstantBuffer || Size == 0) return;
-
-		Context->UpdateSubresource(ShaderData.ConstantBuffer, 0, nullptr, Data, 0, 0);
-		Context->VSSetConstantBuffers(Slot, 1, &ShaderData.ConstantBuffer);
-		Context->PSSetConstantBuffers(Slot, 1, &ShaderData.ConstantBuffer);
-	}
-
-	int32 GetTextureBindSlot(const FString& Name) const
-	{
-		auto It = TextureBindSlots.find(Name);
-		if (It != TextureBindSlots.end())
-		{
-			return It->second;
-		}
-		return -1;
-	}
-
-	bool GetShaderVariableInfo(const FString& Name, FShaderVariableInfo& OutInfo) const
-	{
-		auto It = ShaderVariables.find(Name);
-		if (It != ShaderVariables.end())
-		{
-			OutInfo = It->second;
-			return true;
-		}
-		return false;
-	}
-
-	void ReflectShader(ID3DBlob* ShaderBlob, ID3D11Device* Device);
-
-	uint32 GetCBufferSize() const { return CBufferSize; }
+	bool ReflectShader(ID3DBlob* ShaderBlob, ID3D11Device* Device, EShaderStage Stage);
+	std::shared_ptr<FShaderBindingInstance> CreateBindingInstance(ID3D11Device* Device) const;
+	const FReflectResult& GetReflectResult(EShaderStage Stage) const { return ReflectResults[static_cast<uint32>(Stage)]; }
 
 	FShader ShaderData;
 	FString FilePath;
 
 private:
-	TMap<FString, uint32> TextureBindSlots;
-	TMap<FString, FShaderVariableInfo> ShaderVariables;
+	bool CreateInputLayoutFromReflection(ID3DBlob* ShaderBlob, ID3D11Device* Device, ID3D11ShaderReflection* Reflector);
 
-	uint32 CBufferSize = 0;
+	FReflectResult ReflectResults[static_cast<uint32>(EShaderStage::Count)];
+};
+
+struct FConstantBufferRuntime
+{
+	TComPtr<ID3D11Buffer> Buffer;
+	TArray<uint8> LocalData;
+	uint32 BindPoint = 0;
+	uint32 Size = 0;
+	bool bDirty = true;
+};
+
+struct FTextureRuntime
+{
+	TComPtr<ID3D11ShaderResourceView> SRV;
+	uint32 BindPoint = 0;
+};
+
+struct FSamplerRuntime
+{
+	TComPtr<ID3D11SamplerState> Sampler;
+	uint32 BindPoint = 0;
+};
+
+class FShaderBindingInstance
+{
+public:
+	bool Initialize(ID3D11Device* Device, const UShader* InShader);
+	const UShader* GetShader() const { return ShaderAsset; }
+
+	bool SetBytes(const FString& Name, const void* Data, uint32 Size);
+	bool SetBool(const FString& Name, bool Value);
+	bool SetInt(const FString& Name, int32 Value);
+	bool SetUInt(const FString& Name, uint32 Value);
+	bool SetFloat(const FString& Name, float Value);
+	bool SetVector2(const FString& Name, const FVector2& Value);
+	bool SetVector3(const FString& Name, const FVector& Value);
+	bool SetVector4(const FString& Name, const FVector4& Value);
+	bool SetMatrix4(const FString& Name, const FMatrix& Value);
+
+	bool SetTexture(const FString& Name, UTexture* Texture);
+	bool SetSRV(const FString& Name, ID3D11ShaderResourceView* SRV);
+	void SetSampler(const FString& Name, ID3D11SamplerState* Sampler);
+	void SetAllSamplers(ID3D11SamplerState* Sampler);
+
+	void ApplyFrameParameters(const FRenderBus& RenderBus);
+	void ApplyPerObjectParameters(const FPerObjectConstants& Constants);
+
+	void Bind(ID3D11DeviceContext* Context);
+
+private:
+	bool SetValueInternal(const FString& Name, const void* Data, uint32 Size, bool bRequireExactSize);
+	void UploadConstantBuffers(ID3D11DeviceContext* Context);
+	void BindConstantBuffers(ID3D11DeviceContext* Context) const;
+	void BindTextures(ID3D11DeviceContext* Context) const;
+	void BindSamplers(ID3D11DeviceContext* Context) const;
+
+	const UShader* ShaderAsset = nullptr;
+	TMap<FString, FConstantBufferRuntime> ConstantBuffers[static_cast<uint32>(EShaderStage::Count)];
+	TMap<FString, FTextureRuntime> Textures[static_cast<uint32>(EShaderStage::Count)];
+	TMap<FString, FSamplerRuntime> Samplers[static_cast<uint32>(EShaderStage::Count)];
 };

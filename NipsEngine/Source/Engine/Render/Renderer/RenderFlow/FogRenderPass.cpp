@@ -1,7 +1,6 @@
-﻿#include "FogRenderPass.h"
+#include "FogRenderPass.h"
 #include "Core/ResourceManager.h"
 #include "Render/Scene/RenderBus.h"
-#include "Render/Resource/RenderResources.h"
 #include "Render/Scene/RenderCommand.h"
 #include <algorithm>
 
@@ -12,6 +11,7 @@ bool FFogRenderPass::Initialize()
 
 bool FFogRenderPass::Release()
 {
+    ShaderBinding.reset();
     return true;
 }
 
@@ -22,7 +22,6 @@ bool FFogRenderPass::Begin(const FRenderPassContext* Context)
     const TArray<FRenderCommand>& Commands = Context->RenderBus->GetCommands(ERenderPass::Fog);
     if (Commands.empty())
     {
-        // Fog command가 없으면 이전 패스 결과를 그대로 넘긴다.
         OutSRV = PrevPassSRV;
         OutRTV = PrevPassRTV;
         bSkipFogDraw = true;
@@ -43,7 +42,8 @@ bool FFogRenderPass::Begin(const FRenderPassContext* Context)
         FallbackSRV &&
         FallbackRTV;
 
-    if (!bHasFogTargets || !bHasFogInputs)
+    UShader* FogPassShader = FResourceManager::Get().GetShader("Shaders/Multipass/FogPass.hlsl");
+    if (!bHasFogTargets || !bHasFogInputs || !FogPassShader)
     {
         OutSRV = FallbackSRV;
         OutRTV = FallbackRTV;
@@ -51,15 +51,26 @@ bool FFogRenderPass::Begin(const FRenderPassContext* Context)
         return true;
     }
 
-    UShader* FogPassShader = FResourceManager::Get().GetShader("Shaders/Multipass/FogPass.hlsl");
-    if (!FogPassShader)
+    if (!ShaderBinding || ShaderBinding->GetShader() != FogPassShader)
+    {
+        ShaderBinding = FogPassShader->CreateBindingInstance(Context->Device);
+    }
+
+    if (!ShaderBinding)
     {
         OutSRV = FallbackSRV;
         OutRTV = FallbackRTV;
         bSkipFogDraw = true;
         return true;
     }
-    FogPassShader->Bind(Context->DeviceContext);
+
+    ShaderBinding->ApplyFrameParameters(*Context->RenderBus);
+    ShaderBinding->SetSRV("SceneColor", Context->RenderTargets->SceneColorSRV);
+    ShaderBinding->SetSRV("SceneNormal", Context->RenderTargets->SceneNormalSRV);
+    ShaderBinding->SetSRV("SceneDepth", Context->RenderTargets->SceneDepthSRV);
+    ShaderBinding->SetSRV("ScenePrevPassColor", FallbackSRV);
+    ShaderBinding->SetSRV("SceneWorldPos", Context->RenderTargets->SceneWorldPosSRV);
+    ShaderBinding->SetAllSamplers(FResourceManager::Get().GetOrCreateSamplerState(ESamplerType::EST_Linear));
 
     ID3D11DepthStencilState* DSState = FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::StencilWrite);
     Context->DeviceContext->OMSetDepthStencilState(DSState, 1);
@@ -82,7 +93,7 @@ bool FFogRenderPass::Begin(const FRenderPassContext* Context)
 
 bool FFogRenderPass::DrawCommand(const FRenderPassContext* Context)
 {
-    if (bSkipFogDraw)
+    if (bSkipFogDraw || !ShaderBinding)
     {
         return true;
     }
@@ -93,15 +104,6 @@ bool FFogRenderPass::DrawCommand(const FRenderPassContext* Context)
         return true;
     }
 
-    ID3D11ShaderResourceView* srvs[] = {
-        Context->RenderTargets->SceneColorSRV,
-        Context->RenderTargets->SceneNormalSRV,
-        Context->RenderTargets->SceneDepthSRV,
-        PrevPassSRV,
-        Context->RenderTargets->SceneWorldPosSRV
-    };
-    Context->DeviceContext->PSSetShaderResources(0, 5, srvs);
-
     FFogPassConstants FogPassConstants = {};
     FogPassConstants.FogCount = std::min<uint32>(static_cast<uint32>(Commands.size()), MaxFogLayerCount);
     for (uint32 FogIndex = 0; FogIndex < FogPassConstants.FogCount; ++FogIndex)
@@ -109,13 +111,11 @@ bool FFogRenderPass::DrawCommand(const FRenderPassContext* Context)
         FogPassConstants.Layers[FogIndex] = Commands[FogIndex].Constants.Fog;
     }
 
-    Context->RenderResources->FogPassConstantBuffer.Update(Context->DeviceContext, &FogPassConstants, sizeof(FFogPassConstants));
-    ID3D11Buffer* cb9 = Context->RenderResources->FogPassConstantBuffer.GetBuffer();
-    Context->DeviceContext->VSSetConstantBuffers(9, 1, &cb9);
-    Context->DeviceContext->PSSetConstantBuffers(9, 1, &cb9);
+    ShaderBinding->SetUInt("FogLayerCount", FogPassConstants.FogCount);
+    ShaderBinding->SetBytes("FogLayers", FogPassConstants.Layers, sizeof(FogPassConstants.Layers));
+    ShaderBinding->Bind(Context->DeviceContext);
 
     Context->DeviceContext->Draw(3, 0);
-
     return true;
 }
 
@@ -126,7 +126,7 @@ bool FFogRenderPass::End(const FRenderPassContext* Context)
         return true;
     }
 
-    ID3D11ShaderResourceView* nullSRVs[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-    Context->DeviceContext->PSSetShaderResources(0, 5, nullSRVs);
+    ID3D11ShaderResourceView* NullSRVs[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+    Context->DeviceContext->PSSetShaderResources(0, 5, NullSRVs);
     return true;
 }

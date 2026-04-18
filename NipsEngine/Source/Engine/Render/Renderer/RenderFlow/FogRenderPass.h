@@ -1,5 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "RenderPass.h"
+#include <memory>
+
+class FShaderBindingInstance;
 
 class FFogRenderPass : public FBaseRenderPass
 {
@@ -14,4 +17,5 @@ private:
 
 private:
     bool bSkipFogDraw = false;
+    std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 };

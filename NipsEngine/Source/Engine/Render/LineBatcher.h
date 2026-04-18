@@ -11,6 +11,7 @@
 struct ID3D11Device;
 struct ID3D11DeviceContext;
 struct ID3D11Buffer;
+class FRenderBus;
 
 // ============================================================
 // FLineVertex — 라인 렌더링용 버텍스 (Position + Color)
@@ -84,7 +85,7 @@ public:
 	// Dynamic VB에 업로드 후 Draw Call 실행
 	// ViewProj: 카메라의 View * Projection 행렬
 	// %%% Flush(ID3D11DeviceContext* Context, const FMatrix& ViewProj) -> Flush(ID3D11DeviceContext* Context)
-	void Flush(ID3D11DeviceContext* Context);
+	void Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus);
 
 	// 현재 축적된 라인 개수
 	uint32 GetLineCount() const;

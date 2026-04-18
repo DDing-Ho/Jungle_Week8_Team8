@@ -1,7 +1,6 @@
-﻿#include "SelectionMaskRenderPass.h"
+#include "SelectionMaskRenderPass.h"
 #include "Core/ResourceManager.h"
 #include "Render/Scene/RenderBus.h"
-#include "Render/Resource/RenderResources.h"
 
 bool FSelectionMaskRenderPass::Initialize()
 {
@@ -10,6 +9,7 @@ bool FSelectionMaskRenderPass::Initialize()
 
 bool FSelectionMaskRenderPass::Release()
 {
+    ShaderBinding.reset();
     return true;
 }
 
@@ -20,17 +20,25 @@ bool FSelectionMaskRenderPass::Begin(const FRenderPassContext* Context)
     Context->DeviceContext->OMSetRenderTargets(1, &RTV, DSV);
     Context->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    auto DepthStencilState = FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::StencilWrite);
-    auto BlendState = FResourceManager::Get().GetOrCreateBlendState(EBlendType::AlphaBlend);
-    auto RasterizerState = FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::SolidNoCull);
+    ID3D11DepthStencilState* DepthStencilState = FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::StencilWrite);
+    ID3D11BlendState* BlendState = FResourceManager::Get().GetOrCreateBlendState(EBlendType::AlphaBlend);
+    ID3D11RasterizerState* RasterizerState = FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::SolidNoCull);
     Context->DeviceContext->OMSetDepthStencilState(DepthStencilState, 0);
     Context->DeviceContext->OMSetBlendState(BlendState, nullptr, 0xFFFFFFFF);
     Context->DeviceContext->RSSetState(RasterizerState);
 
     UShader* SelectionMaskShader = FResourceManager::Get().GetShader("Shaders/SelectionMask.hlsl");
-    if (SelectionMaskShader != nullptr)
+    if (SelectionMaskShader)
     {
-        SelectionMaskShader->Bind(Context->DeviceContext);
+        if (!ShaderBinding || ShaderBinding->GetShader() != SelectionMaskShader)
+        {
+            ShaderBinding = SelectionMaskShader->CreateBindingInstance(Context->Device);
+        }
+
+        if (ShaderBinding && Context->RenderBus)
+        {
+            ShaderBinding->ApplyFrameParameters(*Context->RenderBus);
+        }
     }
 
     OutSRV = PrevPassSRV;
@@ -48,11 +56,6 @@ bool FSelectionMaskRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     for (const FRenderCommand& Cmd : Commands)
     {
-        Context->RenderResources->PerObjectConstantBuffer.Update(Context->DeviceContext, &Cmd.PerObjectConstants, sizeof(FPerObjectConstants));
-        ID3D11Buffer* cb1 = Context->RenderResources->PerObjectConstantBuffer.GetBuffer();
-        Context->DeviceContext->VSSetConstantBuffers(1, 1, &cb1);
-        Context->DeviceContext->PSSetConstantBuffers(1, 1, &cb1);
-
         if (Cmd.MeshBuffer == nullptr || !Cmd.MeshBuffer->IsValid())
         {
             continue;
@@ -70,6 +73,12 @@ bool FSelectionMaskRenderPass::DrawCommand(const FRenderPassContext* Context)
         if (vertexCount == 0 || stride == 0)
         {
             continue;
+        }
+
+        if (ShaderBinding)
+        {
+            ShaderBinding->ApplyPerObjectParameters(Cmd.PerObjectConstants);
+            ShaderBinding->Bind(Context->DeviceContext);
         }
 
         Context->DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);

@@ -1,5 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "RenderPass.h"
+#include <memory>
+
+class FShaderBindingInstance;
 
 class FFXAARenderPass : public FBaseRenderPass
 {
@@ -11,4 +14,7 @@ private:
     bool Begin(const FRenderPassContext* Context) override;
     bool DrawCommand(const FRenderPassContext* Context) override;
     bool End(const FRenderPassContext* Context) override;
+
+private:
+    std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 };

@@ -14,6 +14,7 @@ struct ID3D11DeviceContext;
 struct ID3D11Buffer;
 struct ID3D11SamplerState;
 struct ID3D11ShaderResourceView;
+class FRenderBus;
 
 // SubUV 아틀라스 내 한 프레임의 UV 정보
 struct FSubUVFrameInfo
@@ -70,7 +71,7 @@ public:
 
     // Dynamic VB/IB 업로드 + DrawIndexed 1회 호출
     // SRV — ResourceManager 소유 FParticleResource의 SRV를 전달
-    void Flush(ID3D11DeviceContext* Context, bool bWireframe = false);
+    void Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, bool bWireframe = false);
 
     uint32 GetSpriteCount() const { return static_cast<uint32>(Vertices.size() / 4); }
 

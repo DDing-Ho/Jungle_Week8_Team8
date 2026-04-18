@@ -7,6 +7,8 @@
 #include <fstream>
 #include <filesystem>
 #include <chrono>
+#include <ranges>
+
 #include "Asset/FileUtils.h"
 
 #include "DDSTextureLoader.h"
@@ -506,7 +508,7 @@ bool FResourceManager::LoadGPUResources(ID3D11Device* Device)
 		}
 	}
 
-	for (auto& [Key, Resource] : ParticleResources)
+	for (auto& Resource : ParticleResources | std::views::values)
 	{
 		if (Resource.Texture != nullptr && Resource.Texture->GetSRV() != nullptr)
 		{
@@ -691,7 +693,11 @@ bool FResourceManager::LoadShader(const FString& FilePath, const FString& VSEntr
 		}
 		return false;
 	}
-	Shader->ReflectShader(VSBlob.Get(), CachedDevice.Get());
+	if (!Shader->ReflectShader(VSBlob.Get(), CachedDevice.Get(), EShaderStage::Vertex))
+	{
+		UE_LOG("Failed to reflect vertex shader: %s", FilePath.c_str());
+		return false;
+	}
 	ErrorBlob.Reset();
 
 	hr = D3DCompileFromFile(FPaths::ToWide(FilePath).c_str(), Defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -708,7 +714,11 @@ bool FResourceManager::LoadShader(const FString& FilePath, const FString& VSEntr
 		}
 		return false;
 	}
-	Shader->ReflectShader(PSBlob.Get(), CachedDevice.Get());
+	if (!Shader->ReflectShader(PSBlob.Get(), CachedDevice.Get(), EShaderStage::Pixel))
+	{
+		UE_LOG("Failed to reflect pixel shader: %s", FilePath.c_str());
+		return false;
+	}
 
 	hr = CachedDevice->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr,
 		&Shader->ShaderData.VS);
@@ -726,7 +736,7 @@ bool FResourceManager::LoadShader(const FString& FilePath, const FString& VSEntr
 		return false;
 	}
 
-	if (InputElements != nullptr && InputElementCount > 0)
+	if (Shader->ShaderData.InputLayout == nullptr && InputElements != nullptr && InputElementCount > 0)
 	{
 		hr = CachedDevice->CreateInputLayout(InputElements, InputElementCount, VSBlob->GetBufferPointer(),
 			VSBlob->GetBufferSize(), &Shader->ShaderData.InputLayout);

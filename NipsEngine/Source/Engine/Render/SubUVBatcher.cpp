@@ -3,6 +3,7 @@
 #include "SubUVBatcher.h"
 #include "Core/CoreTypes.h"
 #include "Core/ResourceManager.h"
+#include "Render/Scene/RenderBus.h"
 
 void FSubUVBatcher::Create(ID3D11Device* InDevice)
 {
@@ -103,7 +104,7 @@ void FSubUVBatcher::Clear()
 	Batches.clear();
 }
 
-void FSubUVBatcher::Flush(ID3D11DeviceContext* Context, bool bWireframe)
+void FSubUVBatcher::Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, bool bWireframe)
 {
     if (Vertices.empty() || !VertexBuffer || !IndexBuffer) return;
 
@@ -138,7 +139,7 @@ void FSubUVBatcher::Flush(ID3D11DeviceContext* Context, bool bWireframe)
 		if (!Batch.Texture || Batch.IndexCount == 0) continue;
 
 		Mat->SetTexture("SubUVAtlas", Batch.Texture);
-		Material->Bind(Context);
+		Material->Bind(Context, RenderBus);
         if (bWireframe)
         {
             ID3D11RasterizerState* WireRS = FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::WireFrame);

@@ -31,7 +31,7 @@ bool FSubUVRenderPass::DrawCommand(const FRenderPassContext* Context)
     }
 
     const bool bWireframe = (Context->RenderBus != nullptr) && (Context->RenderBus->GetViewMode() == EViewMode::Wireframe);
-    Context->SubUVBatcher->Flush(Context->DeviceContext, bWireframe);
+    Context->SubUVBatcher->Flush(Context->DeviceContext, Context->RenderBus, bWireframe);
     return true;
 }
 

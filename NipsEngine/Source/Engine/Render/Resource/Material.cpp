@@ -1,119 +1,128 @@
-﻿#include "Material.h"
+#include "Material.h"
 #include "Core/ResourceManager.h"
 
 DEFINE_CLASS(UMaterialInterface, UObject)
 DEFINE_CLASS(UMaterial, UMaterialInterface)
 DEFINE_CLASS(UMaterialInstance, UMaterialInterface)
 
-
-void UMaterial::Bind(ID3D11DeviceContext* Context) const
+namespace
 {
-	if (!Shader) return;
-	Shader->Bind(Context);
+	void ApplyMaterialParam(FShaderBindingInstance& Binding, const FString& Name, const FMaterialParamValue& ParamValue)
+	{
+		switch (ParamValue.Type)
+		{
+		case EMaterialParamType::Bool:
+			Binding.SetBool(Name, std::get<bool>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Int:
+			Binding.SetInt(Name, std::get<int32>(ParamValue.Value));
+			break;
+		case EMaterialParamType::UInt:
+			Binding.SetUInt(Name, std::get<uint32>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Float:
+			Binding.SetFloat(Name, std::get<float>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Vector2:
+			Binding.SetVector2(Name, std::get<FVector2>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Vector3:
+			Binding.SetVector3(Name, std::get<FVector>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Vector4:
+			Binding.SetVector4(Name, std::get<FVector4>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Matrix4:
+			Binding.SetMatrix4(Name, std::get<FMatrix>(ParamValue.Value));
+			break;
+		case EMaterialParamType::Texture:
+			Binding.SetTexture(Name, std::get<UTexture*>(ParamValue.Value));
+			break;
+		default:
+			break;
+		}
+	}
+}
 
-	auto DSState = FResourceManager::Get().GetOrCreateDepthStencilState(DepthStencilType);
-	auto BlendState = FResourceManager::Get().GetOrCreateBlendState(BlendType);
-	auto RasterizerState = FResourceManager::Get().GetOrCreateRasterizerState(RasterizerType);
-	auto Sampler = FResourceManager::Get().GetOrCreateSamplerState(SamplerType);
-	
-	// TODO: Render Pipeline Stalling 방지 추가 필요
+ID3D11SamplerState* UMaterial::ApplyRenderStates(ID3D11DeviceContext* Context) const
+{
+	if (!Context)
+	{
+		return nullptr;
+	}
+
+	ID3D11DepthStencilState* DSState = FResourceManager::Get().GetOrCreateDepthStencilState(DepthStencilType);
+	ID3D11BlendState* BlendState = FResourceManager::Get().GetOrCreateBlendState(BlendType);
+	ID3D11RasterizerState* RasterizerState = FResourceManager::Get().GetOrCreateRasterizerState(RasterizerType);
+	ID3D11SamplerState* Sampler = FResourceManager::Get().GetOrCreateSamplerState(SamplerType);
+
 	Context->OMSetDepthStencilState(DSState, 0);
 	Context->OMSetBlendState(BlendState, nullptr, 0xFFFFFFFF);
 	Context->RSSetState(RasterizerState);
-	Context->PSSetSamplers(0, 1, &Sampler);
 
-	ApplyParams(Context, MaterialParams);
+	return Sampler;
 }
 
-void UMaterial::ApplyParams(ID3D11DeviceContext* Context, const TMap<FString, FMaterialParamValue>& Params) const
+void UMaterial::EnsureShaderBinding(ID3D11Device* Device) const
 {
-	TArray<uint8> CBufferData(Shader->GetCBufferSize());
-
-	for (const auto& [Name, ParamValue] : Params)
+	if (!Shader)
 	{
-		FShaderVariableInfo VarInfo;
-		if (Shader->GetShaderVariableInfo(Name, VarInfo))
-		{
-			switch (ParamValue.Type)
-			{
-			case EMaterialParamType::Bool:
-			{
-				uint32 BoolVal = std::get<bool>(ParamValue.Value) ? 1 : 0;
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &BoolVal, sizeof(uint32));
-				break;
-			}
-			case EMaterialParamType::Int:
-			{
-				int32 Val = std::get<int32>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(int32));
-				break;
-			}
-			case EMaterialParamType::UInt:
-			{
-				uint32 UIntVal = std::get<uint32>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &UIntVal, sizeof(uint32));
-				break;
-			}
-			case EMaterialParamType::Float:
-			{
-				float Val = std::get<float>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(float));
-				break;
-			}
-			case EMaterialParamType::Vector2:
-			{
-				FVector2 Val = std::get<FVector2>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(FVector2));
-				break;
-			}
-			case EMaterialParamType::Vector3:
-			{
-				FVector Val = std::get<FVector>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(FVector));
-				break;
-			}
-			case EMaterialParamType::Vector4:
-			{
-				FVector4 Val = std::get<FVector4>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(FVector4));
-				break;
-			}
-			case EMaterialParamType::Matrix4:
-			{
-				FMatrix Val = std::get<FMatrix>(ParamValue.Value);
-				std::memcpy(CBufferData.data() + VarInfo.Offset, &Val, sizeof(FMatrix));
-				break;
-			}
-			default:
-				break;
-			}
-		}
-		else
-		{
-			if (ParamValue.Type == EMaterialParamType::Texture && std::holds_alternative<UTexture*>(ParamValue.Value))
-			{
-				int32 Slot = Shader->GetTextureBindSlot(Name);
-				if (Slot >= 0)
-				{
-					UTexture* TextureAsset = std::get<UTexture*>(ParamValue.Value);
-					if (TextureAsset)
-					{
-						ID3D11ShaderResourceView* SRV = TextureAsset->GetSRV();
-						Context->PSSetShaderResources(Slot, 1, &SRV);
-					}
-				}
-			}
-		}
+		ShaderBinding.reset();
+		return;
 	}
 
-	Shader->UpdateAndBindCBuffer(Context, CBufferData.data(), 2, static_cast<uint32>(CBufferData.size()));
+	if (ShaderBinding && ShaderBinding->GetShader() == Shader)
+	{
+		return;
+	}
+
+	ShaderBinding = Shader->CreateBindingInstance(Device);
 }
 
-void UMaterialInstance::Bind(ID3D11DeviceContext* Context) const
+void UMaterial::ApplyParams(FShaderBindingInstance& Binding, const TMap<FString, FMaterialParamValue>& Params) const
 {
-	if (!Parent) return;
+	for (const auto& [Name, ParamValue] : Params)
+	{
+		ApplyMaterialParam(Binding, Name, ParamValue);
+	}
+}
 
-	Parent->Bind(Context);
+void UMaterial::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject) const
+{
+	if (!Context || !Shader)
+	{
+		return;
+	}
+
+	EnsureShaderBinding(FResourceManager::Get().GetCachedDevice());
+	if (!ShaderBinding)
+	{
+		return;
+	}
+
+	ID3D11SamplerState* Sampler = ApplyRenderStates(Context);
+	ShaderBinding->SetAllSamplers(Sampler);
+
+	if (RenderBus)
+	{
+		ShaderBinding->ApplyFrameParameters(*RenderBus);
+	}
+
+	if (PerObject)
+	{
+		ShaderBinding->ApplyPerObjectParameters(*PerObject);
+	}
+
+	ApplyParams(*ShaderBinding, MaterialParams);
+	ShaderBinding->Bind(Context);
+}
+
+void UMaterialInstance::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject) const
+{
+	if (!Context || !Parent || !Parent->Shader)
+	{
+		return;
+	}
 
 	TMap<FString, FMaterialParamValue> CombinedParams;
 	Parent->GatherAllParams(CombinedParams);
@@ -122,5 +131,29 @@ void UMaterialInstance::Bind(ID3D11DeviceContext* Context) const
 		CombinedParams[Name] = Value;
 	}
 
-	Parent->ApplyParams(Context, CombinedParams);
+	if (!ShaderBinding || ShaderBinding->GetShader() != Parent->Shader)
+	{
+		ShaderBinding = Parent->Shader->CreateBindingInstance(FResourceManager::Get().GetCachedDevice());
+	}
+
+	if (!ShaderBinding)
+	{
+		return;
+	}
+
+	ID3D11SamplerState* Sampler = Parent->ApplyRenderStates(Context);
+	ShaderBinding->SetAllSamplers(Sampler);
+
+	if (RenderBus)
+	{
+		ShaderBinding->ApplyFrameParameters(*RenderBus);
+	}
+
+	if (PerObject)
+	{
+		ShaderBinding->ApplyPerObjectParameters(*PerObject);
+	}
+
+	Parent->ApplyParams(*ShaderBinding, CombinedParams);
+	ShaderBinding->Bind(Context);
 }
