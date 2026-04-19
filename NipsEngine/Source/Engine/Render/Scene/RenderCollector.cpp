@@ -155,58 +155,6 @@ namespace
 		// 화면에 차지하는 비율이 가장 낮을 경우 최하위 LOD 반환
 		return MaxLOD;
 	}
-
-	void TryCollectDirectionalLight(const AActor* Actor, FRenderBus& RenderBus)
-	{
-		if (Actor == nullptr || !Actor->IsVisible() || RenderBus.HasDirectionalLight())
-		{
-			return;
-		}
-
-		if (!Actor->IsA<ADirectionalLightActor>())
-		{
-			return;
-		}
-
-		const UDirectionalLightComponent* DirectionalLight = Cast<UDirectionalLightComponent>(Actor->GetRootComponent());
-		if (DirectionalLight == nullptr || !DirectionalLight->IsVisible())
-		{
-			return;
-		}
-
-		FVector DirectionToLight = DirectionalLight->GetForwardVector() * -1.0f;
-		DirectionToLight.NormalizeSafe();
-
-		const FColor& LightColor = DirectionalLight->GetLightColor();
-		const float Intensity = DirectionalLight->GetIntensity();
-		RenderBus.SetDirectionalLight(
-			DirectionToLight,
-			FVector(LightColor.r, LightColor.g, LightColor.b) * Intensity,
-			Intensity);
-	}
-
-	void TryCollectAmbientLight(const AActor* Actor, FRenderBus& RenderBus)
-	{
-		if (Actor == nullptr || !Actor->IsVisible() || RenderBus.HasAmbientLight())
-		{
-			return;
-		}
-
-		if (!Actor->IsA<AAmbientLightActor>())
-		{
-			return;
-		}
-
-		const UAmbientLightComponent* AmbientLight = Cast<UAmbientLightComponent>(Actor->GetRootComponent());
-		if (AmbientLight == nullptr || !AmbientLight->IsVisible())
-		{
-			return;
-		}
-
-		const FColor& LightColor = AmbientLight->GetLightColor();
-		const float Intensity = AmbientLight->GetIntensity();
-		RenderBus.SetAmbientLight(FVector(LightColor.r, LightColor.g, LightColor.b) * Intensity);
-	}
 }
 
 void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus,
@@ -223,13 +171,13 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 		return;
 	}
 
+	CollectLight(World, RenderBus);
+
 	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
 	{
 		AActor* Actor = *Iter;
 
 		if (!Actor || !Actor->IsVisible()) continue;
-		TryCollectAmbientLight(Actor, RenderBus);
-		TryCollectDirectionalLight(Actor, RenderBus);
 
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 		{	
@@ -254,6 +202,48 @@ void FRenderCollector::ResetDecalStats()
 	LastDecalStats = {};
 }
 
+void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
+{
+    const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
+
+	for (FLightSlot Slot : LightSlots)
+	{
+        if (!Slot.bAlive || !Slot.LightData)
+            continue;
+
+		if (Slot.LightData->IsA<UAmbientLightComponent>())
+		{
+            const UAmbientLightComponent* AmbientLight = Cast<UAmbientLightComponent>(Slot.LightData);
+            if (AmbientLight == nullptr || !AmbientLight->IsVisible())
+            {
+                return;
+            }
+
+            const FColor& LightColor = AmbientLight->GetLightColor();
+            const float Intensity = AmbientLight->GetIntensity();
+            RenderBus.SetAmbientLight(FVector(LightColor.r, LightColor.g, LightColor.b) * Intensity);
+		}
+		else if (Slot.LightData->IsA<UDirectionalLightComponent>())
+		{
+            const UDirectionalLightComponent* DirectionalLight = Cast<UDirectionalLightComponent>(Slot.LightData);
+            if (DirectionalLight == nullptr || !DirectionalLight->IsVisible())
+            {
+                return;
+            }
+
+            FVector DirectionToLight = DirectionalLight->GetForwardVector() * -1.0f;
+            DirectionToLight.NormalizeSafe();
+
+            const FColor& LightColor = DirectionalLight->GetLightColor();
+            const float Intensity = DirectionalLight->GetIntensity();
+            RenderBus.SetDirectionalLight(
+                DirectionToLight,
+                FVector(LightColor.r, LightColor.g, LightColor.b) * Intensity,
+                Intensity);
+		}
+	}
+}
+
 void FRenderCollector::CollectWorldWithFrustum(UWorld* World, const FFrustum& ViewFrustum, const FShowFlags& ShowFlags,
                                                EViewMode ViewMode, FRenderBus& RenderBus)
 {
@@ -274,6 +264,8 @@ void FRenderCollector::CollectWorldWithFrustum(UWorld* World, const FFrustum& Vi
 	std::unordered_set<UPrimitiveComponent*> CollectedCameraDependentPrimitives;
 	CollectedCameraDependentPrimitives.reserve(32);
 
+	CollectLight(World, RenderBus);
+
 	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
 	{
 		AActor* Actor = *Iter;
@@ -281,9 +273,6 @@ void FRenderCollector::CollectWorldWithFrustum(UWorld* World, const FFrustum& Vi
 		{
 			continue;
 		}
-
-		TryCollectAmbientLight(Actor, RenderBus);
-		TryCollectDirectionalLight(Actor, RenderBus);
 
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 		{

@@ -100,6 +100,7 @@ public:
 
 	FLightHandle RegisterLight(ULightComponentBase* Comp);
     void UnregisterLight(ULightComponentBase* Comp);
+    const TArray<FLightSlot>& GetWorldLightSlots() const { return WorldLightSlots; }
 
 private:
 	EWorldType WorldType = EWorldType::Editor;
