@@ -259,11 +259,6 @@ void FRenderCollector::CollectWorldWithFrustum(UWorld* World, const FFrustum& Vi
 
 		TryCollectDirectionalLight(Actor, RenderBus);
 
-		if (Actor->IsA<ASpotLightActor>())
-		{
-			CollectSpotLightCommand(static_cast<const ASpotLightActor*>(Actor), ShowFlags, RenderBus);
-		}
-
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 		{
 			if (Primitive == nullptr || !Primitive->IsVisible())
@@ -835,8 +830,8 @@ void FRenderCollector::CollectOBBCommand(UPrimitiveComponent* PrimitiveComponent
 	const FOBB Box = FOBB::FromAABB(AABB, PrimitiveComponent->GetWorldMatrix());
 	CollectOBBCommand(Box, FColor::Green(), RenderBus);
 }
-
-void FRenderCollector::CollectSpotLightCommand(const ASpotLightActor* SpotlightActor, const FShowFlags& ShowFlags, FRenderBus& RenderBus)
-{
-
-}
+//
+//void FRenderCollector::CollectSpotLightCommand(const ASpotLightActor* SpotlightActor, const FShowFlags& ShowFlags, FRenderBus& RenderBus)
+//{
+//
+//}
