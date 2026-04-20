@@ -537,6 +537,7 @@ void FEditorViewportClient::DeleteSelectedActors()
 			ActorWorld->DestroyActor(Actor);
 	}
 	SelectionManager->ClearSelection();
+    Editor->GetMainPanel().GetPropertyWidget().ResetSelection();
 }
 
 void FEditorViewportClient::SelectAllActors()
