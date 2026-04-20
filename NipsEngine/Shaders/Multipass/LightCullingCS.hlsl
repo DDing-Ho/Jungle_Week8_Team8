@@ -47,24 +47,39 @@ void mainCS(uint3 DispatchThreadID : SV_DispatchThreadID)
     {
         const FLightDataCS Light = SceneLights[LightIndex];
         const float4 ViewPosition = mul(float4(Light.WorldPos, 1.0f), View);
-        const float EyeDepth = -ViewPosition.z;
-        if (EyeDepth <= 1e-4f)
+        const float EyeDepth = ViewPosition.x; // 전방 = View X축
+
+        if (EyeDepth + Light.Radius <= 1e-4f)
         {
             continue;
         }
 
+        if (EyeDepth < Light.Radius)
+        {
+            if (VisibleCount < LIGHT_CULLING_MAX_LIGHTS_PER_TILE)
+            {
+                TileVisibleLightIndices[TileStartOffset + VisibleCount] = LightIndex;
+                VisibleCount++;
+            }
+            continue;
+        }
+
         const float4 ClipPosition = mul(ViewPosition, Projection);
-        if (ClipPosition.w <= 0.0f)
+        if (ClipPosition.w <= 0.0f)  // ClipPos.w = EyeDepth이므로 사실상 중복이지만 안전장치
         {
             continue;
         }
 
         const float2 Ndc = ClipPosition.xy / ClipPosition.w;
         const float2 ScreenPosition = float2(
-            (Ndc.x * 0.5f + 0.5f) * ViewportWidth,
-            (-Ndc.y * 0.5f + 0.5f) * ViewportHeight);
+                                        (Ndc.x * 0.5f + 0.5f) * ViewportWidth,
+                                        (-Ndc.y * 0.5f + 0.5f) * ViewportHeight);
 
-        const float ProjectedRadius = abs((Light.Radius * Projection[1][1] / EyeDepth) * 0.5f * ViewportHeight);
+        // Projection[1][0] = XScale (Row1, Col0) → Y뷰→X클립
+        // Projection[2][1] = YScale (Row2, Col1) → Z뷰→Y클립
+        // ProjectedRadius는 YScale 기준 (수직 FOV 기준)
+        const float YScale = Projection[2][1]; // ViewPos.z * YScale → ClipPos.y
+        const float ProjectedRadius = (Light.Radius / EyeDepth) * YScale * (ViewportHeight * 0.5f);
         if (ProjectedRadius <= 0.0f)
         {
             continue;

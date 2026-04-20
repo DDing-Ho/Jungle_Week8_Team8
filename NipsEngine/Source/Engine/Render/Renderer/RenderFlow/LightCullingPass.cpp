@@ -459,4 +459,5 @@ void FLightCullingPass::EmitDebugStats(const FRenderPassContext* Context, uint32
         NonZeroTileCount,
         AverageVisibleLightsPerTile,
         MaxVisibleLightsInTile);
+
 }
