@@ -30,6 +30,9 @@ struct FMaterial
     FString SpecularTexPath;  // map_Ks
 	bool	bHasSpecularTexture = { false };
 
+	FString NormalTexPath;     // norm / map_norm / map_Kn
+	bool	bHasNormalTexture = { false };
+
 	FString BumpTexPath;      // map_bump
 	bool	bHasBumpTexture = { false };
 };

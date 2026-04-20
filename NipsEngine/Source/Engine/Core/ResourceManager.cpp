@@ -653,15 +653,25 @@ void FResourceManager::InitializeDefaultResources(ID3D11Device* Device)
 	Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	constexpr uint32_t WhitePixel = 0xFFFFFFFF;
-	D3D11_SUBRESOURCE_DATA InitData = {&WhitePixel, 4, 0};
+	constexpr uint32_t FlatNormalPixel = 0xFFFF8080;
+	D3D11_SUBRESOURCE_DATA WhiteInitData = { &WhitePixel, 4, 0 };
+	D3D11_SUBRESOURCE_DATA NormalInitData = { &FlatNormalPixel, 4, 0 };
 
-	UTexture* DefaultTexture = UObjectManager::Get().CreateObject<UTexture>();
+	UTexture* DefaultWhiteTextureResource = UObjectManager::Get().CreateObject<UTexture>();
+	UTexture* DefaultNormalTextureResource = UObjectManager::Get().CreateObject<UTexture>();
 
-	Device->CreateTexture2D(&Desc, &InitData, DefaultWhiteTexture.ReleaseAndGetAddressOf());
+	Device->CreateTexture2D(&Desc, &WhiteInitData, DefaultWhiteTexture.ReleaseAndGetAddressOf());
 	if (DefaultWhiteTexture)
 	{
-		Device->CreateShaderResourceView(DefaultWhiteTexture.Get(), nullptr, DefaultTexture->GetAddressOfSRV());
-		Textures["DefaultWhite"] = DefaultTexture;
+		Device->CreateShaderResourceView(DefaultWhiteTexture.Get(), nullptr, DefaultWhiteTextureResource->GetAddressOfSRV());
+		Textures["DefaultWhite"] = DefaultWhiteTextureResource;
+	}
+
+	Device->CreateTexture2D(&Desc, &NormalInitData, DefaultNormalTexture.ReleaseAndGetAddressOf());
+	if (DefaultNormalTexture)
+	{
+		Device->CreateShaderResourceView(DefaultNormalTexture.Get(), nullptr, DefaultNormalTextureResource->GetAddressOfSRV());
+		Textures["DefaultNormal"] = DefaultNormalTextureResource;
 	}
 
 	UMaterial* DefaultMat = GetOrCreateMaterial("DefaultWhite", DefaultUberLitShaderPath);
@@ -672,6 +682,7 @@ void FResourceManager::InitializeDefaultResources(ID3D11Device* Device)
 	DefaultMat->MaterialParams["Opacity"] = FMaterialParamValue(DefaultMat->MaterialData.Opacity);
 
 	UTexture* DefaultWhite = FResourceManager::Get().GetTexture("DefaultWhite");
+	UTexture* DefaultNormal = FResourceManager::Get().GetTexture("DefaultNormal");
 
 	if (DefaultMat->MaterialData.bHasDiffuseTexture)
 		DefaultMat->MaterialParams["DiffuseMap"] = FMaterialParamValue(FResourceManager::Get().LoadTexture(DefaultMat->MaterialData.DiffuseTexPath, Device));
@@ -683,6 +694,11 @@ void FResourceManager::InitializeDefaultResources(ID3D11Device* Device)
 	else
 		DefaultMat->MaterialParams["SpecularMap"] = FMaterialParamValue(DefaultWhite);
 
+	if (DefaultMat->MaterialData.bHasNormalTexture)
+		DefaultMat->MaterialParams["NormalMap"] = FMaterialParamValue(FResourceManager::Get().LoadTexture(DefaultMat->MaterialData.NormalTexPath, Device));
+	else
+		DefaultMat->MaterialParams["NormalMap"] = FMaterialParamValue(DefaultNormal);
+
 	if (DefaultMat->MaterialData.bHasBumpTexture)
 		DefaultMat->MaterialParams["BumpMap"] = FMaterialParamValue(FResourceManager::Get().LoadTexture(DefaultMat->MaterialData.BumpTexPath, Device));
 	else
@@ -690,6 +706,7 @@ void FResourceManager::InitializeDefaultResources(ID3D11Device* Device)
 
 	DefaultMat->MaterialParams["bHasDiffuseMap"] = FMaterialParamValue(DefaultMat->MaterialData.bHasDiffuseTexture);
 	DefaultMat->MaterialParams["bHasSpecularMap"] = FMaterialParamValue(DefaultMat->MaterialData.bHasSpecularTexture);
+	DefaultMat->MaterialParams["bHasNormalMap"] = FMaterialParamValue(DefaultMat->MaterialData.bHasNormalTexture);
 	DefaultMat->MaterialParams["bHasBumpMap"] = FMaterialParamValue(DefaultMat->MaterialData.bHasBumpTexture);
 
 	DefaultMat->MaterialParams["ScrollUV"] = FMaterialParamValue(FVector2(0.0f, 0.0f));
@@ -712,6 +729,8 @@ void FResourceManager::ReleaseGPUResources()
 		}
 	}
 	Textures.clear();
+	DefaultWhiteTexture.Reset();
+	DefaultNormalTexture.Reset();
 
 	for (auto& [Key, Material] : Materials)
 	{
@@ -1104,6 +1123,7 @@ bool FResourceManager::LoadMaterial(const FString& MtlFilePath, const FString& S
 
 		if (MaterialData.bHasDiffuseTexture && !MaterialData.DiffuseTexPath.empty())  LoadTexture(MaterialData.DiffuseTexPath, CachedDevice.Get());
 		if (MaterialData.bHasSpecularTexture && !MaterialData.SpecularTexPath.empty()) LoadTexture(MaterialData.SpecularTexPath, CachedDevice.Get());
+		if (MaterialData.bHasNormalTexture && !MaterialData.NormalTexPath.empty())     LoadTexture(MaterialData.NormalTexPath, CachedDevice.Get());
 		if (MaterialData.bHasBumpTexture && !MaterialData.BumpTexPath.empty())     LoadTexture(MaterialData.BumpTexPath, CachedDevice.Get());
 	}
 
@@ -1551,6 +1571,20 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 				Material->SetParam(ParamName, FMaterialParamValue(Texture));
 			}
 		}
+	}
+
+	FMaterialParamValue ExistingParamValue;
+	if (!Material->GetParam("NormalMap", ExistingParamValue))
+	{
+		if (UTexture* DefaultNormal = GetTexture("DefaultNormal"))
+		{
+			Material->SetParam("NormalMap", FMaterialParamValue(DefaultNormal));
+		}
+	}
+
+	if (!Material->GetParam("bHasNormalMap", ExistingParamValue))
+	{
+		Material->SetParam("bHasNormalMap", FMaterialParamValue(false));
 	}
 
 	Materials[MatName] = Material;
@@ -2028,6 +2062,7 @@ size_t FResourceManager::GetMaterialMemorySize() const
 		TotalSize += Mat.Name.capacity();
 		TotalSize += Mat.DiffuseTexPath.capacity();
 		TotalSize += Mat.SpecularTexPath.capacity();
+		TotalSize += Mat.NormalTexPath.capacity();
 		TotalSize += Mat.BumpTexPath.capacity();
 	}
 

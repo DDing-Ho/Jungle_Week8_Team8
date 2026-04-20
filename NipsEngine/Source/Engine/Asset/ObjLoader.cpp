@@ -9,6 +9,113 @@
 #include <algorithm>
 #include <cfloat>
 
+namespace
+{
+	void BuildFallbackBasis(const FVector& InNormal, FVector& OutTangent, FVector& OutBitangent)
+	{
+		FVector Normal = InNormal.GetSafeNormal();
+		if (Normal.IsNearlyZero())
+		{
+			Normal = FVector(0.0f, 0.0f, 1.0f);
+		}
+
+		Normal.FindBestAxisVectors(OutTangent, OutBitangent);
+		OutTangent = OutTangent.GetSafeNormal();
+		OutBitangent = OutBitangent.GetSafeNormal();
+	}
+
+	void BuildTangentsAndBitangents(FStaticMesh* StaticMesh)
+	{
+		if (StaticMesh == nullptr || StaticMesh->Vertices.empty())
+		{
+			return;
+		}
+
+		TArray<FVector> AccumulatedTangents(StaticMesh->Vertices.size(), FVector::ZeroVector);
+		TArray<FVector> AccumulatedBitangents(StaticMesh->Vertices.size(), FVector::ZeroVector);
+
+		for (size_t TriangleIndex = 0; TriangleIndex + 2 < StaticMesh->Indices.size(); TriangleIndex += 3)
+		{
+			const uint32 Index0 = StaticMesh->Indices[TriangleIndex + 0];
+			const uint32 Index1 = StaticMesh->Indices[TriangleIndex + 1];
+			const uint32 Index2 = StaticMesh->Indices[TriangleIndex + 2];
+
+			if (Index0 >= StaticMesh->Vertices.size() ||
+				Index1 >= StaticMesh->Vertices.size() ||
+				Index2 >= StaticMesh->Vertices.size())
+			{
+				continue;
+			}
+
+			const FNormalVertex& Vertex0 = StaticMesh->Vertices[Index0];
+			const FNormalVertex& Vertex1 = StaticMesh->Vertices[Index1];
+			const FNormalVertex& Vertex2 = StaticMesh->Vertices[Index2];
+
+			const FVector Edge01 = Vertex1.Position - Vertex0.Position;
+			const FVector Edge02 = Vertex2.Position - Vertex0.Position;
+			const FVector2 UV01 = Vertex1.UVs - Vertex0.UVs;
+			const FVector2 UV02 = Vertex2.UVs - Vertex0.UVs;
+
+			const float Determinant = UV01.X * UV02.Y - UV01.Y * UV02.X;
+			if (MathUtil::Abs(Determinant) <= MathUtil::Epsilon)
+			{
+				continue;
+			}
+
+			const float InverseDeterminant = 1.0f / Determinant;
+			const FVector TriangleTangent = (Edge01 * UV02.Y - Edge02 * UV01.Y) * InverseDeterminant;
+			const FVector TriangleBitangent = (Edge02 * UV01.X - Edge01 * UV02.X) * InverseDeterminant;
+
+			if (TriangleTangent.IsNearlyZero() || TriangleBitangent.IsNearlyZero())
+			{
+				continue;
+			}
+
+			AccumulatedTangents[Index0] += TriangleTangent;
+			AccumulatedTangents[Index1] += TriangleTangent;
+			AccumulatedTangents[Index2] += TriangleTangent;
+
+			AccumulatedBitangents[Index0] += TriangleBitangent;
+			AccumulatedBitangents[Index1] += TriangleBitangent;
+			AccumulatedBitangents[Index2] += TriangleBitangent;
+		}
+
+		for (size_t VertexIndex = 0; VertexIndex < StaticMesh->Vertices.size(); ++VertexIndex)
+		{
+			FNormalVertex& Vertex = StaticMesh->Vertices[VertexIndex];
+			FVector Normal = Vertex.Normal.GetSafeNormal();
+			if (Normal.IsNearlyZero())
+			{
+				Normal = FVector(0.0f, 0.0f, 1.0f);
+			}
+
+			FVector Tangent = AccumulatedTangents[VertexIndex] - Normal * FVector::DotProduct(Normal, AccumulatedTangents[VertexIndex]);
+			if (!Tangent.Normalize())
+			{
+				BuildFallbackBasis(Normal, Tangent, Vertex.Bitangent);
+				Vertex.Tangent = Tangent;
+				continue;
+			}
+
+			FVector Bitangent = AccumulatedBitangents[VertexIndex];
+			Bitangent = Bitangent - Normal * FVector::DotProduct(Normal, Bitangent);
+			Bitangent = Bitangent - Tangent * FVector::DotProduct(Tangent, Bitangent);
+
+			if (!Bitangent.Normalize())
+			{
+				Bitangent = FVector::CrossProduct(Normal, Tangent);
+				if (!Bitangent.Normalize())
+				{
+					BuildFallbackBasis(Normal, Tangent, Bitangent);
+				}
+			}
+
+			Vertex.Tangent = Tangent;
+			Vertex.Bitangent = Bitangent;
+		}
+	}
+}
+
 //	v, vt, vn, mtllib, usemtl, f
 FStaticMesh* FObjLoader::Load(const FString& Path, const FStaticMeshLoadOptions& LoadOptions)
 {
@@ -211,6 +318,7 @@ bool FObjLoader::BuildStaticMesh(const FString& Path, FStaticMesh* InStaticMesh,
 		InStaticMesh->Sections.push_back(NewSection);
 	}
 
+	BuildTangentsAndBitangents(InStaticMesh);
 	InStaticMesh->LocalBounds = BuildLocalBounds(InStaticMesh);
 
 	return !InStaticMesh->Vertices.empty() && !InStaticMesh->Indices.empty();

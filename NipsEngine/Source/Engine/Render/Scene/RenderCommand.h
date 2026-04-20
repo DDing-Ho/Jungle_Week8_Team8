@@ -145,7 +145,7 @@ struct FBillboardConstants
 	float Height = 1.0f;
 };
 // Static mesh material constants — UberLit/UberUnlit material contract
-// 완전 Obj전용입니다. 추후 Bump를 Normal로 바꾸면 됩니다.
+// 완전 Obj전용입니다. NormalMap 은 Uber 셰이더 계약에 포함되고 BumpMap 은 현재 보존만 합니다.
 struct FStaticMeshConstants
 {
 	FVector BaseColor     = { 0.8f, 0.8f, 0.8f };
@@ -161,12 +161,12 @@ struct FStaticMeshConstants
 	uint32 bHasSpecularMap  = 0;
 
 	FVector EmissiveColor   = {0.0f, 0.0f, 0.0f};
-	uint32 bHasBumpMap      = 0;
+	uint32 bHasNormalMap    = 0;
 
 	// Texture SRV (CPU-only, cbuffer 범위 밖)
 	//ID3D11ShaderResourceView* DiffuseSRV  = { nullptr };
 	//ID3D11ShaderResourceView* SpecularSRV = { nullptr };
-	//ID3D11ShaderResourceView* BumpSRV     = { nullptr };
+	//ID3D11ShaderResourceView* NormalSRV   = { nullptr };
 };
 
 struct FDecalConstants

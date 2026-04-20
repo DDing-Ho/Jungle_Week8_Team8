@@ -20,6 +20,8 @@ struct FNormalVertex
 	FColor Color;
 	FVector Normal;
 	FVector2 UVs;	//	TexCoord
+	FVector Tangent;
+	FVector Bitangent;
 };
 
 struct FOverlayVertex

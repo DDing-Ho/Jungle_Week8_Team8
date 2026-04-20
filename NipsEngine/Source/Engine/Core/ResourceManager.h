@@ -179,6 +179,7 @@ private:
 	TMap<FString, FStaticMeshResource> StaticMeshRegistry;
 
 	TComPtr<ID3D11Texture2D>          DefaultWhiteTexture;
+	TComPtr<ID3D11Texture2D>          DefaultNormalTexture;
 
 	TMap<FString, UStaticMesh*> StaticMeshes;
 	TMap<FString, UShader*> Shaders;
