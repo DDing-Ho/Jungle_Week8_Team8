@@ -19,6 +19,17 @@ bool FFogRenderPass::Begin(const FRenderPassContext* Context)
 {
     bSkipFogDraw = false;
 
+    const EViewMode ViewMode = Context->RenderBus ? Context->RenderBus->GetViewMode() : EViewMode::Lit;
+    // view mode별 composite 우회 규칙은 공용 helper에서 관리한다.
+    // 새 view mode가 fog를 건너뛰어야 하면 여기 if를 늘리지 말고 ShouldBypassSceneCompositePasses를 확장한다.
+    if (ShouldBypassSceneCompositePasses(ViewMode))
+    {
+        OutSRV = PrevPassSRV ? PrevPassSRV : Context->RenderTargets->SceneColorSRV;
+        OutRTV = PrevPassRTV ? PrevPassRTV : Context->RenderTargets->SceneColorRTV;
+        bSkipFogDraw = true;
+        return true;
+    }
+
     const TArray<FRenderCommand>& Commands = Context->RenderBus->GetCommands(ERenderPass::Fog);
     if (Commands.empty())
     {

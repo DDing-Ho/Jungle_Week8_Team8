@@ -15,6 +15,19 @@ bool FFXAARenderPass::Release()
 
 bool FFXAARenderPass::Begin(const FRenderPassContext* Context)
 {
+    bSkipFXAADraw = false;
+
+    const EViewMode ViewMode = Context->RenderBus ? Context->RenderBus->GetViewMode() : EViewMode::Lit;
+    // view mode별 composite 우회 규칙은 공용 helper에서 관리한다.
+    // 새 view mode가 FXAA를 건너뛰어야 하면 여기 if를 늘리지 말고 ShouldBypassSceneCompositePasses를 확장한다.
+    if (ShouldBypassSceneCompositePasses(ViewMode))
+    {
+        OutSRV = PrevPassSRV ? PrevPassSRV : Context->RenderTargets->SceneColorSRV;
+        OutRTV = PrevPassRTV ? PrevPassRTV : Context->RenderTargets->SceneColorRTV;
+        bSkipFXAADraw = true;
+        return true;
+    }
+
     const FRenderTargetSet* RenderTargets = Context->RenderTargets;
     ID3D11RenderTargetView* RTVs[1] = { RenderTargets->SceneFXAARTV };
     Context->DeviceContext->OMSetRenderTargets(ARRAYSIZE(RTVs), RTVs, nullptr);
@@ -58,6 +71,11 @@ bool FFXAARenderPass::Begin(const FRenderPassContext* Context)
 
 bool FFXAARenderPass::DrawCommand(const FRenderPassContext* Context)
 {
+    if (bSkipFXAADraw)
+    {
+        return true;
+    }
+
     if (!ShaderBinding)
     {
         return false;
@@ -70,6 +88,11 @@ bool FFXAARenderPass::DrawCommand(const FRenderPassContext* Context)
 
 bool FFXAARenderPass::End(const FRenderPassContext* Context)
 {
+    if (bSkipFXAADraw)
+    {
+        return true;
+    }
+
     ID3D11ShaderResourceView* NullSRVs[] = { nullptr };
     Context->DeviceContext->PSSetShaderResources(0, 1, NullSRVs);
     return true;

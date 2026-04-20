@@ -201,6 +201,9 @@
     <FxCompile Include="Shaders\Multipass\FXAAPass.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Multipass\BufferVisualizationPass.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Multipass\FogPass.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
@@ -462,6 +465,9 @@
       <Filter>Source\Engine\Render\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\DecalRenderPass.cpp">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.cpp">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\DepthLessRenderPass.cpp">
@@ -1038,6 +1044,9 @@
       <Filter>Source\Engine\Render\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\DecalRenderPass.h">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.h">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\DepthLessRenderPass.h">

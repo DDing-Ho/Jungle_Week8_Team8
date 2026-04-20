@@ -15,6 +15,19 @@ bool FDecalRenderPass::Release()
 
 bool FDecalRenderPass::Begin(const FRenderPassContext* Context)
 {
+    bSkipDecalDraw = false;
+
+    const EViewMode ViewMode = Context->RenderBus ? Context->RenderBus->GetViewMode() : EViewMode::Lit;
+    // view mode별 composite 우회 규칙은 공용 helper에서 관리한다.
+    // 새 view mode가 decal을 건너뛰어야 하면 여기 if를 늘리지 말고 ShouldBypassSceneCompositePasses를 확장한다.
+    if (ShouldBypassSceneCompositePasses(ViewMode))
+    {
+        OutSRV = PrevPassSRV ? PrevPassSRV : Context->RenderTargets->SceneColorSRV;
+        OutRTV = PrevPassRTV ? PrevPassRTV : Context->RenderTargets->SceneColorRTV;
+        bSkipDecalDraw = true;
+        return true;
+    }
+
     const FRenderTargetSet* RenderTargets = Context->RenderTargets;
     ID3D11RenderTargetView* RTVs[3] = {
         RenderTargets->SceneColorRTV,
@@ -33,6 +46,11 @@ bool FDecalRenderPass::Begin(const FRenderPassContext* Context)
 
 bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
 {
+    if (bSkipDecalDraw)
+    {
+        return true;
+    }
+
     const FRenderBus* RenderBus = Context->RenderBus;
     const TArray<FRenderCommand>& Commands = RenderBus->GetCommands(ERenderPass::Decal);
 

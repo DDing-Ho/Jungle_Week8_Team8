@@ -16,5 +16,6 @@ private:
     bool End(const FRenderPassContext* Context) override;
 
 private:
+    bool bSkipFXAADraw = false;
     std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 };

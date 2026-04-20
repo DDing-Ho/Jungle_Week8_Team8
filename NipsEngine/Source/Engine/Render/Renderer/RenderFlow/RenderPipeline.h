@@ -6,6 +6,7 @@ class FFXAARenderPass;
 class FFogRenderPass;
 class FLightRenderPass;
 class FDecalRenderPass;
+class FBufferVisualizationRenderPass;
 class FFontRenderPass;
 class FSubUVRenderPass;
 class FTranslucentRenderPass;
@@ -31,6 +32,7 @@ private:
     std::shared_ptr<FLightCullingPass> LightCullingPass;
     std::shared_ptr<FOpaqueRenderPass> OpaqueRenderPass;
     std::shared_ptr<FDecalRenderPass> DecalRenderPass;
+    std::shared_ptr<FBufferVisualizationRenderPass> BufferVisualizationRenderPass;
     std::shared_ptr<FFogRenderPass> FogRenderPass;
     std::shared_ptr<FFXAARenderPass> FXAARenderPass;
     std::shared_ptr<FFontRenderPass> FontRenderPass;

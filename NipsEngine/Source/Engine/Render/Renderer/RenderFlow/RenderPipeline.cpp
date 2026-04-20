@@ -2,6 +2,7 @@
 #include "LightCullingPass.h"
 #include "OpaqueRenderPass.h"
 #include "DecalRenderPass.h"
+#include "BufferVisualizationRenderPass.h"
 #include "FogRenderPass.h"
 #include "FXAARenderPass.h"
 #include "FontRenderPass.h"
@@ -23,6 +24,10 @@ bool FRenderPipeline::Initialize()
 
     DecalRenderPass = std::make_shared<FDecalRenderPass>();
     DecalRenderPass->Initialize();
+
+    // 버퍼 시각화 계열 view mode는 이 전용 pass를 통해 확장한다.
+    BufferVisualizationRenderPass = std::make_shared<FBufferVisualizationRenderPass>();
+    BufferVisualizationRenderPass->Initialize();
 
 	FogRenderPass = std::make_shared<FFogRenderPass>();
     FogRenderPass->Initialize();
@@ -65,6 +70,8 @@ bool FRenderPipeline::Initialize()
     RenderPasses.push_back(LightCullingPass);
 	RenderPasses.push_back(OpaqueRenderPass);
     RenderPasses.push_back(DecalRenderPass);
+    // SceneColor를 만든 뒤 fog/fxaa 전에 덮어쓸 수 있는 view mode 확장 지점이다.
+    RenderPasses.push_back(BufferVisualizationRenderPass);
     //RenderPasses.push_back(LightRenderPass);
 
     RenderPasses.push_back(FogRenderPass);
@@ -119,6 +126,12 @@ void FRenderPipeline::Release()
     {
         DecalRenderPass->Release();
         DecalRenderPass.reset();
+    }
+
+    if (BufferVisualizationRenderPass)
+    {
+        BufferVisualizationRenderPass->Release();
+        BufferVisualizationRenderPass.reset();
     }
 
 	//if (LightRenderPass)

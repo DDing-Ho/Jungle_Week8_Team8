@@ -35,6 +35,7 @@ void FRenderer::Create(HWND hWindow)
     FResourceManager::Get().LoadShader(MakeUberLitShaderCompileKey(ELightingModel::Phong), NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout));
     FResourceManager::Get().LoadShader("Shaders/UberUnlit.hlsl", "mainVS", "mainPS", NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout), nullptr);
     FResourceManager::Get().LoadShader("Shaders/Multipass/LightPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
+    FResourceManager::Get().LoadShader("Shaders/Multipass/BufferVisualizationPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
     FResourceManager::Get().LoadShader("Shaders/ShaderDecal.hlsl", "mainVS", "mainPS", NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout), nullptr);
     FResourceManager::Get().LoadShader("Shaders/Multipass/FogPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
     FResourceManager::Get().LoadShader("Shaders/Multipass/FXAAPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);

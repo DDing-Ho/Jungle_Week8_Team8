@@ -57,8 +57,10 @@ const char* GetViewModeName(EViewMode Mode)
         return "Unlit";
     case EViewMode::Wireframe:
         return "Wireframe";
-	case EViewMode::Depth: 
-		return "Depth"; 
+    case EViewMode::SceneDepth:
+        return "Scene Depth";
+    case EViewMode::WorldNormal:
+        return "World Normal";
 	default:
         return "Lit";
     }
@@ -417,13 +419,16 @@ void FEditorMainPanel::RenderViewportMenuBarForIndex(int32 Index)
 
     if (ImGui::BeginMenu("View"))
     {
+        // View 메뉴 노출 순서는 EViewMode와 1:1로 맞춘다.
+        // 새 view mode를 에디터에서 선택 가능하게 하려면 여기와 GetViewModeName을 함께 확장한다.
         static constexpr EViewMode Modes[] = {
             EViewMode::Lit,
             EViewMode::Unlit,
             EViewMode::Wireframe,
-            EViewMode::Depth,
+            EViewMode::SceneDepth,
+            EViewMode::WorldNormal,
         };
-        static constexpr const char* Labels[] = { "Lit", "Unlit", "Wireframe", "Depth" };
+        static constexpr const char* Labels[] = { "Lit", "Unlit", "Wireframe", "Scene Depth", "World Normal" };
 
         for (int32 j = 0; j < static_cast<int32>(EViewMode::Count); ++j)
         {

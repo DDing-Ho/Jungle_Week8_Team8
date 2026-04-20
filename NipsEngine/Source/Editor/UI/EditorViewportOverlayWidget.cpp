@@ -44,6 +44,8 @@ static const char* GetViewModeName(EViewMode Mode)
 	case EViewMode::Lit:       return "Lit";
 	case EViewMode::Unlit:     return "Unlit";
 	case EViewMode::Wireframe: return "Wireframe";
+	case EViewMode::SceneDepth:return "Scene Depth";
+	case EViewMode::WorldNormal:return "World Normal";
 	default:                   return "Lit";
 	}
 }
