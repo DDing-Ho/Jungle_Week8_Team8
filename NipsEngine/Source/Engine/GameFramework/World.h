@@ -64,6 +64,19 @@ public:
         if (!Actor) return;
 
         Actor->EndPlay(EEndPlayReason::Type::Destroyed);
+
+		/**
+		 *  TODO:
+		 * Light 들의 경우 부모 -> 자식 순으로 AddComponent 되는 구조라 임시로 역순 Unregister 로 해결
+		 * 실제론 Actor - Component 생애주기를 잘 관리해줘야함
+		 */
+		const TArray<UActorComponent*>& Comps = Actor->GetComponents();
+        for (int32 i = (int32)Comps.size() - 1; i >= 0; --i)
+        {
+            if (Comps[i])
+                Comps[i]->OnUnregister();
+        }
+		
 		PersistentLevel->RemoveActor(Actor);
         Actor->SetWorld(nullptr);
         UObjectManager::Get().DestroyObject(Actor);
