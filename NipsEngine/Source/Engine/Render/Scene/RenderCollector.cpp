@@ -540,16 +540,7 @@ bool FRenderCollector::CollectFromSelectedActor(AActor* Actor, const FShowFlags&
 
 		if (ShowFlags.bBoundingVolume)
 		{
-			UDecalComponent* DecalComp = Cast<UDecalComponent>(primitiveComponent);
-			if (DecalComp)
-			{
-				const FAABB AABB = primitiveComponent->GetWorldAABB();
-				LineBatcher->AddOBB(FOBB::FromAABB(AABB, primitiveComponent->GetWorldMatrix()), FColor::Green());
-			}
-			else
-			{
-				LineBatcher->AddAABB(BuildRenderAABB(primitiveComponent, RenderBus), FColor::White());
-			}
+			LineBatcher->AddAABB(BuildRenderAABB(primitiveComponent, RenderBus), FColor::White());
 		}
 
 		CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, SeenBVHNodeIndices);
@@ -687,7 +678,7 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 		RenderBus.AddCommand(ERenderPass::SubUV, Cmd);  // SubUV 패스 재사용
 		break;
 	}
-	
+
 	case EPrimitiveType::EPT_Decal:
 	{
 		if (!ShowFlags.bDecals) return;
@@ -751,11 +742,16 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 			}
 		}
 
+		if (WorldType == EWorldType::Editor)
+		{
+			LineBatcher->AddOBB(DecalOBB, FColor::Green());
+		}
+
 		LastDecalStats.TotalDecalCount += 1;
 		LastDecalStats.CollectTimeMS += static_cast<int32>(RenderDecalScope.Finish());
 		break;
 	}
-	
+
     case EPrimitiveType::EPT_FOG:
     {
         if (!ShowFlags.bFog)
