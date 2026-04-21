@@ -5,6 +5,7 @@
 #include <cstring>
 #include "UI/EditorConsoleWidget.h"
 #include <cmath>
+#include <algorithm>
 
 namespace
 {
@@ -119,15 +120,23 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
     {
         return false;
     }
-
-    TArray<FLightCullingLight> CullingLights;
+	
+	TArray<FLightCullingLight> CullingLights;
     const TArray<FRenderLight>& SceneLights = Context->RenderBus->GetLights();
-    CullingLights.reserve(SceneLights.size());
-    const uint32 MaxLocalLightNum = 512;
+    const FVector& CameraPos = Context->RenderBus->GetCameraPosition();
+
+    // 거리 포함한 임시 구조체로 max-heap 구성 (가장 먼 것이 top)
+    using FLightWithDist = TPair<float, FLightCullingLight>;
+    TArray<FLightWithDist> Heap;
+    Heap.reserve(MaxLocalLightNum + 1);
+
+    auto HeapCmp = [](const FLightWithDist& A, const FLightWithDist& B)
+    {
+        return A.first < B.first; // max-heap: 거리 큰 게 top
+    };
 
     for (const FRenderLight& Light : SceneLights)
     {
-		// 전역 Light 는 Culling X
         if (Light.Type != (uint32)ELightType::LightType_Point &&
             Light.Type != (uint32)ELightType::LightType_Spot)
             continue;
@@ -143,12 +152,24 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
         CullingLight.SpotOuterCos = Light.SpotOuterCos;
         CullingLight.Direction = Light.Direction;
 
-        CullingLights.push_back(CullingLight);
+        float Dist = FVector::DistSquared(CameraPos, Light.Position);
 
-		// 최대 개수 제한
-		if (CullingLights.size() >= MaxLocalLightNum)
-            break;
+        Heap.push_back({ Dist, CullingLight });
+        std::push_heap(Heap.begin(), Heap.end(), HeapCmp);
+
+        // MaxLocalLightNum 초과 시 가장 먼 것(top) 제거
+        if (Heap.size() > MaxLocalLightNum)
+        {
+            std::pop_heap(Heap.begin(), Heap.end(), HeapCmp);
+            Heap.pop_back();
+        }
     }
+
+    CullingLights.reserve(MaxLocalLightNum + 1);
+	for (FLightWithDist& Entry : Heap)
+	{
+        CullingLights.push_back(std::move(Entry.second));
+	}
 
     const uint32 LightCount = static_cast<uint32>(CullingLights.size());
 
