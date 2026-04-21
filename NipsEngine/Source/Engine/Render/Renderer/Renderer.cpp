@@ -41,6 +41,7 @@ void FRenderer::Create(HWND hWindow)
     FResourceManager::Get().LoadShader("Shaders/Multipass/FXAAPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
     FResourceManager::Get().LoadShader("Shaders/ShaderFont.hlsl", "VS", "PS", FontBatcherInputLayout, ARRAYSIZE(FontBatcherInputLayout), nullptr);
     FResourceManager::Get().LoadShader("Shaders/ShaderLine.hlsl", "mainVS", "mainPS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
+    FResourceManager::Get().LoadShader("Shaders/ShaderBillboard.hlsl", "mainVS", "mainPS", FontBatcherInputLayout, ARRAYSIZE(FontBatcherInputLayout), nullptr);
 }
 
 void FRenderer::CreateResources()
@@ -421,22 +422,6 @@ void FRenderer::InitializePassBatchers()
 					SubUV.Particle->Rows,
 					SubUV.Width,
 					SubUV.Height
-				);
-			}
-			// 기존 SubUV 분기 아래에
-			else if (Cmd.Type == ERenderCommandType::Billboard && Cmd.Constants.Billboard.Texture)
-			{
-				SubUVBatcher.AddSprite(
-					Cmd.Constants.Billboard.Texture,
-					Cmd.PerObjectConstants.Model.GetOrigin(),
-					Bus.GetCameraRight(),
-					Bus.GetCameraUp(),
-					Cmd.PerObjectConstants.Model.GetScaleVector(),
-					0,   // FrameIndex 고정
-					1,   // Columns 고정
-					1,   // Rows 고정
-					Cmd.Constants.Billboard.Width,
-					Cmd.Constants.Billboard.Height
 				);
 			}
 		}

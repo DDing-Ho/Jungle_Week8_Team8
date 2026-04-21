@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreMinimal.h"
 
@@ -8,7 +8,7 @@
 */
 
 struct FVertex
-{ 
+{
 	FVector Position;
 	FColor Color;
 	int SubID;

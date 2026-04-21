@@ -7,6 +7,7 @@
 #include "FXAARenderPass.h"
 #include "FontRenderPass.h"
 #include "SubUVRenderPass.h"
+#include "BillboardRenderPass.h"
 #include "TranslucentRenderPass.h"
 #include "SelectionMaskRenderPass.h"
 #include "GridRenderPass.h"
@@ -40,6 +41,9 @@ bool FRenderPipeline::Initialize()
 
     SubUVRenderPass = std::make_shared<FSubUVRenderPass>();
     SubUVRenderPass->Initialize();
+
+    BillboardRenderPass = std::make_shared<FBillboardRenderPass>();
+    BillboardRenderPass->Initialize();
 
     TranslucentRenderPass = std::make_shared<FTranslucentRenderPass>();
     TranslucentRenderPass->Initialize();
@@ -78,6 +82,7 @@ bool FRenderPipeline::Initialize()
     RenderPasses.push_back(FXAARenderPass); 
 	RenderPasses.push_back(FontRenderPass);
     RenderPasses.push_back(SubUVRenderPass);
+    RenderPasses.push_back(BillboardRenderPass);
     RenderPasses.push_back(TranslucentRenderPass);
     RenderPasses.push_back(SelectionMaskRenderPass);
     RenderPasses.push_back(GridRenderPass);
@@ -162,6 +167,12 @@ void FRenderPipeline::Release()
     {
         SubUVRenderPass->Release();
         SubUVRenderPass.reset();
+    }
+
+    if (BillboardRenderPass)
+    {
+        BillboardRenderPass->Release();
+        BillboardRenderPass.reset();
     }
 
     if (TranslucentRenderPass)

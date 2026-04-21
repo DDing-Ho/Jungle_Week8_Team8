@@ -292,6 +292,7 @@
     <ClCompile Include="Source\Engine\Render\Renderer\DefaultRenderPipeline.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\DecalRenderPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BillboardRenderPass.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\DepthLessRenderPass.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\EditorRenderPass.cpp" />
@@ -489,6 +490,7 @@
     <ClInclude Include="Source\Engine\Render\Renderer\IRenderPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\DecalRenderPass.h" />
+    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BillboardRenderPass.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\DepthLessRenderPass.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\EditorRenderPass.h" />

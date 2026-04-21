@@ -5,7 +5,7 @@
 #include "Render/Resource/Material.h"
 
 class AActor;
-struct FMeshData;
+#include "Render/Resource/VertexTypes.h"
 
 class UGizmoComponent : public UPrimitiveComponent
 {

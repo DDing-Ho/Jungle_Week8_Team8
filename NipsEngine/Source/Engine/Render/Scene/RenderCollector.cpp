@@ -72,7 +72,7 @@ namespace
 	FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus)
 	{
 		const FMatrix WorldMatrix = Primitive->GetWorldMatrix();
-		return USubUVComponent::MakeBillboardWorldMatrix(
+		return UBillboardComponent::MakeBillboardWorldMatrix(
 			WorldMatrix.GetOrigin(),
 			WorldMatrix.GetScaleVector(),
 			RenderBus.GetCameraForward(),
@@ -122,7 +122,15 @@ namespace
 		switch (PrimitiveComponent->GetPrimitiveType())
 		{
 		case EPrimitiveType::EPT_Billboard:
-			return BuildQuadAABB(MakeViewBillboardMatrix(PrimitiveComponent, RenderBus));
+        {
+            const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
+            return BuildQuadAABB(UBillboardComponent::MakeBillboardWorldMatrix(
+                BillboardComponent->GetWorldLocation(),
+                FVector(0.00f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
+                RenderBus.GetCameraForward(),
+                RenderBus.GetCameraRight(),
+                RenderBus.GetCameraUp()));
+        }
 		case EPrimitiveType::EPT_Text:
 		{
 			const UTextRenderComponent* TextComp = static_cast<const UTextRenderComponent*>(PrimitiveComponent);
@@ -532,7 +540,13 @@ bool FRenderCollector::CollectFromSelectedActor(AActor* Actor, const FShowFlags&
 
 		else if(primitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_Billboard)
 		{
-			BaseCmd.PerObjectConstants.Model = MakeViewBillboardMatrix(primitiveComponent, RenderBus);
+			const UBillboardComponent* BComp = static_cast<const UBillboardComponent*>(primitiveComponent);
+			BaseCmd.PerObjectConstants.Model = UBillboardComponent::MakeBillboardWorldMatrix(
+				BComp->GetWorldLocation(),
+				FVector(0.01f, BComp->GetWidth(), BComp->GetHeight()),
+				RenderBus.GetCameraForward(),
+				RenderBus.GetCameraRight(),
+				RenderBus.GetCameraUp());
 		}
 
 		if (!primitiveComponent->SupportsOutline()) continue;
@@ -715,16 +729,29 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 		UBillboardComponent* BillboardComp = static_cast<UBillboardComponent*>(Primitive);
 		UTexture* Texture = BillboardComp->GetTexture();
 
+		UMaterial* BillboardMat = FResourceManager::Get().GetMaterial("BillboardMat");
+		BillboardMat->DepthStencilType = EDepthStencilType::Default;
+		BillboardMat->BlendType        = EBlendType::AlphaBlend;
+		BillboardMat->RasterizerType   = ERasterizerType::SolidNoCull;
+		BillboardMat->SamplerType      = ESamplerType::EST_Linear;
+
+		const FMatrix BillboardMatrix = UBillboardComponent::MakeBillboardWorldMatrix(
+			BillboardComp->GetWorldLocation(),
+			FVector(0.01f, BillboardComp->GetWidth(), BillboardComp->GetHeight()),
+			RenderBus.GetCameraForward(),
+			RenderBus.GetCameraRight(),
+			RenderBus.GetCameraUp());
+
 		FRenderCommand Cmd = {};
 		Cmd.Type = ERenderCommandType::Billboard;
-		Cmd.PerObjectConstants = FPerObjectConstants{
-			MakeViewBillboardMatrix(Primitive, RenderBus),
-			FColor::White().ToVector4() };
+		Cmd.MeshBuffer = &MeshBufferManager.GetMeshBuffer(EPrimitiveType::EPT_Billboard);
+		Cmd.PerObjectConstants = FPerObjectConstants{ BillboardMatrix, FColor::White().ToVector4() };
+		Cmd.Material = BillboardMat;
 		Cmd.Constants.Billboard.Texture = Texture;
 		Cmd.Constants.Billboard.Width = BillboardComp->GetWidth();
 		Cmd.Constants.Billboard.Height = BillboardComp->GetHeight();
 
-		RenderBus.AddCommand(ERenderPass::SubUV, Cmd);  // SubUV 패스 재사용
+		RenderBus.AddCommand(ERenderPass::Billboard, Cmd);
 		break;
 	}
 

@@ -45,6 +45,7 @@ enum class ERenderPass : uint32
     FXAA,
 	Font, // TextRenderComponent → FontBatcher 경유
 	SubUV, // SubUVComponent     → SubUVBatcher 경유
+	Billboard,
 	Translucent,
 	SelectionMask,
 	Grid, 

@@ -2,34 +2,31 @@
 
 #include "Asset/StaticMesh.h"
 
-namespace
-{
-	FMeshData CreateBillboardQuadMeshData()
-	{
-		FMeshData QuadMeshData;
-		FColor DefaultColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-		QuadMeshData.Vertices.push_back({ FVector(0.0f, -0.5f,  0.5f), DefaultColor, 0 });
-		QuadMeshData.Vertices.push_back({ FVector(0.0f,  0.5f,  0.5f), DefaultColor, 0 });
-		QuadMeshData.Vertices.push_back({ FVector(0.0f,  0.5f, -0.5f), DefaultColor, 0 });
-		QuadMeshData.Vertices.push_back({ FVector(0.0f, -0.5f, -0.5f), DefaultColor, 0 });
-
-		QuadMeshData.Indices = { 0, 1, 2, 0, 2, 3 };
-		return QuadMeshData;
-	}
-}
-
 void FMeshBufferManager::Create(ID3D11Device* InDevice)
 {
-	Device = InDevice;
-	const FMeshData QuadMeshData = CreateBillboardQuadMeshData();
+    Device = InDevice;
 
-	MeshBufferMap[EPrimitiveType::EPT_TransGizmo].Create(InDevice, FEditorMeshLibrary::GetTranslationGizmo());
-	MeshBufferMap[EPrimitiveType::EPT_RotGizmo].Create(InDevice, FEditorMeshLibrary::GetRotationGizmo()); 
-	MeshBufferMap[EPrimitiveType::EPT_ScaleGizmo].Create(InDevice, FEditorMeshLibrary::GetScaleGizmo());
-	MeshBufferMap[EPrimitiveType::EPT_Billboard].Create(InDevice, QuadMeshData);
-	MeshBufferMap[EPrimitiveType::EPT_SubUV].Create(InDevice, QuadMeshData);
-	MeshBufferMap[EPrimitiveType::EPT_Text].Create(InDevice, QuadMeshData);
+    const FColor White(1.0f, 1.0f, 1.0f, 1.0f);
+    const TArray<FVertex> QuadVerts = {
+        { FVector(0.0f, 0.5f, 0.5f), White, 0 },
+        { FVector(0.0f, 0.5f, -0.5f), White, 0 },
+        { FVector(0.0f, -0.5f, -0.5f), White, 0 },
+        { FVector(0.0f, -0.5f, 0.5f), White, 0 },
+    };
+    const TArray<FTextureVertex> BillboardVerts = {
+        { FVector(0.0f, 0.5f, 0.5f), FVector2(0.0f, 0.0f) },
+        { FVector(0.0f, 0.5f, -0.5f), FVector2(0.0f, 1.0f) },
+        { FVector(0.0f, -0.5f, -0.5f), FVector2(1.0f, 1.0f) },
+        { FVector(0.0f, -0.5f, 0.5f), FVector2(1.0f, 0.0f) },
+    };
+    const TArray<uint32> QuadIndices = { 0, 1, 2, 0, 2, 3 };
+
+    MeshBufferMap[EPrimitiveType::EPT_TransGizmo].Create(InDevice, FEditorMeshLibrary::GetTranslationGizmo().Vertices, FEditorMeshLibrary::GetTranslationGizmo().Indices);
+    MeshBufferMap[EPrimitiveType::EPT_RotGizmo].Create(InDevice, FEditorMeshLibrary::GetRotationGizmo().Vertices, FEditorMeshLibrary::GetRotationGizmo().Indices);
+    MeshBufferMap[EPrimitiveType::EPT_ScaleGizmo].Create(InDevice, FEditorMeshLibrary::GetScaleGizmo().Vertices, FEditorMeshLibrary::GetScaleGizmo().Indices);
+    MeshBufferMap[EPrimitiveType::EPT_SubUV].Create(InDevice, QuadVerts, QuadIndices);
+    MeshBufferMap[EPrimitiveType::EPT_Text].Create(InDevice, QuadVerts, QuadIndices);
+    MeshBufferMap[EPrimitiveType::EPT_Billboard].Create(InDevice, BillboardVerts, QuadIndices);
 }
 
 
@@ -105,7 +102,7 @@ FMeshBuffer* FMeshBufferManager::GetStaticMeshBuffer(const UStaticMesh* StaticMe
     }
 
     FMeshBuffer& NewBuffer = TargetMap[StaticMeshAsset];
-    NewBuffer.CreateForStaticMesh(Device, Vertices, Indices);
-    
+    NewBuffer.Create(Device, Vertices, Indices);
+
     return &NewBuffer;
 }
