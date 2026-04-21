@@ -253,8 +253,11 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			RenderLight.Direction = DirectionToLight;
 			RenderBus.AddLight(RenderLight);
 
-			LineBatcher->AddDirectionalLight(LightComponent->GetWorldLocation(), RenderLight.Direction, LightComponent->GetRightVector());
-			break;
+            LineBatcher->AddDirectionalLight(
+                LightComponent->GetWorldLocation(),
+                RenderLight.Direction * -1.0f,
+                LightComponent->GetRightVector());
+            break;
 		}
 
 		case ELightType::LightType_Point:
@@ -269,7 +272,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			RenderLight.Radius = PointLight->GetAttenuationRadius();
 			RenderLight.FalloffExponent = PointLight->GetLightFalloffExponent();
 			RenderBus.AddLight(RenderLight);
-			LineBatcher->AddPointLight(RenderLight.Position, RenderLight.Radius, PointLight->GetRightVector(), PointLight->GetUpVector());
 			break;
 		}
 
@@ -295,8 +297,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngleDegrees));
 			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngleDegrees));
 			RenderBus.AddLight(RenderLight);
-
-			LineBatcher->AddSpotLight(RenderLight.Position, RenderLight.Direction, SpotLight->GetRightVector() * -1.0f, RenderLight.Radius, InnerAngleDegrees, OuterAngleDegrees);
 			break;
 		}
 
@@ -550,6 +550,50 @@ bool FRenderCollector::CollectFromSelectedActor(AActor* Actor, const FShowFlags&
 
 		CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, SeenBVHNodeIndices);
 	}
+
+    // 선택된 Light Components의 Bounding 시각화
+    // TODO: AActor::GetComponentsByClass 가 없어서 비효율?적으로 모든 컴포넌트를 순회하였음
+    for (UActorComponent* Component : Actor->GetComponents())
+    {
+        const ULightComponent* LightComponent = Cast<ULightComponent>(Component);
+        if (LightComponent == nullptr || !LightComponent->IsVisible())
+        {
+            continue;
+        }
+
+        switch (LightComponent->GetLightType())
+        {
+        case ELightType::LightType_Directional:
+        case ELightType::LightType_AmbientLight:
+        {
+            break;
+        }
+
+        case ELightType::LightType_Point:
+        {
+            const UPointLightComponent* PointLightComponent = Cast<UPointLightComponent>(LightComponent);
+            LineBatcher->AddPointLight(
+                PointLightComponent->GetWorldLocation(),
+                PointLightComponent->GetAttenuationRadius(),
+                PointLightComponent->GetRightVector(),
+                PointLightComponent->GetUpVector());
+            break;
+        }
+
+        case ELightType::LightType_Spot:
+        {
+            const USpotLightComponent* SpotLightComponent = Cast<USpotLightComponent>(LightComponent);
+            LineBatcher->AddSpotLight(
+                SpotLightComponent->GetWorldLocation(),
+                SpotLightComponent->GetUpVector() * -1.0f,
+                SpotLightComponent->GetRightVector() * -1.0f,
+                SpotLightComponent->GetAttenuationRadius(),
+                SpotLightComponent->GetInnerConeAngle(),
+                SpotLightComponent->GetOuterConeAngle());
+            break;
+        }
+        }
+    }
 
 	return bHasSelectionMask;
 }
