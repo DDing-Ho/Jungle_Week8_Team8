@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderPass.h"
+#include "Render/Common/ComPtr.h"
 
 class FDecalRenderPass : public FBaseRenderPass
 {
@@ -14,4 +15,5 @@ private:
 
 private:
     bool bSkipDecalDraw = false;
+    TComPtr<ID3D11Buffer> VisibleLightConstantBuffer;
 };

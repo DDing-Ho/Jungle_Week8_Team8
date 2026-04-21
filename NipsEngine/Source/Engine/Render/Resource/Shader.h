@@ -15,6 +15,7 @@ class FRenderBus;
 class UTexture;
 class FShaderBindingInstance;
 struct FPerObjectConstants;
+struct FDecalConstants;
 
 enum class EShaderStage : uint8
 {
@@ -180,6 +181,7 @@ public:
 	void ApplyFrameParameters(const FRenderBus& RenderBus, ID3D11ShaderResourceView* SceneLightBufferSRV = nullptr, uint32 SceneLightCount = 0);
 	void ApplyPerObjectParameters(const FPerObjectConstants& Constants);
 	void ApplyUberPerObjectParameters(const FPerObjectConstants& Constants);
+	void ApplyDecalParameters(const FDecalConstants& Constants);
 
 	void Bind(ID3D11DeviceContext* Context);
 

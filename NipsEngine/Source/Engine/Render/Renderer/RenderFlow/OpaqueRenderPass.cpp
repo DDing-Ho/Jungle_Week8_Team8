@@ -5,7 +5,7 @@
 #include "Render/Resource/RenderResources.h"
 #include "Render/Resource/Material.h"
 #include "Core/ResourceManager.h"
-#include <cstring>
+#include "SceneLightBinding.h"
 
 namespace
 {
@@ -60,7 +60,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     UShader* ShaderOverride = ResolveOpaqueShaderOverride(Context);
 
-    BindLightCullingResources(Context);
+    SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
 
     for (const FRenderCommand& Cmd : Commands)
     {
@@ -93,7 +93,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
             Cmd.Material->Bind(Context->DeviceContext, Context->RenderBus, &Cmd.PerObjectConstants, ShaderOverride, Context);
         }
 
-		BindLightCullingResources(Context);
+		SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
 
 		CheckOverrideViewMode(Context);
 
@@ -118,12 +118,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
 bool FOpaqueRenderPass::End(const FRenderPassContext* Context)
 {
-    ID3D11ShaderResourceView* NullSRVs[3] = { nullptr, nullptr, nullptr };
-    Context->DeviceContext->PSSetShaderResources(8, 3, NullSRVs);
-
-    ID3D11Buffer* NullCB = nullptr;
-    Context->DeviceContext->PSSetConstantBuffers(4, 1, &NullCB);
-
+    SceneLightBinding::UnbindResources(Context ? Context->DeviceContext : nullptr);
     return true;
 }
 
@@ -131,55 +126,4 @@ bool FOpaqueRenderPass::Release()
 {
     VisibleLightConstantBuffer.Reset();
     return true;
-}
-
-bool FOpaqueRenderPass::EnsureLightCullingConstantBuffer(ID3D11Device* Device)
-{
-    if (VisibleLightConstantBuffer)
-    {
-        return true;
-    }
-
-    D3D11_BUFFER_DESC Desc = {};
-    Desc.ByteWidth = sizeof(FVisibleLightConstants);
-    Desc.Usage = D3D11_USAGE_DYNAMIC;
-    Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-    return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, VisibleLightConstantBuffer.GetAddressOf()));
-}
-
-void FOpaqueRenderPass::BindLightCullingResources(const FRenderPassContext* Context)
-{
-    const FLightCullingOutputs& Outputs = FLightCullingPass::GetOutputs();
-
-    if (!EnsureLightCullingConstantBuffer(Context->Device))
-    {
-        return;
-    }
-
-    FVisibleLightConstants Constants = {};
-    Constants.TileCountX = Outputs.TileCountX;
-    Constants.TileCountY = Outputs.TileCountY;
-    Constants.TileSize = Outputs.TileSize;
-    Constants.MaxLightsPerTile = Outputs.MaxLightsPerTile;
-    Constants.LightCount = Outputs.LightCount;
-
-    D3D11_MAPPED_SUBRESOURCE Mapped = {};
-    if (SUCCEEDED(Context->DeviceContext->Map(VisibleLightConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &Mapped)))
-    {
-        std::memcpy(Mapped.pData, &Constants, sizeof(Constants));
-        Context->DeviceContext->Unmap(VisibleLightConstantBuffer.Get(), 0);
-    }
-
-    ID3D11ShaderResourceView* SRVs[3] =
-    {
-        Outputs.LightBufferSRV,
-        Outputs.TileLightCountSRV,
-        Outputs.TileLightIndexSRV
-    };
-    Context->DeviceContext->PSSetShaderResources(8, 3, SRVs);
-
-    ID3D11Buffer* CBuffer = VisibleLightConstantBuffer.Get();
-    Context->DeviceContext->PSSetConstantBuffers(4, 1, &CBuffer);
 }

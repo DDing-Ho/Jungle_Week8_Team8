@@ -32,7 +32,9 @@ namespace
 		}
 
 		UShader* VariantShader = FResourceManager::Get().GetShaderVariant(
-			MakeUberLitShaderCompileKey(MaterialInterface.GetEffectiveLightingModel()));
+			MakeUberLitShaderCompileKey(
+				MaterialInterface.GetEffectiveMaterialDomain(),
+				MaterialInterface.GetEffectiveLightingModel()));
 		return VariantShader ? VariantShader : BaseShader;
 	}
 
@@ -87,6 +89,35 @@ const char* ToLightingModelString(ELightingModel LightingModel)
 	}
 }
 
+const char* ToMaterialDomainString(EMaterialDomain MaterialDomain)
+{
+	switch (MaterialDomain)
+	{
+	case EMaterialDomain::Decal:
+		return "Decal";
+	case EMaterialDomain::Surface:
+	default:
+		return "Surface";
+	}
+}
+
+bool TryParseMaterialDomain(const FString& Value, EMaterialDomain& OutMaterialDomain)
+{
+	if (Value == "Surface")
+	{
+		OutMaterialDomain = EMaterialDomain::Surface;
+		return true;
+	}
+
+	if (Value == "Decal")
+	{
+		OutMaterialDomain = EMaterialDomain::Decal;
+		return true;
+	}
+
+	return false;
+}
+
 bool TryParseLightingModel(const FString& Value, ELightingModel& OutLightingModel)
 {
 	if (Value == "Gouraud")
@@ -110,12 +141,18 @@ bool TryParseLightingModel(const FString& Value, ELightingModel& OutLightingMode
 	return false;
 }
 
-FShaderCompileKey MakeUberLitShaderCompileKey(ELightingModel LightingModel)
+FShaderCompileKey MakeUberLitShaderCompileKey(EMaterialDomain MaterialDomain, ELightingModel LightingModel)
 {
 	FShaderCompileKey Key;
 	Key.FilePath = "Shaders/UberLit.hlsl";
 	Key.VSEntryPoint = "mainVS";
 	Key.PSEntryPoint = "mainPS";
+
+	if (MaterialDomain == EMaterialDomain::Decal)
+	{
+		Key.Macros.push_back({ "MATERIAL_DOMAIN_DECAL", "1" });
+		return Key;
+	}
 
 	switch (LightingModel)
 	{
@@ -194,10 +231,10 @@ void UMaterial::ApplyParams(FShaderBindingInstance& Binding, const TMap<FString,
 
 void UMaterial::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject) const
 {
-	Bind(Context, RenderBus, PerObject, nullptr, nullptr);
+	Bind(Context, RenderBus, PerObject, nullptr, nullptr, nullptr);
 }
 
-void UMaterial::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext) const
+void UMaterial::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext, const FDecalConstants* DecalConstants) const
 {
 	UShader* EffectiveShader = ResolveEffectiveMaterialShader(*this, Shader, ShaderOverride);
 	if (!Context || !EffectiveShader)
@@ -235,15 +272,19 @@ void UMaterial::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, 
 	}
 
 	ApplyParams(*ShaderBinding, MaterialParams);
+	if (DecalConstants)
+	{
+		ShaderBinding->ApplyDecalParameters(*DecalConstants);
+	}
 	ShaderBinding->Bind(Context);
 }
 
 void UMaterialInstance::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject) const
 {
-	Bind(Context, RenderBus, PerObject, nullptr, nullptr);
+	Bind(Context, RenderBus, PerObject, nullptr, nullptr, nullptr);
 }
 
-void UMaterialInstance::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext) const
+void UMaterialInstance::Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext, const FDecalConstants* DecalConstants) const
 {
 	UShader* EffectiveShader = ResolveEffectiveMaterialShader(*this, Parent ? Parent->Shader : nullptr, ShaderOverride);
 	if (!Context || !Parent || !EffectiveShader)
@@ -292,5 +333,9 @@ void UMaterialInstance::Bind(ID3D11DeviceContext* Context, const FRenderBus* Ren
 	}
 
 	Parent->ApplyParams(*ShaderBinding, CombinedParams);
+	if (DecalConstants)
+	{
+		ShaderBinding->ApplyDecalParameters(*DecalConstants);
+	}
 	ShaderBinding->Bind(Context);
 }

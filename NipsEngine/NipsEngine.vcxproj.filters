@@ -180,9 +180,6 @@
     <FxCompile Include="Shaders\SelectionMask.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ShaderDecal.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\ShaderFont.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

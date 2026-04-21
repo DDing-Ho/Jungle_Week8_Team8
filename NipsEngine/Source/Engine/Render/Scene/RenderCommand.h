@@ -137,8 +137,7 @@ struct FStaticMeshConstants
 
 struct FDecalConstants
 {
-	FMatrix InvDecalWorld;
-	FVector4 ColorTint;
+	FMatrix InvDecalWorld = FMatrix::Identity;
 };
 
 constexpr uint32 MaxFogLayerCount = 32;
@@ -201,6 +200,7 @@ struct FRenderCommand
 	UMaterialInterface* Material = nullptr;
 	uint32 SectionIndexStart = 0;
 	uint32 SectionIndexCount = 0;
+	FDecalConstants DecalConstants = {};
 
 	union
 	{

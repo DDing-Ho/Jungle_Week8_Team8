@@ -2,6 +2,7 @@
 #include "Render/Scene/RenderBus.h"
 #include "Render/Resource/RenderResources.h"
 #include "Render/Resource/Material.h"
+#include "SceneLightBinding.h"
 
 bool FDecalRenderPass::Initialize()
 {
@@ -10,6 +11,7 @@ bool FDecalRenderPass::Initialize()
 
 bool FDecalRenderPass::Release()
 {
+    VisibleLightConstantBuffer.Reset();
     return true;
 }
 
@@ -59,6 +61,8 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
         return true;
     }
 
+    SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
+
     for (const FRenderCommand& Cmd : Commands)
     {
         if (Cmd.MeshBuffer == nullptr || !Cmd.MeshBuffer->IsValid())
@@ -82,8 +86,18 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
 
         if (Cmd.Material)
         {
-            Cmd.Material->Bind(Context->DeviceContext, Context->RenderBus, &Cmd.PerObjectConstants);
+            Cmd.Material->Bind(
+                Context->DeviceContext,
+                Context->RenderBus,
+                &Cmd.PerObjectConstants,
+                nullptr,
+                Context,
+                &Cmd.DecalConstants);
         }
+
+        SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
+
+        CheckOverrideViewMode(Context);
 
         Context->DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
@@ -106,5 +120,6 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
 
 bool FDecalRenderPass::End(const FRenderPassContext* Context)
 {
+    SceneLightBinding::UnbindResources(Context ? Context->DeviceContext : nullptr);
     return true;
 }

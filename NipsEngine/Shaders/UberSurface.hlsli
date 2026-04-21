@@ -8,7 +8,10 @@ cbuffer UberFrame : register(b0)
     float3 CameraPosition;
     float _UberFramePad0;
     float bIsWireframe;
+    float bLightingEnabled;
+    float2 _UberFramePad1;
     float3 WireframeRGB;
+    float _UberFramePad2;
 }
 
 cbuffer UberPerObject : register(b1)

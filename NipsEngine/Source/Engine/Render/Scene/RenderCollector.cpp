@@ -804,15 +804,14 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 
 				FRenderCommand Cmd = {};
 				Cmd.Type = ERenderCommandType::Decal;
-				Cmd.PerObjectConstants = FPerObjectConstants{ Prim->GetWorldMatrix(), FColor::White().ToVector4() };
+				Cmd.PerObjectConstants = FPerObjectConstants{ Prim->GetWorldMatrix(), DecalComp->GetDecalColor().ToVector4() };
 				Cmd.MeshBuffer = MeshBuffer;
 
 				Cmd.SectionIndexStart = Section.StartIndex;
 				Cmd.SectionIndexCount = Section.IndexCount;
 
 				Cmd.Material = Material;
-				Material->SetMatrix4("InvDecalWorld", DecalComp->GetDecalMatrix().GetInverse());
-				Material->SetVector4("DecalColorTint", DecalComp->GetDecalColor().ToVector4());
+				Cmd.DecalConstants.InvDecalWorld = DecalComp->GetDecalMatrix().GetInverse();
 
 				RenderBus.AddCommand(ERenderPass::Decal, Cmd);
 			}

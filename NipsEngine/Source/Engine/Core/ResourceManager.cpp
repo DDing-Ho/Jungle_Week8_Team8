@@ -128,6 +128,84 @@ namespace
 
 		return ParamName;
 	}
+
+	bool IsRuntimeOnlyDecalMaterialParam(const FString& ParamName)
+	{
+		return ParamName == "InvDecalWorld" || ParamName == "DecalColorTint";
+	}
+
+	bool IsSupportedDecalMaterialParam(const FString& ParamName)
+	{
+		return ParamName == "BaseColor" ||
+			ParamName == "Opacity" ||
+			ParamName == "DiffuseMap" ||
+			ParamName == "NormalMap" ||
+			ParamName == "bHasNormalMap" ||
+			ParamName == "EmissiveColor";
+	}
+
+	bool ShouldProcessMaterialParam(EMaterialDomain MaterialDomain, const FString& ParamName)
+	{
+		if (IsRemovedAmbientMaterialParam(ParamName))
+		{
+			return false;
+		}
+
+		if (MaterialDomain == EMaterialDomain::Decal)
+		{
+			return IsSupportedDecalMaterialParam(ParamName);
+		}
+
+		return !IsRuntimeOnlyDecalMaterialParam(ParamName);
+	}
+
+	void ApplyMaterialDefaults(UMaterial* Material)
+	{
+		if (Material == nullptr)
+		{
+			return;
+		}
+
+		FMaterialParamValue ExistingParamValue;
+		if (Material->GetEffectiveMaterialDomain() == EMaterialDomain::Decal)
+		{
+			if (!Material->GetParam("BaseColor", ExistingParamValue))
+			{
+				Material->SetParam("BaseColor", FMaterialParamValue(FVector(1.0f, 1.0f, 1.0f)));
+			}
+
+			if (!Material->GetParam("Opacity", ExistingParamValue))
+			{
+				Material->SetParam("Opacity", FMaterialParamValue(1.0f));
+			}
+
+			if (!Material->GetParam("EmissiveColor", ExistingParamValue))
+			{
+				Material->SetParam("EmissiveColor", FMaterialParamValue(FVector::ZeroVector));
+			}
+
+			if (!Material->GetParam("DiffuseMap", ExistingParamValue))
+			{
+				if (UTexture* DefaultWhite = FResourceManager::Get().GetTexture("DefaultWhite"))
+				{
+					Material->SetParam("DiffuseMap", FMaterialParamValue(DefaultWhite));
+				}
+			}
+		}
+
+		if (!Material->GetParam("NormalMap", ExistingParamValue))
+		{
+			if (UTexture* DefaultNormal = FResourceManager::Get().GetTexture("DefaultNormal"))
+			{
+				Material->SetParam("NormalMap", FMaterialParamValue(DefaultNormal));
+			}
+		}
+
+		if (!Material->GetParam("bHasNormalMap", ExistingParamValue))
+		{
+			Material->SetParam("bHasNormalMap", FMaterialParamValue(false));
+		}
+	}
 }
 
 #pragma region __BINARY__
@@ -1172,15 +1250,20 @@ bool FResourceManager::SerializeMaterial(const FString& MatFilePath, const UMate
 {
 	using json::JSON;
 	JSON Root = JSON::Make(JSON::Class::Object);
+	const EMaterialDomain MaterialDomain = Material->GetEffectiveMaterialDomain();
 	Root["Name"] = Material->Name;
 	Root["Shader"] = Material->Shader ? Material->Shader->FilePath : "";
-	Root["LightingModel"] = ToLightingModelString(Material->GetEffectiveLightingModel());
+	Root["MaterialDomain"] = ToMaterialDomainString(MaterialDomain);
+	if (MaterialDomain == EMaterialDomain::Surface)
+	{
+		Root["LightingModel"] = ToLightingModelString(Material->GetEffectiveLightingModel());
+	}
 
 	JSON Params = JSON::Make(JSON::Class::Array);
 	for (const auto& [ParamName, ParamValue] : Material->MaterialParams)
 	{
 		const FString SerializedParamName = NormalizeLegacyMaterialParamName(ParamName);
-		if (IsRemovedAmbientMaterialParam(SerializedParamName))
+		if (!ShouldProcessMaterialParam(MaterialDomain, SerializedParamName))
 		{
 			continue;
 		}
@@ -1264,9 +1347,10 @@ bool FResourceManager::SerializeMaterialInstance(const FString& MatInstFilePath,
 {
 	using json::JSON;
 	JSON Root = JSON::Make(JSON::Class::Object);
+	const EMaterialDomain MaterialDomain = MaterialInstance->GetEffectiveMaterialDomain();
 	Root["Name"] = MaterialInstance->GetName();
 	Root["Parent"] = MaterialInstance->Parent->Name;
-	if (MaterialInstance->HasLightingModelOverride())
+	if (MaterialDomain == EMaterialDomain::Surface && MaterialInstance->HasLightingModelOverride())
 	{
 		Root["LightingModel"] = ToLightingModelString(MaterialInstance->GetLightingModelOverride());
 	}
@@ -1274,7 +1358,7 @@ bool FResourceManager::SerializeMaterialInstance(const FString& MatInstFilePath,
 	for (const auto& [ParamName, ParamValue] : MaterialInstance->OverridedParams)
 	{
 		const FString SerializedParamName = NormalizeLegacyMaterialParamName(ParamName);
-		if (IsRemovedAmbientMaterialParam(SerializedParamName))
+		if (!ShouldProcessMaterialParam(MaterialDomain, SerializedParamName))
 		{
 			continue;
 		}
@@ -1389,7 +1473,7 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 		}
 
 		UMaterialInstance* MatInstance = CreateMaterialInstance(MatName, ParentMat);
-		if (Root.hasKey("LightingModel"))
+		if (ParentMat->GetEffectiveMaterialDomain() == EMaterialDomain::Surface && Root.hasKey("LightingModel"))
 		{
 			ELightingModel LightingModel = ELightingModel::Phong;
 			if (TryParseLightingModel(Root["LightingModel"].ToString(), LightingModel))
@@ -1405,7 +1489,7 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 		for (auto& Param : Root["OverridedParams"].ArrayRange())
 		{
 			FString ParamName = NormalizeLegacyMaterialParamName(Param["Name"].ToString());
-			if (IsRemovedAmbientMaterialParam(ParamName))
+			if (!ShouldProcessMaterialParam(ParentMat->GetEffectiveMaterialDomain(), ParamName))
 			{
 				continue;
 			}
@@ -1488,9 +1572,15 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 	Material->FilePath = MatFilePath;
 	Material->SetShader(GetShader(ShaderPath));
 	Material->MaterialParams.clear();
+	EMaterialDomain MaterialDomain = EMaterialDomain::Surface;
+	if (Root.hasKey("MaterialDomain"))
+	{
+		TryParseMaterialDomain(Root["MaterialDomain"].ToString(), MaterialDomain);
+	}
+	Material->SetMaterialDomain(MaterialDomain);
 
 	ELightingModel LightingModel = ELightingModel::Phong;
-	if (Root.hasKey("LightingModel"))
+	if (MaterialDomain == EMaterialDomain::Surface && Root.hasKey("LightingModel"))
 	{
 		TryParseLightingModel(Root["LightingModel"].ToString(), LightingModel);
 	}
@@ -1499,7 +1589,7 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 	for (auto& Param : Root["Params"].ArrayRange())
 	{
 		FString ParamName = NormalizeLegacyMaterialParamName(Param["Name"].ToString());
-		if (IsRemovedAmbientMaterialParam(ParamName))
+		if (!ShouldProcessMaterialParam(MaterialDomain, ParamName))
 		{
 			continue;
 		}
@@ -1573,19 +1663,7 @@ bool FResourceManager::DeserializeMaterial(const FString& MatFilePath)
 		}
 	}
 
-	FMaterialParamValue ExistingParamValue;
-	if (!Material->GetParam("NormalMap", ExistingParamValue))
-	{
-		if (UTexture* DefaultNormal = GetTexture("DefaultNormal"))
-		{
-			Material->SetParam("NormalMap", FMaterialParamValue(DefaultNormal));
-		}
-	}
-
-	if (!Material->GetParam("bHasNormalMap", ExistingParamValue))
-	{
-		Material->SetParam("bHasNormalMap", FMaterialParamValue(false));
-	}
+	ApplyMaterialDefaults(Material);
 
 	Materials[MatName] = Material;
 

@@ -497,6 +497,7 @@ void FShaderBindingInstance::ApplyFrameParameters(const FRenderBus& RenderBus, I
 	SetMatrix4("Projection", RenderBus.GetProj());
 	SetVector3("CameraPosition", RenderBus.GetCameraPosition());
 	SetFloat("bIsWireframe", RenderBus.GetViewMode() == EViewMode::Wireframe ? 1.0f : 0.0f);
+	SetFloat("bLightingEnabled", RenderBus.GetViewMode() == EViewMode::Lit ? 1.0f : 0.0f);
 	SetVector3("WireframeRGB", RenderBus.GetWireframeColor());
 	SetVector2("ViewportSize", RenderBus.GetViewportSize());
 	SetUInt("SceneLightCount", SceneLightCount);
@@ -519,6 +520,11 @@ void FShaderBindingInstance::ApplyUberPerObjectParameters(const FPerObjectConsta
 	SetMatrix4("World", Constants.Model);
 	SetMatrix4("WorldInverseTranspose", Constants.WorldInvTrans);
 	SetVector4("PrimitiveColor", Constants.Color);
+}
+
+void FShaderBindingInstance::ApplyDecalParameters(const FDecalConstants& Constants)
+{
+	SetMatrix4("InvDecalWorld", Constants.InvDecalWorld);
 }
 
 void FShaderBindingInstance::UploadConstantBuffers(ID3D11DeviceContext* Context)

@@ -1,14 +1,13 @@
 {
     "Name": "DecalMat",
-    "Shader": "Shaders/ShaderDecal.hlsl",
+    "Shader": "Shaders/UberLit.hlsl",
+    "MaterialDomain": "Decal",
     "Params": [
-        { "Name": "InvDecalWorld",
-          "Type": "Matrix4",
-          "Value": [1.0, 1.0, 1.0, 1.0,
-                    0.0, 1.0, 0.0, 0.0,
-                    0.0, 0.0, 1.0, 0.0,
-                    0.0, 0.0, 0.0, 1.0] },
-        { "Name": "DecalColorTint", "Type": "Vector4", "Value": [1.0, 1.0, 1.0, 1.0] },
-        { "Name": "DiffuseMap", "Type": "Texture", "Value": "Asset/Texture/water.png" }
+        { "Name": "BaseColor", "Type": "Vector3", "Value": [1.0, 1.0, 1.0] },
+        { "Name": "Opacity", "Type": "Float", "Value": 1.0 },
+        { "Name": "DiffuseMap", "Type": "Texture", "Value": "Asset/Texture/water.png" },
+        { "Name": "NormalMap", "Type": "Texture", "Value": "DefaultNormal" },
+        { "Name": "bHasNormalMap", "Type": "Bool", "Value": false },
+        { "Name": "EmissiveColor", "Type": "Vector3", "Value": [0.0, 0.0, 0.0] }
     ]
 }

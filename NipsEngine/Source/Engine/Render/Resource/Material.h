@@ -80,9 +80,21 @@ enum class ELightingModel : uint8
 	Phong,
 };
 
+enum class EMaterialDomain : uint8
+{
+	Surface = 0,
+	Decal,
+};
+
+const char* ToMaterialDomainString(EMaterialDomain MaterialDomain);
+bool TryParseMaterialDomain(const FString& Value, EMaterialDomain& OutMaterialDomain);
 const char* ToLightingModelString(ELightingModel LightingModel);
 bool TryParseLightingModel(const FString& Value, ELightingModel& OutLightingModel);
-FShaderCompileKey MakeUberLitShaderCompileKey(ELightingModel LightingModel);
+FShaderCompileKey MakeUberLitShaderCompileKey(EMaterialDomain MaterialDomain, ELightingModel LightingModel = ELightingModel::Phong);
+inline FShaderCompileKey MakeUberLitShaderCompileKey(ELightingModel LightingModel)
+{
+	return MakeUberLitShaderCompileKey(EMaterialDomain::Surface, LightingModel);
+}
 struct FRenderPassContext;
 
 class UMaterialInterface : public UObject
@@ -97,11 +109,12 @@ public:
 	
 	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const
 	{
-		Bind(Context, RenderBus, PerObject, nullptr, nullptr);
+		Bind(Context, RenderBus, PerObject, nullptr, nullptr, nullptr);
 	}
 
-	virtual void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr) const = 0;
+	virtual void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr, const FDecalConstants* DecalConstants = nullptr) const = 0;
 	virtual bool GetParam(const FString& Name, FMaterialParamValue& OutValue) const = 0;
+	virtual EMaterialDomain GetEffectiveMaterialDomain() const = 0;
 	virtual ELightingModel GetEffectiveLightingModel() const = 0;
 
 	virtual void SetParam(const FString& Name, const FMaterialParamValue& Value) = 0;
@@ -138,12 +151,14 @@ public:
 	EBlendType BlendType = EBlendType::Opaque;
 	ERasterizerType RasterizerType = ERasterizerType::SolidBackCull;
 	D3D11_PRIMITIVE_TOPOLOGY PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	EMaterialDomain MaterialDomain = EMaterialDomain::Surface;
 	ELightingModel LightingModel = ELightingModel::Phong;
 
 	const FString& GetName() const override { return Name; }
 	FString& GetNameRef() override { return Name; }
 	const FString& GetFilePath() const override { return FilePath; }
 	FString& GetFilePathRef() override { return FilePath; }
+	EMaterialDomain GetEffectiveMaterialDomain() const override { return MaterialDomain; }
 	ELightingModel GetEffectiveLightingModel() const override { return LightingModel; }
 
 	void SetShader(UShader* InShader)
@@ -155,6 +170,11 @@ public:
 	void SetLightingModel(ELightingModel InLightingModel)
 	{
 		LightingModel = InLightingModel;
+	}
+
+	void SetMaterialDomain(EMaterialDomain InMaterialDomain)
+	{
+		MaterialDomain = InMaterialDomain;
 	}
 
 	void SetParam(const FString& Name, const FMaterialParamValue& Value)
@@ -173,7 +193,7 @@ public:
 	}
 
 	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const;
-	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr) const override;
+	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr, const FDecalConstants* DecalConstants = nullptr) const override;
 
 	void ApplyParams(FShaderBindingInstance& Binding, const TMap<FString, FMaterialParamValue>& Params) const;
 
@@ -207,6 +227,10 @@ public:
 	FString& GetNameRef() override { return Name; }
 	const FString& GetFilePath() const override { return FilePath; }
 	FString& GetFilePathRef() override { return FilePath; }
+	EMaterialDomain GetEffectiveMaterialDomain() const override
+	{
+		return Parent ? Parent->GetEffectiveMaterialDomain() : EMaterialDomain::Surface;
+	}
 	ELightingModel GetEffectiveLightingModel() const override
 	{
 		if (bOverrideLightingModel)
@@ -251,7 +275,7 @@ public:
 	}
 
 	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus = nullptr, const FPerObjectConstants* PerObject = nullptr) const;
-	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr) const override;
+	void Bind(ID3D11DeviceContext* Context, const FRenderBus* RenderBus, const FPerObjectConstants* PerObject, UShader* ShaderOverride, const FRenderPassContext* PassContext = nullptr, const FDecalConstants* DecalConstants = nullptr) const override;
 
 	void GatherAllParams(TMap<FString, FMaterialParamValue>& OutParams) const override
 	{
