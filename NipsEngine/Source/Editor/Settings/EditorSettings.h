@@ -38,6 +38,7 @@ public:
 	// Camera Sensitivity
 	float CameraMoveSensitivity = 1.0f;
 	float CameraRotateSensitivity = 1.0f;
+	float CameraDollySpeed = 15.0f;
 
 	// Spatial index / BVH maintenance
 	int32 SpatialBatchRefitMinDirtyCount = 8;
