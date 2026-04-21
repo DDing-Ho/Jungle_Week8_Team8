@@ -26,7 +26,8 @@ cbuffer LightCullingConstants : register(b0)
     uint TileSize;
     float ViewportWidth;
     float ViewportHeight;
-    float2 Padding;
+    uint IsOrthographic;
+    float Padding;
 };
 
 StructuredBuffer<FLightDataCS> SceneLights : register(t0);
@@ -122,9 +123,12 @@ void mainCS(
                         (Ndc.x * 0.5f + 0.5f) * ViewportWidth,
                         (-Ndc.y * 0.5f + 0.5f) * ViewportHeight);
 
-                    const float EffectiveDepth = max(EyeDepth - Radius, 1e-4f);
+                    // Orthographic 일 때 Radius 크기 조정 필요 X
+                    const float EffectiveDepth = IsOrthographic ? 1 : max(EyeDepth - Radius, 1e-4f);
                     const float YScale = Projection[2][1];
                     const float ProjectedRadius = (Radius / EffectiveDepth) * YScale * (ViewportHeight * 0.5f);
+                    
+                    
 
                     if (ProjectedRadius > 0.0f)
                     {

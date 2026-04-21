@@ -23,7 +23,8 @@ namespace
         uint32 TileSize = 0;
         float ViewportWidth = 0.0f;
         float ViewportHeight = 0.0f;
-        float Padding[2] = { 0.0f, 0.0f };
+        uint32 IsOrthographic = 0;
+        float Padding = 0.0f;
     };
 
 	struct FLightCullingLight
@@ -170,6 +171,7 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
     Constants.TileSize = LightCullingTileSize;
     Constants.ViewportWidth = Width;
     Constants.ViewportHeight = Height;
+    Constants.IsOrthographic = Context->RenderBus->IsOrthographic() ? 1 : 0;
 
     D3D11_MAPPED_SUBRESOURCE MappedCB = {};
     if (FAILED(Context->DeviceContext->Map(CullingConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedCB)))
