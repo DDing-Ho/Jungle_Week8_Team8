@@ -188,8 +188,36 @@ void FRenderer::InvalidateSceneFinalTargets()
 
 void FRenderer::UpdateSceneLightBuffer(const FRenderBus& InRenderBus)
 {
+    TArray<FRenderLight> GlobalLights;
 	const TArray<FRenderLight>& SceneLights = InRenderBus.GetLights();
-	uint32 UploadCount = static_cast<uint32>(SceneLights.size());
+    GlobalLights.reserve(SceneLights.size());
+
+	/**
+	 * Culling 제외할 Global Light 추출
+	 * 애초에 Global Light 추가 때부터 따로 Array 로 분리한다면 효율적으로 추출 가능
+	 */
+	for (const FRenderLight& Light : SceneLights)
+    {
+        // 전역 Light 는 Culling X
+        if (Light.Type != (uint32)ELightType::LightType_AmbientLight &&
+            Light.Type != (uint32)ELightType::LightType_Directional)
+            continue;
+
+        FRenderLight GlobalLight = {};
+        GlobalLight.Position = Light.Position;
+        GlobalLight.Radius = Light.Radius;
+        GlobalLight.Color = Light.Color;
+        GlobalLight.Intensity = Light.Intensity;
+        GlobalLight.FalloffExponent = Light.FalloffExponent;
+        GlobalLight.Type = Light.Type;
+        GlobalLight.SpotInnerCos = Light.SpotInnerCos;
+        GlobalLight.SpotOuterCos = Light.SpotOuterCos;
+        GlobalLight.Direction = Light.Direction;
+
+        GlobalLights.push_back(GlobalLight);
+    }
+
+	uint32 UploadCount = static_cast<uint32>(GlobalLights.size());
 	if (UploadCount > MaxSceneLightCount)
 	{
 		UE_LOG("[Renderer] Scene light count exceeded the %u light cap. Clamping %u lights to %u.",
@@ -200,7 +228,7 @@ void FRenderer::UpdateSceneLightBuffer(const FRenderBus& InRenderBus)
 	SceneLightUploadScratch.clear();
 	if (UploadCount > 0)
 	{
-		SceneLightUploadScratch.assign(SceneLights.begin(), SceneLights.begin() + UploadCount);
+        SceneLightUploadScratch.assign(GlobalLights.begin(), GlobalLights.begin() + UploadCount);
 	}
 
 	SceneLightBuffer.Update(

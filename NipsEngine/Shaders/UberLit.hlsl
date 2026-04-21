@@ -30,7 +30,8 @@ struct FGPULight
     float Padding0;
 };
 
-StructuredBuffer<FGPULight> SceneLights : register(t3);
+// Directional, Ambienet Light 같은 Tile 과 관련 없는 전역 Light 보관
+StructuredBuffer<FGPULight> GlobalLights : register(t3);
 
 // ─────────────────────────────────────────────
 // Tile-Culled Point/Spot 버퍼
@@ -45,7 +46,6 @@ cbuffer VisibleLightInfo : register(b4)
     float3 _VisibleLightInfoPad0;
 }
 
-// FLightCullingLight 와 레이아웃 일치
 struct FVisibleLightData
 {
     float3 WorldPos;
@@ -166,7 +166,7 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
     FLightingResult Result;
     Result.Diffuse = 0.0f.xxx;
     Result.Specular = 0.0f.xxx;
-
+    
     const float3 N = normalize(WorldNormal);
     const float3 V = normalize(CameraPosition - WorldPos);
 
@@ -177,7 +177,7 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
     [loop]
     for (uint LightIndex = 0u; LightIndex < SceneLightCount; ++LightIndex)
     {
-        const FGPULight Light = SceneLights[LightIndex];
+        const FGPULight Light = GlobalLights[LightIndex];
         const float3 LightColor = Light.Color * Light.Intensity;
 
         if (Light.Type == LIGHT_TYPE_AMBIENT)
@@ -199,7 +199,7 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
             continue;
         }
     }
-
+    
     Result.Diffuse += AmbientContribution;
     
     // Point / Spot Light 처리
@@ -220,7 +220,7 @@ FLightingResult EvaluateLightingFromWorldVertex(float3 WorldPos, float3 WorldNor
     [loop]
     for (uint LightIndex = 0u; LightIndex < SceneLightCount; ++LightIndex)
     {
-        const FGPULight Light = SceneLights[LightIndex];
+        const FGPULight Light = GlobalLights[LightIndex];
         const float3 LightColor = Light.Color * Light.Intensity;
 
         if (Light.Type == LIGHT_TYPE_AMBIENT)

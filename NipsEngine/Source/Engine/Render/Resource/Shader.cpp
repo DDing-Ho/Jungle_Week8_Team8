@@ -1,4 +1,4 @@
-#include "Shader.h"
+﻿#include "Shader.h"
 
 #include "Texture.h"
 #include "Render/Scene/RenderBus.h"
@@ -500,7 +500,7 @@ void FShaderBindingInstance::ApplyFrameParameters(const FRenderBus& RenderBus, I
 	SetVector3("WireframeRGB", RenderBus.GetWireframeColor());
 	SetVector2("ViewportSize", RenderBus.GetViewportSize());
 	SetUInt("SceneLightCount", SceneLightCount);
-	SetSRV("SceneLights", SceneLightBufferSRV);
+	SetSRV("GlobalLights", SceneLightBufferSRV);
 }
 
 void FShaderBindingInstance::ApplyPerObjectParameters(const FPerObjectConstants& Constants)

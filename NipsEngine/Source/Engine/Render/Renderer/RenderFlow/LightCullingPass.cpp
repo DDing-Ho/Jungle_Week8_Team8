@@ -124,6 +124,11 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
 
     for (const FRenderLight& Light : SceneLights)
     {
+		// 전역 Light 는 Culling X
+        if (Light.Type != (uint32)ELightType::LightType_Point &&
+            Light.Type != (uint32)ELightType::LightType_Spot)
+            continue;
+
         FLightCullingLight CullingLight = {};
         CullingLight.WorldPos = Light.Position;
         CullingLight.Radius = Light.Radius;
