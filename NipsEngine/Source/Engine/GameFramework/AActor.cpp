@@ -282,7 +282,7 @@ void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
      * Light 들의 경우 부모 -> 자식 순으로 AddComponent 되는 구조라 임시로 역순 Unregister 로 해결
      * 실제론 Actor - Component 생애주기를 잘 관리해줘야함
      */
-	for (size_t i = Components.size() - 1; i >= 0; i--)
+	for (int i = static_cast<int>(Components.size()) - 1; i >= 0; i--)
 	{
         if (Components[i])
         {
