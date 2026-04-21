@@ -343,8 +343,8 @@ FUberPSOutput mainPS(FUberPSInput Input)
     Lighting = EvaluateLightingFromWorld(Surface.WorldPos, Surface.WorldNormal, Input.ClipPos.xy);
 #endif
 
-    // return ComposeOutput(Surface, ApplyLighting(Surface, Lighting));
+    return ComposeOutput(Surface, ApplyLighting(Surface, Lighting));
     
-    return ComposeOutput(Surface, GetTileDebugColor(Input.ClipPos.xy));
+    // return ComposeOutput(Surface, GetTileDebugColor(Input.ClipPos.xy));
 }
 

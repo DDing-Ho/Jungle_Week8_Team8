@@ -8,7 +8,7 @@
 namespace
 {
     constexpr uint32 LightCullingTileSize = 16;
-    constexpr uint32 MaxLightsPerTile = 64;
+    constexpr uint32 MaxLightsPerTile = 1024;
     constexpr uint32 ThreadGroupSizeX = 8;
     constexpr uint32 ThreadGroupSizeY = 8;
     constexpr uint32 DebugLogIntervalFrames = 30;
@@ -187,9 +187,7 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
     ID3D11UnorderedAccessView* UAVs[] = { TileLightCountUAV.Get(), TileLightIndexUAV.Get() };
     Context->DeviceContext->CSSetUnorderedAccessViews(0, 2, UAVs, nullptr);
 
-    const uint32 DispatchX = CeilDivide(TileCountX, ThreadGroupSizeX);
-    const uint32 DispatchY = CeilDivide(TileCountY, ThreadGroupSizeY);
-    Context->DeviceContext->Dispatch(DispatchX, DispatchY, 1);
+    Context->DeviceContext->Dispatch(TileCountX, TileCountY, 1);
 
     GLightCullingOutputs.LightBufferSRV = (LightCount > 0) ? LightBufferSRV.Get() : nullptr;
     GLightCullingOutputs.TileLightCountSRV = TileLightCountSRV.Get();

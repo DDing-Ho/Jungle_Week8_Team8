@@ -23,6 +23,6 @@ protected:
     FString GetVisualizationTexturePath() const override { return "Asset/Texture/Icons/S_LightPoint.PNG"; }
 
 private:
-    float AttenuationRadius    = 500.0f;
+    float AttenuationRadius    = 1.0f;
     float LightFalloffExponent = 1.0f;
 };
