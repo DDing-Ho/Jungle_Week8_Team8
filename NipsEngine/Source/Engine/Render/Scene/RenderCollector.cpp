@@ -269,7 +269,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			RenderLight.Radius = PointLight->GetAttenuationRadius();
 			RenderLight.FalloffExponent = PointLight->GetLightFalloffExponent();
 			RenderBus.AddLight(RenderLight);
-
 			LineBatcher->AddPointLight(RenderLight.Position, RenderLight.Radius, PointLight->GetRightVector(), PointLight->GetUpVector());
 			break;
 		}
