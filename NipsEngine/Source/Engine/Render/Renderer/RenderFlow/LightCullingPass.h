@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "RenderPass.h"
 #include "Render/Common/ComPtr.h"
 
@@ -47,4 +47,6 @@ private:
 
     uint32 LightBufferCapacity = 0;
     uint32 TileBufferCapacity = 0;
+
+    const uint32 MaxLocalLightNum = 512;
 };
