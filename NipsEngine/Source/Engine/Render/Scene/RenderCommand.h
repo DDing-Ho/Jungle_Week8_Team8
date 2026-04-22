@@ -32,6 +32,7 @@ enum class ERenderCommandType
 	StaticMesh,	// UStaticMeshComponent — OBJ 메시 퐁셰이딩
 	Decal,
 	Light,
+	ToonOutline
 };
 
 //PerObject

@@ -14,6 +14,7 @@
 #include "EditorRenderPass.h"
 #include "DepthLessRenderPass.h"
 #include "PostProcessOutlineRenderPass.h"
+#include "ToonOutlineRenderPass.h"
 
 bool FRenderPipeline::Initialize()
 {
@@ -63,7 +64,9 @@ bool FRenderPipeline::Initialize()
     PostProcessOutlineRenderPass = std::make_shared<FPostProcessOutlineRenderPass>();
     PostProcessOutlineRenderPass->Initialize();
 
-	//LightRenderPass->SetSkipWireframe(true);
+	ToonOutlineRenderPass = std::make_shared<FToonOutlineRenderPass>();
+    ToonOutlineRenderPass->Initialize();
+
 	FogRenderPass->SetSkipWireframe(true);
     FXAARenderPass->SetSkipWireframe(true);
 
@@ -72,11 +75,12 @@ bool FRenderPipeline::Initialize()
 	 * 마지막 패스가 남긴 OutSRV/OutRTV 가 RenderTargets.FinalSRV/FinalRTV 가 된다.
 	 */
     RenderPasses.push_back(LightCullingPass);
+    RenderPasses.push_back(ToonOutlineRenderPass);
 	RenderPasses.push_back(OpaqueRenderPass);
-    RenderPasses.push_back(DecalRenderPass);
+
+	RenderPasses.push_back(DecalRenderPass);
     // SceneColor를 만든 뒤 fog/fxaa 전에 덮어쓸 수 있는 view mode 확장 지점이다.
     RenderPasses.push_back(BufferVisualizationRenderPass);
-    //RenderPasses.push_back(LightRenderPass);
 
     RenderPasses.push_back(FogRenderPass);
     RenderPasses.push_back(FXAARenderPass); 
@@ -103,7 +107,8 @@ bool FRenderPipeline::Render(const FRenderPassContext* Context)
         Pass->SetPrevPassSRV(OutSRV);
         Pass->SetPrevPassRTV(OutRTV);
         Pass->Render(Context);
-        OutSRV = Pass->GetOutSRV();
+
+		OutSRV = Pass->GetOutSRV();
         OutRTV = Pass->GetOutRTV();
 	}
 
@@ -133,17 +138,17 @@ void FRenderPipeline::Release()
         DecalRenderPass.reset();
     }
 
+	if (ToonOutlineRenderPass)
+	{
+        ToonOutlineRenderPass->Release();
+        ToonOutlineRenderPass.reset();
+	}
+
     if (BufferVisualizationRenderPass)
     {
         BufferVisualizationRenderPass->Release();
         BufferVisualizationRenderPass.reset();
     }
-
-	//if (LightRenderPass)
-	//{
- //       LightRenderPass->Release();
- //       LightRenderPass.reset();
-	//}
 
 	if (FogRenderPass)
 	{

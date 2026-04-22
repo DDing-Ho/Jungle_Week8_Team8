@@ -679,6 +679,21 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 			//}
 
 			RenderBus.AddCommand(ERenderPass::Opaque, Cmd);
+
+			if (Material->GetEffectiveLightingModel() == ELightingModel::Toon)
+			{
+                FRenderCommand OutlineCmd = {};
+                OutlineCmd.Type = ERenderCommandType::ToonOutline;
+                OutlineCmd.MeshBuffer = MeshBuffer;
+                OutlineCmd.PerObjectConstants = FPerObjectConstants{
+                    Primitive->GetWorldMatrix()
+                };
+                OutlineCmd.SectionIndexStart = Section.StartIndex;
+                OutlineCmd.SectionIndexCount = Section.IndexCount;
+                OutlineCmd.Material = Material;
+
+                RenderBus.AddCommand(ERenderPass::ToonOutline, OutlineCmd);
+			}
 		}
 
 		break;
