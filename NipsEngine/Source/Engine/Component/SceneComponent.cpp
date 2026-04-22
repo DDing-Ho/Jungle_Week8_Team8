@@ -36,6 +36,15 @@ void USceneComponent::Serialize(FArchive& Ar)
 	Ar << "Location" << RelativeLocation;
 	Ar << "Rotation" << RelativeRotation;
 	Ar << "Scale" << RelativeScale3D;
+
+	if (Ar.IsLoading())
+	{
+		// FArchive 로드는 setter 를 거치지 않으므로 회전 권위 소스와 transform dirty 상태를
+		// 수동으로 동기화해야 이후 WorldMatrix 계산이 올바르게 복원됩니다.
+		RelativeRotationQuat = FQuat::MakeFromEuler(RelativeRotation);
+		RelativeRotationQuat.Normalize();
+		MarkTransformDirty();
+	}
 }
 USceneComponent::USceneComponent()
 {

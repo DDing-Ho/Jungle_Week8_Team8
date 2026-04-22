@@ -1,5 +1,6 @@
 ﻿#include "StaticMeshComponent.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cstring>
 
@@ -56,9 +57,23 @@ void UStaticMeshComponent::Serialize(FArchive& Ar)
 
 	if (Ar.IsLoading())
 	{
+		TArray<UMaterialInterface*> SavedMaterials = Materials;
+
 		if (!StaticMeshAssetPath.empty())
 		{
 			SetStaticMesh(FResourceManager::Get().LoadStaticMesh(StaticMeshAssetPath));
+		}
+		else
+		{
+			SetStaticMesh(nullptr);
+		}
+
+		// StaticMesh 로드 시 기본 슬롯 material 이 다시 채워지므로
+		// scene 에 저장된 override 를 마지막에 복원합니다.
+		const int32 RestoreCount = static_cast<int32>(std::min(SavedMaterials.size(), Materials.size()));
+		for (int32 i = 0; i < RestoreCount; ++i)
+		{
+			SetMaterial(i, SavedMaterials[i]);
 		}
 	}
 }
