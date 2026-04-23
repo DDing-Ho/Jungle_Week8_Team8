@@ -9,149 +9,14 @@
 #include "Object/FName.h"
 #include <functional>
 
+#include "Editor/Utility/EditorComponentFactory.h"
+
 #include "Component/StaticMeshComponent.h"
-#include "Component/BillboardComponent.h"
-#include "Component/TextRenderComponent.h"
-#include "Component/SubUVComponent.h"
 #include "Component/GizmoComponent.h"
-#include "Component/Movement/RotatingMovementComponent.h"
-#include "Component/Movement/ProjectileMovementComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
-#include "Component/Movement/PursuitMovementComponent.h"
-#include "Component/SkyAtmosphereComponent.h"
-#include "Selection/SelectionManager.h"
-#include "Component/HeightFogComponent.h"
-#include "Component/Light/AmbientLightComponent.h"
-#include "Component/Light/DirectionalLightComponent.h"
-#include "Component/Light/PointLightComponent.h"
-#include "Component/Light/SpotLightComponent.h"
-#include "Editor/EditorUtils.h"
+#include "Editor/Utility/EditorUtils.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
-
-// 메뉴 항목의 이름과, 해당 컴포넌트를 생성 & 초기화할 함수를 담는 구조체
-struct FComponentMenuEntry
-{
-	const char* DisplayName;
-	std::function<UActorComponent*(AActor*)> CreateAndInitFunc;
-};
-
-// 에디터에서 추가 가능한 컴포넌트 배열 (이 리스트만 관리하면 됩니다)
-static const TArray<FComponentMenuEntry> ComponentMenuRegistry = {
-	{
-		"Scene Component",
-		[](AActor* Actor) -> UActorComponent* {
-			return Actor->AddComponent<USceneComponent>();
-		}
-	},
-	{
-		"StaticMesh Component",
-		[](AActor* Actor) -> UActorComponent* {
-			return Actor->AddComponent<UStaticMeshComponent>();
-		}
-	},
-	{
-		"SubUV Component",
-		[](AActor* Actor) -> UActorComponent* {
-			USubUVComponent* Comp = Actor->AddComponent<USubUVComponent>();
-			Comp->SetParticle(FName("Explosion"));
-			Comp->SetSpriteSize(2.0f, 2.0f);
-			Comp->SetFrameRate(30.f);
-			return Comp;
-		}
-	},
-	{
-		"TextRender Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UTextRenderComponent* Comp = Actor->AddComponent<UTextRenderComponent>();
-			Comp->SetFont(FName("Default"));
-			Comp->SetText("TextRender");
-			return Comp;
-		}
-	},
-	{
-		"Billboard Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UBillboardComponent* Comp = Actor->AddComponent<UBillboardComponent>();
-			Comp->SetTexturePath("Asset/Texture/Pawn_64x.png");
-			return Comp;
-		}
-	},
-	{
-		"RotatingMovement Component",
-		[](AActor* Actor) -> UActorComponent* {
-			URotatingMovementComponent* Comp = Actor->AddComponent<URotatingMovementComponent>();
-			return Comp;
-		}
-	},
-    {
-		"InterpToMovement Component",
-		[](AActor* Actor) -> UActorComponent* {
-          UInterpToMovementComponent* Comp = Actor->AddComponent<UInterpToMovementComponent>();
-          return Comp;
-		}
-	},
-    {
-		"PursuitMovement Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UPursuitMovementComponent* Comp = Actor->AddComponent<UPursuitMovementComponent>();
-			return Comp;
-		}
-	},
-	{
-		"ProjectileMovement Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UProjectileMovementComponent* Comp = Actor->AddComponent<UProjectileMovementComponent>();
-			return Comp;
-		}
-	},
-	{
-		"HeightFog Component",
-		[](AActor* Actor) -> UActorComponent* {
-			UHeightFogComponent* Comp = Actor->AddComponent<UHeightFogComponent>();
-			Comp->SetFogDensity(0);
-			Comp->SetFogInscatteringColor(FVector4(0.72f, 0.8f, 0.9f, 1.0f));
-			Comp->SetHeightFalloff(0);
-			Comp->SetFogHeight(0);
-			return Comp;
-		}
-	},
-    {
-        "AmbientLight Component",
-		[](AActor* Actor) -> UActorComponent*
-		{
-			return Actor->AddComponent<UAmbientLightComponent>();
-		}
-    },
-	{
-		"DirectionalLight Component",
-		[](AActor* Actor) -> UActorComponent*
-		{
-			return Actor->AddComponent<UDirectionalLightComponent>();;
-		}
-	},
-	{
-		"PointLight Component",
-		[](AActor* Actor) -> UActorComponent*
-		{
-			return Actor->AddComponent<UPointLightComponent>();
-		}
-	},
-	{
-		"SpotLight Component",
-		[](AActor* Actor) -> UActorComponent*
-		{
-			return Actor->AddComponent<USpotLightComponent>();
-		}
-	},
-	{
-		"SkyAtmosphere Component",
-		[](AActor* Actor) -> UActorComponent*
-		{
-			return Actor->AddComponent<USkyAtmosphereComponent>();
-		}
-	},
-};
 
 void FEditorPropertyWidget::Initialize(UEditorEngine* InEditorEngine)
 {
@@ -321,11 +186,18 @@ void FEditorPropertyWidget::RenderAddComponentPopup(AActor* PrimaryActor)
 
 	if (ImGui::BeginPopup("AddComponentPopup"))
 	{
-		for (const FComponentMenuEntry& Entry : ComponentMenuRegistry)
+		const char* CurrentCategory = nullptr;
+		for (const FComponentMenuEntry& Entry : FComponentFactory::GetMenuRegistry())
 		{
+			if (CurrentCategory == nullptr || strcmp(CurrentCategory, Entry.Category) != 0)
+			{
+				CurrentCategory = Entry.Category;
+				ImGui::SeparatorText(CurrentCategory);
+			}
+
 			if (ImGui::Selectable(Entry.DisplayName))
 			{
-				if (UActorComponent* NewComp = Entry.CreateAndInitFunc(PrimaryActor))
+				if (UActorComponent* NewComp = Entry.Register(PrimaryActor))
 				{
 					AttachAndSelectNewComponent(PrimaryActor, NewComp);
 				}
@@ -482,7 +354,7 @@ void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneCompon
         bActorSelected = false;
     }
 
-    if (bOpen)
+    if (bOpen && Comp)
     {
         for (USceneComponent* Child : Comp->GetChildren())
             RenderSceneComponentNode(Actor, Child, OutCompToDelete);
@@ -577,17 +449,17 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	SelectedComponent->GetEditableProperties(Props);
 
 	AActor* Owner = SelectedComponent->GetOwner();
-
+	
+	bool bAnyChanged = false;
 	for (auto& Prop : Props)
 	{
 		if (Prop.Type == EPropertyType::SceneComponentRef)
 		{
-			// SceneComponentRef는 액터 컨텍스트가 필요한 드롭다운으로 렌더링
 			RenderSceneComponentRefWidget(Prop, Owner);
 		}
 		else
 		{
-			RenderPropertyWidget(Prop);
+			bAnyChanged |= RenderPropertyWidget(Prop);
 		}
 	}
 	// Special: InterpToMovementComponent control points + behaviour + actions
@@ -598,8 +470,8 @@ void FEditorPropertyWidget::RenderComponentProperties()
 
 	ImGui::Separator();
 
-	// 프로퍼티 직접 편집 후 월드 행렬 갱신
-	if (SelectedComponent->IsA<USceneComponent>())
+	// 변경이 있을 경우에만 월드 행렬 갱신
+	if (bAnyChanged && SelectedComponent->IsA<USceneComponent>())
 	{
 		static_cast<USceneComponent*>(SelectedComponent)->MarkTransformDirty();
 		SelectionManager->GetGizmo()->UpdateGizmoTransform();
@@ -655,7 +527,7 @@ void FEditorPropertyWidget::RenderSceneComponentRefWidget(FPropertyDescriptor& P
 	}
 }
 
-void FEditorPropertyWidget::RenderPropertyWidget(FPropertyDescriptor& Prop)
+bool FEditorPropertyWidget::RenderPropertyWidget(FPropertyDescriptor& Prop)
 {
 	bool bChanged = false;
 
@@ -782,6 +654,8 @@ void FEditorPropertyWidget::RenderPropertyWidget(FPropertyDescriptor& Prop)
 	{
 		SelectedComponent->PostEditProperty(Prop.Name);
 	}
+
+	return bChanged;
 }
 
 void FEditorPropertyWidget::RenderInterpControlPoints(UInterpToMovementComponent* Comp)
