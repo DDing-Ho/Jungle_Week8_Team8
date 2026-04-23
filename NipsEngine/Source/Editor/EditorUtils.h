@@ -1,9 +1,26 @@
 ﻿#pragma once
+#include "Core/CoreMinimal.h"
 #include "Runtime/ViewportRect.h"
 #include "Render/Common/ViewTypes.h"
-/*
-* Editor 모듈에서 필요한 Utility + Enum 정의
-*/
+
+class UMovementComponent;
+
+// Editor Widget에서 공통적으로 사용될 수 있는 잡다한 상수 및 함수들을 정의합니다.
+namespace UIConstants
+{
+	constexpr float XButtonSize     = 20.0f;
+	constexpr float TreeRightMargin = 24.0f; // X버튼이 위치할 우측 여백
+	constexpr float ClipMargin      = 28.0f; // 버튼(20) + 여백(8)
+	constexpr float MinScrollHeight = 50.0f;
+}
+
+namespace EditorUtils
+{
+    bool DrawXButton(const char* id, float size = UIConstants::XButtonSize);
+    void MakeXButtonId(char* OutBuf, size_t BufSize, const void* Ptr);
+    bool RenderStringComboOrInput(const char* Label, FString& Value, const TArray<FString>& Options);
+    FString GetMovementComponentDisplayName(UMovementComponent* MoveComp);
+}
 
 // 뷰포트별 PIE 재생 상태를 나타냅니다.
 // UEditorEngine::GetEditorState() / SetEditorState() 는 포커스된 뷰포트의 이 값을 읽고 씁니다.
