@@ -243,6 +243,9 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
         if (!bActorSelected && SelectedComponent == Comp)
             Flags |= ImGuiTreeNodeFlags_Selected;
 
+        float ClipMaxX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x - UIConstants::ClipMargin;
+        ImGui::PushClipRect(ImGui::GetWindowPos(), ImVec2(ClipMaxX, ImGui::GetWindowPos().y + 99999.f), true);
+
         if (UMovementComponent* MoveComp = Cast<UMovementComponent>(Comp))
         {
             FString MoveName = EditorUIUtils::GetMovementComponentDisplayName(MoveComp);
@@ -260,6 +263,8 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
             FString Name = Comp->GetFName().ToString();
             ImGui::TreeNodeEx(Comp, Flags, "%s", Name.c_str());
         }
+
+        ImGui::PopClipRect();
 
         if (ImGui::IsItemClicked())
         {
