@@ -25,7 +25,6 @@ UActorComponent* FEditorComponentFactory::Register(AActor* Actor)
     return Actor->AddComponent<ComponentType>();
 }
 
-// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
 template <>
 UActorComponent* FEditorComponentFactory::Register<USubUVComponent>(AActor* Actor)
 {
@@ -36,7 +35,6 @@ UActorComponent* FEditorComponentFactory::Register<USubUVComponent>(AActor* Acto
     return Comp;
 }
 
-// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
 template <>
 UActorComponent* FEditorComponentFactory::Register<UTextRenderComponent>(AActor* Actor)
 {
@@ -46,7 +44,6 @@ UActorComponent* FEditorComponentFactory::Register<UTextRenderComponent>(AActor*
     return Comp;
 }
 
-// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
 template <>
 UActorComponent* FEditorComponentFactory::Register<UBillboardComponent>(AActor* Actor)
 {
@@ -55,7 +52,6 @@ UActorComponent* FEditorComponentFactory::Register<UBillboardComponent>(AActor* 
     return Comp;
 }
 
-// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
 template <>
 UActorComponent* FEditorComponentFactory::Register<UHeightFogComponent>(AActor* Actor)
 {

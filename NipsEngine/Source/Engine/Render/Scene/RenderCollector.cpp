@@ -189,32 +189,68 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 	ResetDecalStats();
 
 	if (!World) return;
+	
+	CollectLight(World, RenderBus, ViewFrustum);
 
-	if (ViewFrustum != nullptr)
+	if (ViewFrustum)
 	{
-		CollectWorldWithFrustum(World, *ViewFrustum, ShowFlags, ViewMode, RenderBus);
-		return;
+		VisiblePrimitiveScratch.clear();
+		World->GetSpatialIndex().FrustumQueryPrimitives(*ViewFrustum, VisiblePrimitiveScratch, FrustumQueryScratch);
+
+		for (UPrimitiveComponent* Primitive : VisiblePrimitiveScratch)
+		{
+			if (Primitive == nullptr || UsesCameraDependentRenderBounds(Primitive) || !Primitive->IsEnableCull()) continue;
+			++LastCullingStats.BVHPassedPrimitiveCount;
+			CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+		}
 	}
 
-	CollectLight(World, RenderBus);
-
+	std::unordered_set<UPrimitiveComponent*> CollectCameraDependentPrimitives;
+	if (ViewFrustum)
+	{
+		CollectCameraDependentPrimitives.reserve(32);
+	}
+	
+	// Frustum이 없다면 액터 단위로 통째로 수집하고, 그렇지 않다면 BVH에서 누락된 컴포넌트들을 개별 수집
 	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
 	{
 		AActor* Actor = *Iter;
-
 		if (!Actor || !Actor->IsVisible()) continue;
 
-		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
-		{	
-			if (Primitive != nullptr && Primitive->IsVisible())
-			{
-				++LastCullingStats.TotalVisiblePrimitiveCount;
+		if (!ViewFrustum)
+		{
+			for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+			{	
+				if (Primitive != nullptr && Primitive->IsVisible())
+				{
+					++LastCullingStats.TotalVisiblePrimitiveCount;
+				}
 			}
+			CollectFromActor(Actor, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+			continue; // early-continue
 		}
 
-		CollectFromActor(Actor, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
-	}
+		// 이미 처리된 컴포넌트, 중복된 컴포넌트는 제외하고 Frustum Culling 수행
+		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+		{
+			if (!Primitive || Primitive->IsVisible()) continue;
 
+			++LastCullingStats.TotalVisiblePrimitiveCount;
+
+			const bool bIsCameraDependent = UsesCameraDependentRenderBounds(Primitive);
+			if (!bIsCameraDependent && Primitive->IsEnableCull()) continue;
+			if (!CollectCameraDependentPrimitives.insert(Primitive).second) continue;
+
+			if (bIsCameraDependent && Primitive->IsEnableCull())
+			{
+				if (ViewFrustum->Intersects(BuildRenderAABB(Primitive, RenderBus)) == FFrustum::EFrustumIntersectResult::Outside)
+					continue;
+			}
+
+			++LastCullingStats.FallbackPassedPrimitiveCount;
+            CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+		}
+	}
 }
 
 void FRenderCollector::ResetCullingStats()
@@ -227,7 +263,8 @@ void FRenderCollector::ResetDecalStats()
 	LastDecalStats = {};
 }
 
-void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
+// 조명을 Frustum Culling을 통해 수집한다.
+void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const FFrustum* ViewFrustum)
 {
     const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
 
@@ -279,6 +316,16 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			{
 				continue;
 			}
+			
+			// View Frustum에 대한 Bounding Sphere 교차 검사
+			if (ViewFrustum)
+			{
+				FVector Center = PointLight->GetWorldLocation();
+				float Radius = PointLight->GetAttenuationRadius();
+				
+				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
+					continue;
+			}
 
 			RenderLight.Position = PointLight->GetWorldLocation();
 			RenderLight.Radius = PointLight->GetAttenuationRadius();
@@ -293,6 +340,16 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			if (SpotLight == nullptr)
 			{
 				continue;
+			}
+			
+			// View Frustum에 대한 Bounding Sphere 교차 검사
+			if (ViewFrustum)
+			{
+				FVector Center = SpotLight->GetWorldLocation();
+				float Radius = SpotLight->GetAttenuationRadius();
+
+				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
+					continue;
 			}
 
 			const float InnerAngleDegrees = MathUtil::Clamp(SpotLight->GetInnerConeAngle(), 0.0f, 89.0f);
@@ -314,69 +371,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 
 		default:
 			break;
-		}
-	}
-}
-
-void FRenderCollector::CollectWorldWithFrustum(UWorld* World, const FFrustum& ViewFrustum, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus)
-{
-	VisiblePrimitiveScratch.clear();
-	World->GetSpatialIndex().FrustumQueryPrimitives(ViewFrustum, VisiblePrimitiveScratch, FrustumQueryScratch);
-
-	for (UPrimitiveComponent* Primitive : VisiblePrimitiveScratch)
-	{
-		if (Primitive == nullptr || UsesCameraDependentRenderBounds(Primitive) || !Primitive->IsEnableCull())
-		{
-			continue;
-		}
-
-		++LastCullingStats.BVHPassedPrimitiveCount;
-		CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
-	}
-
-	std::unordered_set<UPrimitiveComponent*> CollectedCameraDependentPrimitives;
-	CollectedCameraDependentPrimitives.reserve(32);
-
-	CollectLight(World, RenderBus);
-
-	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
-	{
-		AActor* Actor = *Iter;
-		if (Actor == nullptr || !Actor->IsVisible())
-		{
-			continue;
-		}
-
-		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
-		{
-			if (Primitive == nullptr || !Primitive->IsVisible())
-			{
-				continue;
-			}
-
-			++LastCullingStats.TotalVisiblePrimitiveCount;
-
-			const bool bIsCameraDependent = UsesCameraDependentRenderBounds(Primitive);
-			const bool bIsUncullable = !Primitive->IsEnableCull();
-
-			if (!bIsCameraDependent && !bIsUncullable)
-			{
-				continue;
-			}
-
-			if (!CollectedCameraDependentPrimitives.insert(Primitive).second)
-			{
-				continue;
-			}
-
-			if (bIsCameraDependent && !bIsUncullable &&
-				ViewFrustum.Intersects(BuildRenderAABB(Primitive, RenderBus)) == FFrustum::EFrustumIntersectResult::Outside)
-			{
-				continue;
-			}
-
-			++LastCullingStats.FallbackPassedPrimitiveCount;
-			CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
 		}
 	}
 }
@@ -578,7 +572,6 @@ bool FRenderCollector::CollectFromSelectedActor(AActor* Actor, const FShowFlags&
 	}
 
     // 선택된 Light Components의 Bounding 시각화
-    // TODO: AActor::GetComponentsByClass 가 없어서 비효율?적으로 모든 컴포넌트를 순회하였음
     for (UActorComponent* Component : Actor->GetComponents())
     {
         const ULightComponent* LightComponent = Cast<ULightComponent>(Component);

@@ -145,6 +145,8 @@ std::string FPaths::ToAbsoluteString(const std::wstring &RelativePath)
 
 FString FPaths::Normalize(const FString& Path)
 {
-	std::filesystem::path Normalized(Path);
-	return Normalized.generic_string();
+    std::wstring WidePath = ToWide(Path);
+    std::filesystem::path NormalizedPath(WidePath);
+    std::wstring NormalizedWide = NormalizedPath.lexically_normal().generic_wstring();
+    return ToUtf8(NormalizedWide);
 }
