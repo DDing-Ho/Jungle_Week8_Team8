@@ -3,13 +3,14 @@
 #include "Component/BillboardComponent.h"
 #include "Render/Common/RenderTypes.h"
 #include "GameFramework/World.h"
+#include "Core/PropertyTypes.h"
 
 class ULightComponentBase : public USceneComponent
 {
 public:
     DECLARE_CLASS(ULightComponentBase, USceneComponent)
 
-    ULightComponentBase();
+    ULightComponentBase() = default;
     ~ULightComponentBase() override = default;
 
     void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;

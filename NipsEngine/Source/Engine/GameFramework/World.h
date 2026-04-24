@@ -23,9 +23,11 @@ struct FLightSlot
 
 struct FLightHandle
 {
-    uint32 Index;
+    uint32 Index = 0xFFFFFFFF;
     // Invalidate 검증용
-    uint32 Generation;
+    uint32 Generation = 0;
+
+    bool IsValid() const { return Index != 0xFFFFFFFF; }
 };
 
 class UWorld : public UObject {

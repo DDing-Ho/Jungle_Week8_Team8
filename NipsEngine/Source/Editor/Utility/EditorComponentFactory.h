@@ -5,7 +5,6 @@
 #include <functional>
 
 class UActorComponent;
-// class AActor; (Included via AActor.h)
 
 struct FComponentMenuEntry
 {

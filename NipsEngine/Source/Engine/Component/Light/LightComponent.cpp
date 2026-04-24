@@ -8,8 +8,6 @@ REGISTER_FACTORY(ULightComponentBase)
 DEFINE_CLASS(ULightComponent, ULightComponentBase)
 REGISTER_FACTORY(ULightComponent)
 
-ULightComponentBase::ULightComponentBase() = default;
-
 void ULightComponentBase::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     USceneComponent::GetEditableProperties(OutProps);
@@ -93,8 +91,9 @@ void ULightComponentBase::PostDuplicate(UObject* Original)
     LightColor = Orig->LightColor;
     Intensity = Orig->Intensity;
     bVisible = Orig->bVisible;
-    LightHandle = Orig->LightHandle;
-    VisualizationComponent = Orig->VisualizationComponent;
+
+    LightHandle = FLightHandle();
+    VisualizationComponent = nullptr;
 }
 
 ULightComponent::ULightComponent() = default;
