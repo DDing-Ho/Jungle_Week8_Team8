@@ -8,3 +8,10 @@ struct FDepthStencilResource
     TComPtr<ID3D11DepthStencilView> DSV;
     TComPtr<ID3D11ShaderResourceView> SRV;
 };
+
+struct FVSMResource
+{
+    TComPtr<ID3D11Texture2D> Texture;
+    TComPtr<ID3D11RenderTargetView> RTV;
+    TComPtr<ID3D11ShaderResourceView> SRV;
+};

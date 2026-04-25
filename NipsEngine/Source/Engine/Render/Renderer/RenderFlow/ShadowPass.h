@@ -14,8 +14,6 @@ struct FShadowConstants
     FMatrix Model;			// Primitive World 행렬
 };
 
-
-
 class FShadowPass : public FBaseRenderPass
 {
 public:
@@ -34,6 +32,7 @@ private:
     TComPtr<ID3D11Buffer> ShadowConstantBuffer;
 
     TComPtr<ID3D11VertexShader> ShadowVS;
+    TComPtr<ID3D11PixelShader> ShadowPS;
     TComPtr<ID3D11InputLayout> ShadowInputLayout;
 
 };

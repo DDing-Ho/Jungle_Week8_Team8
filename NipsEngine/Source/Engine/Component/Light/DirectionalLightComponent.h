@@ -19,6 +19,7 @@ public:
     void PostDuplicate(UObject* Original) override;
 
 	const FDepthStencilResource& GetDepthStencilResource() { return DepthStencilResource; }
+    const FVSMResource& GetVSMResource() { return VSMResource; }
 
     FString GetVisualizationTexturePath() const override { return "Asset/Texture/Icons/S_LightDirectional.PNG"; }
 
@@ -29,6 +30,7 @@ public:
 
 private:
     FDepthStencilResource DepthStencilResource;
+    FVSMResource VSMResource;
 
 	void CreateShadowResources();
     void ReleaseShadowResources();

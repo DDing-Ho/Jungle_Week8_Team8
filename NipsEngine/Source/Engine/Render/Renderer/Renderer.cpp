@@ -218,7 +218,6 @@ void FRenderer::UpdateSceneLightBuffer(const FRenderBus& InRenderBus)
         //    continue;
 
         FRenderLight GlobalLight = {};
-        GlobalLight.LightViewProj = DirLight ? DirLight->ViewProjectionMatrix : FMatrix::Identity;
         GlobalLight.Position = Light.Position;
         GlobalLight.Radius = Light.Radius;
         GlobalLight.Color = Light.Color;

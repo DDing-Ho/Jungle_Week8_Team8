@@ -65,7 +65,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 	const TArray<FLightSlot>& LightSlots = GEngine->GetWorld()->GetWorldLightSlots();
     UDirectionalLightComponent* DirLight = Cast<UDirectionalLightComponent>(LightSlots[0].LightData);
     FDepthStencilResource DSR = DirLight->GetDepthStencilResource();
-
+    FVSMResource VSMR = DirLight->GetVSMResource();
 
     for (const FRenderCommand& Cmd : Commands)
     {
@@ -103,7 +103,9 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 		CheckOverrideViewMode(Context);
 
 		ID3D11ShaderResourceView* srv = DSR.SRV.Get();
+        ID3D11ShaderResourceView* VSMsrv = VSMR.SRV.Get();
         Context->DeviceContext->PSSetShaderResources(11, 1, &srv);
+        Context->DeviceContext->PSSetShaderResources(12, 1, &VSMsrv);
 
         Context->DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 

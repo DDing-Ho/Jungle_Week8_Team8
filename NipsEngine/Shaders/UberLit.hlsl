@@ -1,5 +1,4 @@
 #include "UberSurface.hlsli"
-#include "ShadowDepth.hlsl"
 
 #if !defined(MATERIAL_DOMAIN_DECAL) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_TOON)
 #define LIGHTING_MODEL_PHONG 1
@@ -26,8 +25,6 @@ struct FGPULight
 
     float3 Direction;
     float Padding0;
-    
-    row_major float4x4 ShadowLightViewProj;
 };
 
 StructuredBuffer<FGPULight> GlobalLights : register(t3);
@@ -61,6 +58,7 @@ StructuredBuffer<FVisibleLightData> VisibleLights : register(t8);
 StructuredBuffer<uint> TileVisibleLightCount : register(t9);
 StructuredBuffer<uint> TileVisibleLightIndices : register(t10);
 Texture2D ShadowMap : register(t11);
+Texture2D<float2> ShadowMapVSM : register(t12); // d, d^2
 
 static const uint LIGHT_TYPE_DIRECTIONAL = 0u;
 static const uint LIGHT_TYPE_POINT = 1u;
@@ -141,6 +139,39 @@ float SampleShadowPoissonDisk(float4 worldPos)
     }
 
     return shadow / 16.0f;
+}
+
+float SampleShadowVSM(float4 worldPos)
+{
+    float4 lightSpacePos = mul(worldPos, VisibleLights[0].ShadowLightViewProj);
+    lightSpacePos.xyz /= lightSpacePos.w;
+
+    float2 uv = float2(lightSpacePos.x * 0.5f + 0.5f, -lightSpacePos.y * 0.5f + 0.5f);
+    float currentDepth = lightSpacePos.z - 0.001f; // Bias 적용
+
+    uint width, height;
+    ShadowMapVSM.GetDimensions(width, height);
+    float2 texelSize = 1.0f / float2(width, height); // 섀도우 맵의 해상도 역수
+    
+    float2 Moments = ShadowMapVSM.SampleLevel(SampleState, uv, 0).xy;
+    float d = Moments.x;    // depth
+    float dSq = Moments.y;  // depth^2
+
+    if (currentDepth <= d)
+        return 1.0f;
+    
+    // VSM 공식: 페비쇼프의 부등식
+    float variance = dSq - (d * d); // 분산
+    float epsilon = 0.00002f;
+    variance = max(variance, epsilon);
+    
+    float probability = variance / (variance + (currentDepth - d) * (currentDepth - d));
+    float lerpFactor = 0.3f;
+    probability = smoothstep(lerpFactor, 1.0f, probability);
+    
+    float shadow = probability;
+
+    return shadow;
 }
 
 float ComputeDistanceAttenuation(float Distance, float Radius, float FalloffExponent)
@@ -280,8 +311,6 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
 
         if (Light.Type == LIGHT_TYPE_DIRECTIONAL)
         {
-            //float ShadowFactor = SampleShadow(float4(WorldPos, 1.0f), LightViewProj);
-
             AccumulateDirectLight(WorldPos, N, V, normalize(Light.Direction), LightColor, Result);
         }
     }
@@ -470,9 +499,9 @@ FUberPSOutput mainPS(FUberPSInput Input)
     float ShadowFactor;
     float ShadowFactorPCF = SampleShadow(float4(Surface.WorldPos, 1.0f));
     float ShadowFactorPoisson = SampleShadowPoissonDisk(float4(Surface.WorldPos, 1.0f));
+    float ShadowFactorVSM = SampleShadowVSM(float4(Surface.WorldPos, 1.0f));
     
-    ShadowFactor = ShadowFactorPoisson;
-    //return ComposeOutput(Surface, float3(ShadowFactor, ShadowFactor, ShadowFactor));
+    ShadowFactor = ShadowFactorVSM;
 
 #if defined(LIGHTING_MODEL_GOURAUD)
     Lighting.Diffuse = Input.VertexDiffuseLighting;

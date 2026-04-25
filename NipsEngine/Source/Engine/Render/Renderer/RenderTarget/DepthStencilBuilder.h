@@ -18,3 +18,26 @@ public:
     FDepthStencilBuilder& WithSRV();
     FDepthStencilResource Build(ID3D11Device* Device);
 };
+
+class FVSMBuilder
+{
+public:
+    FVSMBuilder& SetSize(uint32 InWidth, uint32 InHeight)
+    {
+        Width = InWidth;
+        Height = InHeight;
+        return *this;
+    }
+
+    FVSMBuilder& WithBlur()
+    {
+        bCreateBlur = true;
+        return *this;
+    }
+
+    FVSMResource Build(ID3D11Device* Device);
+
+private:
+    uint32 Width = 0, Height = 0;
+    bool bCreateBlur = false;
+};

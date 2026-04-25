@@ -261,7 +261,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus)
 			FVector DirectionToLight = (LightComponent->GetForwardVector() * -1.0f);
 			DirectionToLight.Normalize();
 			RenderLight.Direction = DirectionToLight;
-            RenderLight.LightViewProj = DirectionalLight->ViewProjectionMatrix;
 			RenderBus.AddLight(RenderLight);
 
 			// TODO: PIE에서도 화살표를 보여주고 있음.. PIE 월드를 감지할 필요가 있다.

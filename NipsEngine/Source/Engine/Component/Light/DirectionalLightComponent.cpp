@@ -57,8 +57,11 @@ void UDirectionalLightComponent::CreateShadowResources()
     uint32 Width = static_cast<uint32>(GEngine->GetRenderer().GetFD3DDevice().GetViewportWidth());
     uint32 Height = static_cast<uint32>(GEngine->GetRenderer().GetFD3DDevice().GetViewportHeight());
     Builder.SetSize(Width, Height).WithSRV();
-
     DepthStencilResource = Builder.Build(Device);
+
+	FVSMBuilder VSMBuilder;
+	VSMBuilder.SetSize(Width, Height).WithBlur();
+    VSMResource = VSMBuilder.Build(Device);
 }
 
 void UDirectionalLightComponent::ReleaseShadowResources()
@@ -66,5 +69,9 @@ void UDirectionalLightComponent::ReleaseShadowResources()
     DepthStencilResource.SRV.Reset();
     DepthStencilResource.DSV.Reset();
     DepthStencilResource.Texture.Reset();
+
+    VSMResource.SRV.Reset();
+    VSMResource.RTV.Reset();
+    VSMResource.Texture.Reset();
 }
 

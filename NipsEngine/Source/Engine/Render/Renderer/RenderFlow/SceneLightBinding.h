@@ -83,8 +83,8 @@ namespace SceneLightBinding
 			return;
 		}
 
-		ID3D11ShaderResourceView* NullSRVs[3] = { nullptr, nullptr, nullptr };
-		DeviceContext->PSSetShaderResources(8, 3, NullSRVs);
+		ID3D11ShaderResourceView* NullSRVs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+		DeviceContext->PSSetShaderResources(8, 5, NullSRVs);
 
 		ID3D11Buffer* NullCB = nullptr;
 		DeviceContext->PSSetConstantBuffers(4, 1, &NullCB);

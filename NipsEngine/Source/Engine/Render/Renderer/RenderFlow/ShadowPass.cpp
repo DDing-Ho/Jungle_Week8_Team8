@@ -49,6 +49,33 @@ bool FShadowPass::Initialize()
     if (FAILED(HR))
         return false;
 
+	// ── Pixel Shader 생성 ───────────────────────────────
+    // ShadowDepth.hlsl 컴파일
+    TComPtr<ID3DBlob> PSBlob;
+    HR = D3DCompileFromFile(
+        L"Shaders/ShadowDepth.hlsl", // 경로는 프로젝트에 맞게 수정
+        nullptr,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        "PS", "ps_5_0",
+        D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+        0,
+        PSBlob.GetAddressOf(),
+        ErrorBlob.GetAddressOf());
+    if (FAILED(HR))
+    {
+        if (ErrorBlob)
+            OutputDebugStringA((char*)ErrorBlob->GetBufferPointer());
+        return false;
+    }
+
+    HR = Device->CreatePixelShader(
+        PSBlob->GetBufferPointer(),
+        PSBlob->GetBufferSize(),
+        nullptr,
+        ShadowPS.GetAddressOf());
+    if (FAILED(HR))
+        return false;
+
     // ── Input Layout 생성 (Position만) ───────────────────
     D3D11_INPUT_ELEMENT_DESC LayoutDesc[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
@@ -95,10 +122,14 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 
         UDirectionalLightComponent* DirLight = Cast<UDirectionalLightComponent>(LightSlot.LightData);
         FDepthStencilResource DSR = DirLight->GetDepthStencilResource();
+        FVSMResource VSMR = DirLight->GetVSMResource();
 
-		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-        Context->DeviceContext->PSSetShaderResources(11, 1, nullSRV);
-		Context->DeviceContext->OMSetRenderTargets(0, nullptr, DSR.DSV.Get());
+		assert(VSMR.RTV.Get() != nullptr);
+        assert(VSMR.SRV.Get() != nullptr);
+
+		ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+        Context->DeviceContext->PSSetShaderResources(11, 2, nullSRVs);
+        Context->DeviceContext->OMSetRenderTargets(1, VSMR.RTV.GetAddressOf(), DSR.DSV.Get());
 
         Context->DeviceContext->ClearDepthStencilView(
             DSR.DSV.Get(),
@@ -106,11 +137,14 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             1.0f, 0
 		);
 
+		float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Context->DeviceContext->ClearRenderTargetView(VSMR.RTV.Get(), ClearColor);
+
 		FMatrix LightViewProj = GetDirectionalLightViewProj(DirLight);
         DirLight->ViewProjectionMatrix = LightViewProj;
 
 		Context->DeviceContext->VSSetShader(ShadowVS.Get(), nullptr, 0);
-        Context->DeviceContext->PSSetShader(nullptr, nullptr, 0);
+        Context->DeviceContext->PSSetShader(ShadowPS.Get(), nullptr, 0);
 
         // Light면 모든 Primitive에 대하여 Model -> World -> Light 변환 후 ShadowMap 생성
 		for (const FRenderCommand& Cmd : Commands)
@@ -169,6 +203,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 bool FShadowPass::End(const FRenderPassContext* Context)
 {
     Context->DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+
 	return true;
 }
 

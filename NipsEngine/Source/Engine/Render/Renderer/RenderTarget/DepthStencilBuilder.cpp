@@ -63,3 +63,36 @@ FDepthStencilResource FDepthStencilBuilder::Build(ID3D11Device* Device)
 
 	return DSR;
 }
+
+FVSMResource FVSMBuilder::Build(ID3D11Device* Device)
+{
+    FVSMResource VSM;
+
+    // VSM 메인 텍스처 (RG32F)
+    D3D11_TEXTURE2D_DESC Desc = {};
+    Desc.Width = Width;
+    Desc.Height = Height;
+    Desc.MipLevels = 1;
+    Desc.ArraySize = 1;
+    Desc.Format = DXGI_FORMAT_R32G32_FLOAT; // R=depth G=depth²
+    Desc.SampleDesc.Count = 1;
+    Desc.Usage = D3D11_USAGE_DEFAULT;
+    Desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    Device->CreateTexture2D(&Desc, nullptr, &VSM.Texture);
+
+    D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+    RTVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    RTVDesc.Texture2D.MipSlice = 0;
+    Device->CreateRenderTargetView(VSM.Texture.Get(), &RTVDesc, &VSM.RTV);
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+    SRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    SRVDesc.Texture2D.MostDetailedMip = 0;
+    SRVDesc.Texture2D.MipLevels = 1;
+    Device->CreateShaderResourceView(VSM.Texture.Get(), &SRVDesc, &VSM.SRV);
+
+    return VSM;
+}
