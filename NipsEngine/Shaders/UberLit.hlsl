@@ -79,12 +79,68 @@ float SampleShadow(float4 worldPos)
     float4 lightSpacePos = mul(worldPos, VisibleLights[0].ShadowLightViewProj);
     lightSpacePos.xyz /= lightSpacePos.w;
 
-    float2 uv;
-    uv.x = lightSpacePos.x * 0.5f + 0.5f;
-    uv.y = -lightSpacePos.y * 0.5f + 0.5f;
+    float2 uv = float2(lightSpacePos.x * 0.5f + 0.5f, -lightSpacePos.y * 0.5f + 0.5f);
+    float currentDepth = lightSpacePos.z - 0.001f; // Bias 적용
 
-    float depth = lightSpacePos.z;
-    return ShadowMap.SampleCmpLevelZero(ShadowSampler, uv, depth - 0.001f);
+    uint width, height;
+    ShadowMap.GetDimensions(width, height);
+    float2 texelSize = 1.0f / float2(width, height); // 섀도우 맵의 해상도 역수
+    
+    float shadow = 0.0f;
+
+    // 3x3 주변 텍셀을 샘플링하여 평균 계산
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            float2 offset = float2(x, y) * texelSize;
+            shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, uv + offset, currentDepth);
+        }
+    }
+
+    return shadow / 9.0f;
+}
+
+float SampleShadowPoissonDisk(float4 worldPos)
+{
+    float4 lightSpacePos = mul(worldPos, VisibleLights[0].ShadowLightViewProj);
+    lightSpacePos.xyz /= lightSpacePos.w;
+
+    float2 uv = float2(lightSpacePos.x * 0.5f + 0.5f, -lightSpacePos.y * 0.5f + 0.5f);
+    float currentDepth = lightSpacePos.z - 0.001f; // Bias 적용
+
+    uint width, height;
+    ShadowMap.GetDimensions(width, height);
+    float2 texelSize = 1.0f / float2(width, height); // 섀도우 맵의 해상도 역수
+    
+    float shadow = 0.0f;
+    float spread = 3.5f;
+    
+    // Poisson Disk Distribution에 의한 16개의 샘플 오프셋
+    const float2 poissonDisk[16] =
+    {
+        float2(-0.94201624, -0.39906216),  float2(0.94558609, -0.76890725),
+        float2(-0.094184101, -0.92938870), float2(0.34495938, 0.29387760),
+        float2(-0.91588581, 0.45771432),   float2(-0.81544232, -0.87912464),
+        float2(-0.38440307, 0.95628987),   float2(0.20334582, -0.66986957),
+        float2(0.11558417, 0.82333505),    float2(0.18510671, 0.47451193),
+        float2(-0.71677703, 0.13222270),   float2(-0.23241232, -0.01105474),
+        float2(0.47545300, 0.79539304),    float2(0.51189273, -0.24621427),
+        float2(0.67251712, 0.42839893),    float2(0.70830405, -0.82433983)
+    };
+    
+    // Random Rotation: 각 픽셀마다 다른 패턴이 되도록 샘플링 데이터 회전
+    // 화이트 노이즈 생성
+    float angle = frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453) * 6.283185;
+    float2x2 rotationMatrix = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    
+    for (int i = 0; i < 16; ++i)
+    {
+        float2 offset = mul(poissonDisk[i], rotationMatrix) * texelSize * spread;
+        shadow += ShadowMap.SampleCmpLevelZero(ShadowSampler, uv + offset, currentDepth);
+    }
+
+    return shadow / 16.0f;
 }
 
 float ComputeDistanceAttenuation(float Distance, float Radius, float FalloffExponent)
@@ -411,7 +467,11 @@ FUberPSOutput mainPS(FUberPSInput Input)
 
     FLightingResult Lighting;
     
-    float ShadowFactor = SampleShadow(float4(Surface.WorldPos, 1.0f));
+    float ShadowFactor;
+    float ShadowFactorPCF = SampleShadow(float4(Surface.WorldPos, 1.0f));
+    float ShadowFactorPoisson = SampleShadowPoissonDisk(float4(Surface.WorldPos, 1.0f));
+    
+    ShadowFactor = ShadowFactorPoisson;
     //return ComposeOutput(Surface, float3(ShadowFactor, ShadowFactor, ShadowFactor));
 
 #if defined(LIGHTING_MODEL_GOURAUD)
