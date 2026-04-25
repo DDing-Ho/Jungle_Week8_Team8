@@ -185,25 +185,12 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
         0.5f - ShadowNDC.y * 0.5f);
 
     const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-    const int2 BaseTexel = clamp((int2)floor(ShadowUV * (float)Resolution), int2(0, 0), MaxTexel);
+    const int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)Resolution), int2(0, 0), MaxTexel);
     const float CurrentDepth = ShadowNDC.z;
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
+    const float StoredDepth = SpotShadowMap.Load(int4(ShadowTexel.x, ShadowTexel.y, (int)ShadowSlice, 0));
 
-    float Visibility = 0.0f;
-
-    [unroll]
-    for (int Y = -1; Y <= 1; ++Y)
-    {
-        [unroll]
-        for (int X = -1; X <= 1; ++X)
-        {
-            const int2 SampleTexel = clamp(BaseTexel + int2(X, Y), int2(0, 0), MaxTexel);
-            const float StoredDepth = SpotShadowMap.Load(int4(SampleTexel.x, SampleTexel.y, (int)ShadowSlice, 0));
-            Visibility += (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
-        }
-    }
-
-    return Visibility / 9.0f;
+    return (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
 }
 
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)
