@@ -189,6 +189,16 @@ void AActor::RemoveComponent(UActorComponent* Component)
     UObjectManager::Get().DestroyObject(Component);
 }
 
+// 자식 목록을 복사해 두고, 컴포넌트를 재귀적으로 삭제합니다.
+void AActor::RemoveComponentWithChildren(USceneComponent* Comp)
+{
+    if (!Comp) return;
+    TArray<USceneComponent*> Children = Comp->GetChildren();
+    for (USceneComponent* Child : Children)
+        RemoveComponentWithChildren(Child);
+    RemoveComponent(Comp);
+}
+
 void AActor::SetVisible(bool Visible)
 {
     if (bVisible == Visible)

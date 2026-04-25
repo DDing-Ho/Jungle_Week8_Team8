@@ -6,6 +6,8 @@ class UAmbientLightComponent : public ULightComponent
 public:
     DECLARE_CLASS(UAmbientLightComponent, ULightComponent)
 
+    static constexpr const char* BillboardTexturePath = "Asset/Texture/Icons/SkyLight.PNG";
+
     UAmbientLightComponent();
     ~UAmbientLightComponent() override = default;
 

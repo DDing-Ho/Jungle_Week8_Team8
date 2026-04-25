@@ -12,7 +12,7 @@ void ULightComponentBase::GetEditableProperties(TArray<FPropertyDescriptor>& Out
     OutProps.push_back({ "LightColor", EPropertyType::Color, &LightColor });
     OutProps.push_back({ "Intensity", EPropertyType::Float, &Intensity, 0.0f, 20.0f, 0.1f });
     OutProps.push_back({ "Visible", EPropertyType::Bool, &bVisible });
-	OutProps.push_back({ "Cast Shadows", EPropertyType::Bool, &bCastShadows });
+    OutProps.push_back({ "Cast Shadows", EPropertyType::Bool, &bCastShadows });
 }
 
 void ULightComponentBase::PostEditProperty(const char* PropertyName)
@@ -27,7 +27,7 @@ void ULightComponentBase::Serialize(FArchive& Ar)
     Ar << "LightColor" << LightColor;
     Ar << "Intensity" << Intensity;
     Ar << "Visible" << bVisible;
-	Ar << "CastShadows" << bCastShadows;
+    Ar << "CastShadows" << bCastShadows;
 }
 
 void ULightComponentBase::BeginPlay()
@@ -42,19 +42,31 @@ void ULightComponentBase::EndPlay()
 
 void ULightComponentBase::OnRegister()
 {
-    if (!Owner) { return; }
+    if (!Owner)
+    {
+        return;
+    }
     UWorld* World = Owner->GetFocusedWorld();
 
-    if (!World) { return; }
+    if (!World)
+    {
+        return;
+    }
     World->RegisterLight(this);
 }
 
 void ULightComponentBase::OnUnregister()
 {
-    if (!Owner) { return; }
+    if (!Owner)
+    {
+        return;
+    }
     UWorld* World = Owner->GetFocusedWorld();
 
-    if (!World) { return; }
+    if (!World)
+    {
+        return;
+    }
     World->UnregisterLight(this);
 }
 
@@ -82,12 +94,12 @@ void ULightComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
 {
     ULightComponentBase::GetEditableProperties(OutProps);
 
-	OutProps.push_back({ "Shadow Resolution Scale", EPropertyType::Float, &ShadowResolutionScale, 0.125f, 4.0f, 0.125f });
+    OutProps.push_back({ "Shadow Resolution Scale", EPropertyType::Float, &ShadowResolutionScale, 0.125f, 4.0f, 0.125f });
     OutProps.push_back({ "Shadow Bias", EPropertyType::Float, &ShadowBias, 0.0f, 1.0f, 0.001f });
     OutProps.push_back({ "Shadow Slope Bias", EPropertyType::Float, &ShadowSlopeBias, 0.0f, 5.0f, 0.01f });
     OutProps.push_back({ "Shadow Sharpen", EPropertyType::Float, &ShadowSharpen, 0.0f, 1.0f, 0.05f });
 
-	// 참고: LightType은 사용자가 수정하지 못하도록 UI 노출에서 제외합니다.
+    // 참고: LightType은 사용자가 수정하지 못하도록 UI 노출에서 제외합니다.
 }
 
 void ULightComponent::Serialize(FArchive& Ar)
@@ -98,10 +110,10 @@ void ULightComponent::Serialize(FArchive& Ar)
     Ar << "LightType" << LightTypeValue;
     LightType = static_cast<ELightType>(LightTypeValue); // 불러올 때만 사용되는 코드
 
-	Ar << "ShadowResolutionScale" << ShadowResolutionScale;
-	Ar << "ShadowBias" << ShadowBias;
-	Ar << "ShadowSlopeBias" << ShadowSlopeBias;
-	Ar << "ShadowSharpen" << ShadowSharpen;
+    Ar << "ShadowResolutionScale" << ShadowResolutionScale;
+    Ar << "ShadowBias" << ShadowBias;
+    Ar << "ShadowSlopeBias" << ShadowSlopeBias;
+    Ar << "ShadowSharpen" << ShadowSharpen;
 }
 
 void ULightComponent::PostDuplicate(UObject* Original)
@@ -109,8 +121,7 @@ void ULightComponent::PostDuplicate(UObject* Original)
     ULightComponentBase::PostDuplicate(Original);
 
     const ULightComponent* Orig = Cast<ULightComponent>(Original);
-    if (!Orig)
-        return;
+    if (!Orig) { return; }
 
     LightType = Orig->LightType;
 }

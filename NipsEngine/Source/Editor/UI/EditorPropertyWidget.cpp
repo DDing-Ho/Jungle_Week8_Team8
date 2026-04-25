@@ -11,6 +11,7 @@
 
 #include "Editor/Utility/EditorComponentFactory.h"
 
+#include "GameFramework/AActor.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
@@ -236,7 +237,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
     // Non-scene ActorComponents 및 MovementComponent들 하단 출력
     for (UActorComponent* Comp : Actor->GetComponents())
     {
-        if (!Comp || Comp->IsA<USceneComponent>()) { continue; }
+        if (!Comp || Comp->IsA<USceneComponent>() || Comp->IsHiddenInEditor()) { continue; }
 
         ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         if (!bActorSelected && SelectedComponent == Comp)
@@ -271,13 +272,10 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
             bActorSelected = false;
         }
 
-        if (Comp != Actor->GetRootComponent())
-        {
-            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);
-            char XId[64];
-            EditorUIUtils::MakeXButtonId(XId, sizeof(XId), Comp);
-            if (EditorUIUtils::DrawXButton(XId)) ComponentToDelete = Comp;
-        }
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);
+        char XId[64];
+        EditorUIUtils::MakeXButtonId(XId, sizeof(XId), Comp);
+        if (EditorUIUtils::DrawXButton(XId)) ComponentToDelete = Comp;
     }
 
     ImGui::EndChild();
@@ -285,27 +283,46 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
     // 삭제 처리는 렌더링 루프 바깥(Child Window 종료 후)에서 안전하게 수행
     if (ComponentToDelete)
     {
-        if (SelectedComponent == ComponentToDelete)
+        // SelectedComponent가 삭제 대상이거나 그 자손이면 선택 해제
+        auto IsAncestorOf = [](USceneComponent* Ancestor, UActorComponent* MaybeDescendant) -> bool
+        {
+            auto* SceneDesc = Cast<USceneComponent>(MaybeDescendant);
+            for (USceneComponent* P = SceneDesc ? SceneDesc->GetParent() : nullptr; P; P = P->GetParent())
+                if (P == Ancestor) return true;
+            return false;
+        };
+
+        if (SelectedComponent == ComponentToDelete ||
+            IsAncestorOf(Cast<USceneComponent>(ComponentToDelete), SelectedComponent))
         {
             SelectedComponent = nullptr;
             bActorSelected = true;
         }
-        Actor->RemoveComponent(ComponentToDelete);
+
+        if (auto* SceneComp = Cast<USceneComponent>(ComponentToDelete))
+            Actor->RemoveComponentWithChildren(SceneComp);
+        else
+            Actor->RemoveComponent(ComponentToDelete);
     }
 }
 
 // 씬 컴포넌트의 계층 구조를 재귀적으로 그리며 드래그 앤 드롭 이동을 지원합니다.
 void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneComponent* Comp, UActorComponent*& OutCompToDelete)
 {
-    if (!Comp) return;
+    if (!Comp || Comp->IsHiddenInEditor()) return;
 
     // 노드 이름 설정
     FString Name = Comp->GetFName().ToString();
     if (Name.empty()) Name = Comp->GetTypeInfo()->name;
 
+    // 숨김 처리된 자식은 제외하고 표시할 자식이 있는지 확인
+    bool bHasVisibleChildren = false;
+    for (USceneComponent* Child : Comp->GetChildren())
+        if (!Child->IsHiddenInEditor()) { bHasVisibleChildren = true; break; }
+
     // 노드 이름, 자식 존재 여부에 따라 Tree Flag 설정
     ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen;
-    if (Comp->GetChildren().empty()) Flags |= ImGuiTreeNodeFlags_Leaf;
+    if (!bHasVisibleChildren) Flags |= ImGuiTreeNodeFlags_Leaf;
     if (!bActorSelected && SelectedComponent == Comp) Flags |= ImGuiTreeNodeFlags_Selected;
 
     // 트리 노드 출력
@@ -364,23 +381,13 @@ void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneCompon
         ImGui::TreePop();
     }
 
-    // 삭제 버튼 렌더링 (루트 노드나 MovementComponent가 참조 중인 경우엔 skip)
+    // 루트를 제외한 모든 컴포넌트에 삭제 버튼 표시
     if (!bIsRoot)
     {
-        auto IsReferenced = [&]() {
-            for (UActorComponent* ActorComp : Actor->GetComponents())
-                if (auto* MoveComp = Cast<UMovementComponent>(ActorComp))
-                    if (MoveComp->GetUpdatedComponent() == Comp) return true;
-            return false;
-        };
-
-        if (!IsReferenced())
-        {
-            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);
-            char XId[64];
-            EditorUIUtils::MakeXButtonId(XId, sizeof(XId), Comp);
-            if (EditorUIUtils::DrawXButton(XId)) OutCompToDelete = Comp;
-        }
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);
+        char XId[64];
+        EditorUIUtils::MakeXButtonId(XId, sizeof(XId), Comp);
+        if (EditorUIUtils::DrawXButton(XId)) OutCompToDelete = Comp;
     }
 }
 

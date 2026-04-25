@@ -52,6 +52,7 @@ public:
 	// FTypeInfo 기반 런타임 컴포넌트 생성
 	UActorComponent* AddComponentByClass(const FTypeInfo* Class);
 	void RemoveComponent(UActorComponent* Component);
+	void RemoveComponentWithChildren(USceneComponent* Comp);
 	void RegisterComponent(UActorComponent* Comp);
 
 	void SetRootComponent(USceneComponent* Comp);

@@ -6,6 +6,8 @@ class USpotLightComponent : public UPointLightComponent
 public:
     DECLARE_CLASS(USpotLightComponent, UPointLightComponent)
 
+    static constexpr const char* BillboardTexturePath = "Asset/Texture/Icons/S_LightSpot.PNG";
+
     USpotLightComponent();
     ~USpotLightComponent() override = default;
 

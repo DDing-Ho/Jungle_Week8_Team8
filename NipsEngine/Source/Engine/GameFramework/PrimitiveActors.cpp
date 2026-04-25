@@ -60,6 +60,7 @@ void ASceneActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(SceneRoot);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/EmptyActor.PNG");
 }
 
@@ -114,6 +115,7 @@ void ADirectionalLightActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(DirLight);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightDirectional.PNG");
 }
 
@@ -125,6 +127,7 @@ void AAmbientLightActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(AmbientLight);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/SkyLight.PNG");
 }
 
@@ -136,6 +139,7 @@ void APointLightActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(PointLight);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightPoint.PNG");
 }
 
@@ -147,6 +151,7 @@ void ASpotLightActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(SpotLight);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightSpot.PNG");
 }
 
@@ -158,6 +163,7 @@ void ASkyAtmosphereActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(SkyAtmosphere);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/SkyLight.PNG");
 }
 
@@ -169,5 +175,6 @@ void AHeightFogActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(HeightFog);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/S_ExpoHeightFog.PNG");
 }

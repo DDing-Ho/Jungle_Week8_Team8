@@ -57,11 +57,13 @@ void UActorComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
     // OutProps.push_back({"Auto Activate", EPropertyType::Bool, &bAutoActivate});
     OutProps.push_back({"Enable Tick", EPropertyType::Bool, &bCanEverTick});
     OutProps.push_back({"Editor Only", EPropertyType::Bool, &bIsEditorOnly});
+	// Hidden In Editor 값은 프로퍼티 창에 노출하지 않음
 }
 
 void UActorComponent::Serialize(FArchive& Ar)
 {
 	UObject::Serialize(Ar);
-	Ar << "Enable Tick" << bCanEverTick;
-	Ar << "Editor Only" << bIsEditorOnly;
+	Ar << "EnableTick" << bCanEverTick;
+	Ar << "EditorOnly" << bIsEditorOnly;
+	Ar << "HiddenInEditor" << bHiddenInEditor;
 }

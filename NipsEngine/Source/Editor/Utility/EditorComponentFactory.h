@@ -17,7 +17,10 @@ struct FComponentMenuEntry
 struct FEditorComponentFactory
 {
     template<typename ComponentType>
-    static UActorComponent* Register(AActor* Actor);
+    static UActorComponent* RegisterComp(AActor* Actor);
+
+    template<typename LightType>
+    static UActorComponent* RegisterLightComp(AActor* Actor);
 
     static const TArray<FComponentMenuEntry>& GetMenuRegistry();
 };

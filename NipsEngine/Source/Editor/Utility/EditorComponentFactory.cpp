@@ -20,13 +20,26 @@
 
 // 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
 template<typename ComponentType>
-UActorComponent* FEditorComponentFactory::Register(AActor* Actor)
+UActorComponent* FEditorComponentFactory::RegisterComp(AActor* Actor)
 {
     return Actor->AddComponent<ComponentType>();
 }
 
 template <>
-UActorComponent* FEditorComponentFactory::Register<USubUVComponent>(AActor* Actor)
+UActorComponent* FEditorComponentFactory::RegisterComp<USceneComponent>(AActor* Actor)
+{
+    auto* Comp = Actor->AddComponent<USceneComponent>();
+
+	UBillboardComponent* Billboard = Actor->AddComponent<UBillboardComponent>();
+	Billboard->AttachToComponent(Comp);
+	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
+	Billboard->SetTexturePath("Asset/Texture/Icons/EmptyActor.PNG");
+    return Comp;
+}
+
+template <>
+UActorComponent* FEditorComponentFactory::RegisterComp<USubUVComponent>(AActor* Actor)
 {
     auto* Comp = Actor->AddComponent<USubUVComponent>();
     Comp->SetParticle(FName("Explosion"));
@@ -36,7 +49,7 @@ UActorComponent* FEditorComponentFactory::Register<USubUVComponent>(AActor* Acto
 }
 
 template <>
-UActorComponent* FEditorComponentFactory::Register<UTextRenderComponent>(AActor* Actor)
+UActorComponent* FEditorComponentFactory::RegisterComp<UTextRenderComponent>(AActor* Actor)
 {
     auto* Comp = Actor->AddComponent<UTextRenderComponent>();
     Comp->SetFont(FName("Default"));
@@ -45,7 +58,7 @@ UActorComponent* FEditorComponentFactory::Register<UTextRenderComponent>(AActor*
 }
 
 template <>
-UActorComponent* FEditorComponentFactory::Register<UBillboardComponent>(AActor* Actor)
+UActorComponent* FEditorComponentFactory::RegisterComp<UBillboardComponent>(AActor* Actor)
 {
     auto* Comp = Actor->AddComponent<UBillboardComponent>();
     Comp->SetTexturePath("Asset/Texture/Pawn_64x.png");
@@ -53,11 +66,30 @@ UActorComponent* FEditorComponentFactory::Register<UBillboardComponent>(AActor* 
 }
 
 template <>
-UActorComponent* FEditorComponentFactory::Register<UHeightFogComponent>(AActor* Actor)
+UActorComponent* FEditorComponentFactory::RegisterComp<UHeightFogComponent>(AActor* Actor)
 {
     auto* Comp = Actor->AddComponent<UHeightFogComponent>();
     Comp->SetFogDensity(0);
     Comp->SetFogInscatteringColor(FVector4(0.72f, 0.8f, 0.9f, 1.0f));
+	
+	UBillboardComponent* Billboard = Actor->AddComponent<UBillboardComponent>();
+	Billboard->AttachToComponent(Comp);
+	Billboard->SetEditorOnly(true);
+	Billboard->SetTexturePath("Asset/Texture/Icons/S_ExpoHeightFog.PNG");
+    return Comp;
+}
+
+// UWorld의 RegisterL
+template <typename LightType>
+UActorComponent* FEditorComponentFactory::RegisterLightComp(AActor* Actor)
+{
+    auto* Comp = Actor->AddComponent<LightType>();
+
+    auto* Billboard = Actor->AddComponent<UBillboardComponent>();
+    Billboard->AttachToComponent(Comp);
+    Billboard->SetEditorOnly(true);
+    Billboard->SetHiddenInEditor(true);
+    Billboard->SetTexturePath(LightType::BillboardTexturePath);
     return Comp;
 }
 
@@ -65,23 +97,23 @@ UActorComponent* FEditorComponentFactory::Register<UHeightFogComponent>(AActor* 
 const TArray<FComponentMenuEntry>& FEditorComponentFactory::GetMenuRegistry()
 {
     static const TArray<FComponentMenuEntry> Registry = {
-        { "Scene Component", "Common", Register<USceneComponent> },
-        { "StaticMesh Component", "Common", Register<UStaticMeshComponent> },
-        { "SubUV Component", "Common", Register<USubUVComponent> },
-        { "TextRender Component", "Common", Register<UTextRenderComponent> },
-        { "Billboard Component", "Common", Register<UBillboardComponent> },
-        { "HeightFog Component", "Common", Register<UHeightFogComponent> },
-        { "SkyAtmosphere Component", "Common", Register<USkyAtmosphereComponent> },
+        { "Scene Component", "Common", RegisterComp<USceneComponent> },
+        { "StaticMesh Component", "Common", RegisterComp<UStaticMeshComponent> },
+        { "SubUV Component", "Common", RegisterComp<USubUVComponent> },
+        { "TextRender Component", "Common", RegisterComp<UTextRenderComponent> },
+        { "Billboard Component", "Common", RegisterComp<UBillboardComponent> },
+        { "HeightFog Component", "Common", RegisterComp<UHeightFogComponent> },
+        { "SkyAtmosphere Component", "Common", RegisterComp<USkyAtmosphereComponent> },
 
-        { "RotatingMovement Component", "Movement", Register<URotatingMovementComponent> },
-        { "InterpToMovement Component", "Movement", Register<UInterpToMovementComponent> },
-        { "PursuitMovement Component", "Movement", Register<UPursuitMovementComponent> },
-        { "ProjectileMovement Component", "Movement", Register<UProjectileMovementComponent> },
+        { "RotatingMovement Component", "Movement", RegisterComp<URotatingMovementComponent> },
+        { "InterpToMovement Component", "Movement", RegisterComp<UInterpToMovementComponent> },
+        { "PursuitMovement Component", "Movement", RegisterComp<UPursuitMovementComponent> },
+        { "ProjectileMovement Component", "Movement", RegisterComp<UProjectileMovementComponent> },
 
-        { "AmbientLight Component", "Light", Register<UAmbientLightComponent> },
-        { "DirectionalLight Component", "Light", Register<UDirectionalLightComponent> },
-        { "PointLight Component", "Light", Register<UPointLightComponent> },
-        { "SpotLight Component", "Light", Register<USpotLightComponent> },
+        { "AmbientLight Component", "Light", RegisterLightComp<UAmbientLightComponent> },
+        { "DirectionalLight Component", "Light", RegisterLightComp<UDirectionalLightComponent> },
+        { "PointLight Component", "Light", RegisterLightComp<UPointLightComponent> },
+        { "SpotLight Component", "Light", RegisterLightComp<USpotLightComponent> },
     };
 
     return Registry;

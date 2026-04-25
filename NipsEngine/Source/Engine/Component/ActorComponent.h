@@ -45,6 +45,9 @@ public:
 	void SetEditorOnly(bool bInEditorOnly) { bIsEditorOnly = bInEditorOnly; }
 	bool IsEditorOnly() const { return bIsEditorOnly; }
 
+	void SetHiddenInEditor(bool bInHidden) { bHiddenInEditor = bInHidden; }
+	bool IsHiddenInEditor() const { return bHiddenInEditor; }
+
     // AActor에 추가될 때 호출. 컴포넌트가 월드 시스템(SpatialIndex 등)에 자신을 등록하는 곳.
     virtual void OnRegister() {}
     // AActor에서 제거될 때 호출. OnRegister에서 등록한 내용을 정리하는 곳.
@@ -62,4 +65,5 @@ private:
 	bool bCanEverTick = true;
     bool bTransient = false;                // 런타임에만 존재, 직렬화 완전 제외
     bool bIsEditorOnly = false;             // 에디터 전용, PIE/Game 렌더 제외
+    bool bHiddenInEditor = false;           // 에디터 컴포넌트 창에서 숨김
 };

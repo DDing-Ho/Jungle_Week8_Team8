@@ -23,7 +23,4 @@ void UAmbientLightComponent::Serialize(FArchive& Ar)
 void UAmbientLightComponent::PostDuplicate(UObject* Original)
 {
     ULightComponent::PostDuplicate(Original);
-
-    // const UAmbientLightComponent* Orig = Cast<UAmbientLightComponent>(Original);
 }
-
