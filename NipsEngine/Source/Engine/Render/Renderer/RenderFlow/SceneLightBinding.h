@@ -2,6 +2,8 @@
 
 #include "LightCullingPass.h"
 #include "Render/Common/ComPtr.h"
+#include "Component/Light/DirectionalLightComponent.h"
+#include "Engine/Runtime/Engine.h"
 #include <cstring>
 
 namespace SceneLightBinding

@@ -16,9 +16,14 @@
 #include "DepthLessRenderPass.h"
 #include "PostProcessOutlineRenderPass.h"
 #include "ToonOutlineRenderPass.h"
+#include "ShadowPass.h"
+
 
 bool FRenderPipeline::Initialize()
 {
+    ShadowPass = std::make_shared<FShadowPass>();
+    ShadowPass->Initialize();
+
     LightCullingPass = std::make_shared<FLightCullingPass>();
     LightCullingPass->Initialize();
 
@@ -79,6 +84,7 @@ bool FRenderPipeline::Initialize()
 	 * 마지막 패스가 남긴 OutSRV/OutRTV 가 RenderTargets.FinalSRV/FinalRTV 가 된다.
 	 */
     RenderPasses.push_back(LightCullingPass);
+    RenderPasses.push_back(ShadowPass);
     RenderPasses.push_back(SkyRenderPass);
     RenderPasses.push_back(ToonOutlineRenderPass);
 	RenderPasses.push_back(OpaqueRenderPass);

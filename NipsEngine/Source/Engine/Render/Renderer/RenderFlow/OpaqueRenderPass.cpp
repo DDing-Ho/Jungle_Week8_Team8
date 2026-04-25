@@ -62,6 +62,11 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
 
+	const TArray<FLightSlot>& LightSlots = GEngine->GetWorld()->GetWorldLightSlots();
+    UDirectionalLightComponent* DirLight = Cast<UDirectionalLightComponent>(LightSlots[0].LightData);
+    FDepthStencilResource DSR = DirLight->GetDepthStencilResource();
+
+
     for (const FRenderCommand& Cmd : Commands)
     {
         if (Cmd.Type == ERenderCommandType::PostProcessOutline)
@@ -96,6 +101,9 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 		SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
 
 		CheckOverrideViewMode(Context);
+
+		ID3D11ShaderResourceView* srv = DSR.SRV.Get();
+        Context->DeviceContext->PSSetShaderResources(11, 1, &srv);
 
         Context->DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 

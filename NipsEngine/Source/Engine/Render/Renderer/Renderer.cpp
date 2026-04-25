@@ -12,6 +12,8 @@
 #include "Editor/Viewport/FSceneViewport.h"
 #include "Render/Renderer/RenderTarget/RenderTargetFactory.h"
 #include "Render/Renderer/RenderTarget/DepthStencilFactory.h"
+#include "Engine/Runtime/Engine.h"
+#include "Component/Light/DirectionalLightComponent.h"
 
 void FRenderer::Create(HWND hWindow)
 {
@@ -197,6 +199,13 @@ void FRenderer::UpdateSceneLightBuffer(const FRenderBus& InRenderBus)
 	const TArray<FRenderLight>& SceneLights = InRenderBus.GetLights();
     GlobalLights.reserve(SceneLights.size());
 
+	const TArray<FLightSlot>& LightSlots = GEngine->GetWorld()->GetWorldLightSlots();
+    UDirectionalLightComponent* DirLight = nullptr;
+    if (!LightSlots.empty())
+    {
+        DirLight = Cast<UDirectionalLightComponent>(LightSlots[0].LightData);
+    }
+
 	/**
 	 * Culling 제외할 Global Light 추출
 	 * 애초에 Global Light 추가 때부터 따로 Array 로 분리한다면 효율적으로 추출 가능
@@ -204,11 +213,12 @@ void FRenderer::UpdateSceneLightBuffer(const FRenderBus& InRenderBus)
 	for (const FRenderLight& Light : SceneLights)
     {
         // 전역 Light 는 Culling X
-        if (Light.Type != (uint32)ELightType::LightType_AmbientLight &&
-            Light.Type != (uint32)ELightType::LightType_Directional)
-            continue;
+        //if (Light.Type == (uint32)ELightType::LightType_AmbientLight ||
+        //    Light.Type == (uint32)ELightType::LightType_Directional)
+        //    continue;
 
         FRenderLight GlobalLight = {};
+        GlobalLight.LightViewProj = DirLight ? DirLight->ViewProjectionMatrix : FMatrix::Identity;
         GlobalLight.Position = Light.Position;
         GlobalLight.Radius = Light.Radius;
         GlobalLight.Color = Light.Color;

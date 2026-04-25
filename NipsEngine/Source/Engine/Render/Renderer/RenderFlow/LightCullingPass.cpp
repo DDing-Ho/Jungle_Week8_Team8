@@ -6,6 +6,8 @@
 #include "UI/EditorConsoleWidget.h"
 #include <cmath>
 #include <algorithm>
+#include "Engine/Runtime/Engine.h"
+#include "Component/Light/DirectionalLightComponent.h"
 
 namespace
 {
@@ -31,6 +33,7 @@ namespace
 
 	struct FLightCullingLight
     {
+        FMatrix LightViewProj;
         FVector WorldPos = FVector::ZeroVector;
         float Radius = 0.0f;
         FVector Color = FVector::ZeroVector;
@@ -141,13 +144,21 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
         return A.first < B.first; // max-heap: 거리 큰 게 top
     };
 
+	const TArray<FLightSlot> & LightSlots = GEngine->GetWorld()->GetWorldLightSlots();
+    UDirectionalLightComponent* DirLight = nullptr;
+	if (!LightSlots.empty())
+	{
+        DirLight = Cast<UDirectionalLightComponent>(LightSlots[0].LightData);
+	}
+
     for (const FRenderLight& Light : SceneLights)
     {
-        if (Light.Type != (uint32)ELightType::LightType_Point &&
-            Light.Type != (uint32)ELightType::LightType_Spot)
-            continue;
+        //if (Light.Type == (uint32)ELightType::LightType_Point ||
+        //    Light.Type == (uint32)ELightType::LightType_Spot)
+        //    continue;
 
         FLightCullingLight CullingLight = {};
+        CullingLight.LightViewProj = DirLight ? DirLight->ViewProjectionMatrix : FMatrix::Identity;
         CullingLight.WorldPos = Light.Position;
         CullingLight.Radius = Light.Radius;
         CullingLight.Color = Light.Color;

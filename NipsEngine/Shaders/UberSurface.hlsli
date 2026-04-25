@@ -42,6 +42,7 @@ Texture2D SpecularMap : register(t1);
 Texture2D NormalMap : register(t2);
 
 SamplerState SampleState : register(s0);
+SamplerComparisonState ShadowSampler : register(s1);
 
 struct FUberVSInput
 {

@@ -201,12 +201,12 @@ struct alignas(16) FGPULight
     FVector Direction = FVector::ZeroVector;
     float   Padding0 = 0.0f;
 
-
+	FMatrix LightViewProj = FMatrix::Identity;
 };
 
 using FRenderLight = FGPULight;
 
-static_assert(sizeof(FGPULight) == 64, "FGPULight layout must match the HLSL structured buffer layout.");
+static_assert(sizeof(FGPULight) == 128, "FGPULight layout must match the HLSL structured buffer layout.");
 
 struct FRenderCommand
 {

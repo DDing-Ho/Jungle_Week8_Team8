@@ -1,4 +1,5 @@
 #include "UberSurface.hlsli"
+#include "ShadowDepth.hlsl"
 
 #if !defined(MATERIAL_DOMAIN_DECAL) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_TOON)
 #define LIGHTING_MODEL_PHONG 1
@@ -25,6 +26,8 @@ struct FGPULight
 
     float3 Direction;
     float Padding0;
+    
+    row_major float4x4 ShadowLightViewProj;
 };
 
 StructuredBuffer<FGPULight> GlobalLights : register(t3);
@@ -41,6 +44,7 @@ cbuffer VisibleLightInfo : register(b4)
 
 struct FVisibleLightData
 {
+    row_major float4x4 ShadowLightViewProj;
     float3 WorldPos;
     float Radius;
     float3 Color;
@@ -56,6 +60,7 @@ struct FVisibleLightData
 StructuredBuffer<FVisibleLightData> VisibleLights : register(t8);
 StructuredBuffer<uint> TileVisibleLightCount : register(t9);
 StructuredBuffer<uint> TileVisibleLightIndices : register(t10);
+Texture2D ShadowMap : register(t11);
 
 static const uint LIGHT_TYPE_DIRECTIONAL = 0u;
 static const uint LIGHT_TYPE_POINT = 1u;
@@ -68,6 +73,19 @@ struct FLightingResult
     float3 Diffuse;
     float3 Specular;
 };
+
+float SampleShadow(float4 worldPos)
+{
+    float4 lightSpacePos = mul(worldPos, VisibleLights[0].ShadowLightViewProj);
+    lightSpacePos.xyz /= lightSpacePos.w;
+
+    float2 uv;
+    uv.x = lightSpacePos.x * 0.5f + 0.5f;
+    uv.y = -lightSpacePos.y * 0.5f + 0.5f;
+
+    float depth = lightSpacePos.z;
+    return ShadowMap.SampleCmpLevelZero(ShadowSampler, uv, depth - 0.001f);
+}
 
 float ComputeDistanceAttenuation(float Distance, float Radius, float FalloffExponent)
 {
@@ -206,6 +224,8 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
 
         if (Light.Type == LIGHT_TYPE_DIRECTIONAL)
         {
+            //float ShadowFactor = SampleShadow(float4(WorldPos, 1.0f), LightViewProj);
+
             AccumulateDirectLight(WorldPos, N, V, normalize(Light.Direction), LightColor, Result);
         }
     }
@@ -388,7 +408,11 @@ FUberPSInput mainVS(FUberVSInput Input)
 FUberPSOutput mainPS(FUberPSInput Input)
 {
     const FUberSurfaceData Surface = EvaluateSurface(Input);
+
     FLightingResult Lighting;
+    
+    float ShadowFactor = SampleShadow(float4(Surface.WorldPos, 1.0f));
+    //return ComposeOutput(Surface, float3(ShadowFactor, ShadowFactor, ShadowFactor));
 
 #if defined(LIGHTING_MODEL_GOURAUD)
     Lighting.Diffuse = Input.VertexDiffuseLighting;
@@ -401,8 +425,10 @@ FUberPSOutput mainPS(FUberPSInput Input)
     // TOON | PHONG (함수 내에서 내부적으로 계산 흐름 분리)
     Lighting = EvaluateLightingFromWorld(Surface.WorldPos, Surface.WorldNormal, Input.ClipPos.xy);
 
-
 #endif
+    Lighting.Diffuse *= ShadowFactor;
+    Lighting.Specular *= ShadowFactor;
+    
     return ComposeOutput(Surface, ApplyLighting(Surface, Lighting));
 }
 
