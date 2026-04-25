@@ -263,7 +263,7 @@ void FRenderCollector::ResetDecalStats()
 	LastDecalStats = {};
 }
 
-// 조명을 Frustum Culling을 통해 수집한다.
+// Frustum Culling 이후 남은 조명들을 수집한다.
 void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const FFrustum* ViewFrustum)
 {
     const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
@@ -341,30 +341,49 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			{
 				continue;
 			}
-			
-			// View Frustum에 대한 Bounding Sphere 교차 검사
-			if (ViewFrustum)
-			{
-				FVector Center = SpotLight->GetWorldLocation();
-				float Radius = SpotLight->GetAttenuationRadius();
-
-				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
-					continue;
-			}
-
-			const float InnerAngleDegrees = MathUtil::Clamp(SpotLight->GetInnerConeAngle(), 0.0f, 89.0f);
-			const float OuterAngleDegrees = MathUtil::Clamp((std::max)(SpotLight->GetOuterConeAngle(), InnerAngleDegrees), 0.0f, 89.0f);
+			const FVector LightLocation = SpotLight->GetWorldLocation();
+			const float Attenuation = SpotLight->GetAttenuationRadius();
+			const float InnerAngle = SpotLight->GetInnerConeAngle(); // Degree 단위 주의
+			const float OuterAngle = SpotLight->GetOuterConeAngle();
 
 			// -z 축을 forward로 사용
 			FVector LightDirection = SpotLight->GetUpVector() * -1.0f;
 			LightDirection.Normalize();
 
-			RenderLight.Position = SpotLight->GetWorldLocation();
+			// 원뿔 각도에 따라 줄어든 Bounding Sphere 교차 검사
+			if (ViewFrustum)
+			{
+				const float SpotAngle = MathUtil::Clamp(std::max(OuterAngle, InnerAngle), 0.0f, 89.0f);
+				const float SpotRadian = MathUtil::DegreesToRadians(SpotAngle);
+
+				FVector Center = LightLocation;
+				float Radius = Attenuation;
+
+				if (SpotAngle <= 45.0f)
+				{
+					const float SpotRadian = MathUtil::DegreesToRadians(SpotAngle);
+					const float Offset = Attenuation * 0.5f;
+            
+					Center = LightLocation + (LightDirection * Offset);
+            
+					const float TanAngle = std::tan(SpotRadian);
+					const float BaseRadius = Attenuation * TanAngle;
+
+					Radius = std::sqrt((Offset * Offset) + (BaseRadius * BaseRadius));
+				}
+
+				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
+				{
+					continue;
+				}
+			}
+
+			RenderLight.Position = LightLocation;
 			RenderLight.Direction = LightDirection;
-			RenderLight.Radius = SpotLight->GetAttenuationRadius();
+			RenderLight.Radius = Attenuation;
 			RenderLight.FalloffExponent = SpotLight->GetLightFalloffExponent();
-			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngleDegrees));
-			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngleDegrees));
+			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngle));
+			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngle));
 			RenderBus.AddLight(RenderLight);
 			break;
 		}
