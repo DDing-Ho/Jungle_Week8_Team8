@@ -221,7 +221,7 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 		{
 			for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 			{	
-				if (Primitive != nullptr && Primitive->IsVisible())
+				if (Primitive != nullptr && !Primitive->IsVisible())
 				{
 					++LastCullingStats.TotalVisiblePrimitiveCount;
 				}
@@ -233,7 +233,7 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 		// 이미 처리된 컴포넌트, 중복된 컴포넌트는 제외하고 Frustum Culling 수행
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 		{
-			if (!Primitive || Primitive->IsVisible()) continue;
+			if (!Primitive || !Primitive->IsVisible()) continue;
 
 			++LastCullingStats.TotalVisiblePrimitiveCount;
 
