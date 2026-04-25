@@ -174,16 +174,16 @@ bool FShadowPass::End(const FRenderPassContext* Context)
 
 FMatrix FShadowPass::GetDirectionalLightViewProj(UDirectionalLightComponent* DirLight)
 {
-    const FVector Forward = DirLight->GetForwardVector().GetSafeNormal();
+    const FVector Forward = -DirLight->GetForwardVector().GetSafeNormal();
     const FVector ActualUp = DirLight->GetUpVector().GetSafeNormal();
-    //FMatrix LightView = FMatrix::MakeViewLookAtLH(DirLight->GetWorldLocation(), DirLight->GetWorldLocation() + Forward, ActualUp);
+    FMatrix LightView = FMatrix::MakeViewLookAtLH(DirLight->GetWorldLocation(), DirLight->GetWorldLocation() + Forward, ActualUp);
 
-	FVector LightPos = Forward * 200.0f; // Scene 중심에서 빛 반대 방향으로 충분히 뒤로
+	//FVector LightPos = -Forward * 100.0f; // Scene 중심에서 빛 반대 방향으로 충분히 뒤로
 
-    FMatrix LightView = FMatrix::MakeViewLookAtLH(
-        LightPos,
-        LightPos + Forward,
-        ActualUp);
+ //   FMatrix LightView = FMatrix::MakeViewLookAtLH(
+ //       LightPos,
+ //       LightPos + Forward,
+ //       ActualUp);
 
 	float AspectRatio = 16.0f / 9.0f;
     float OrthoHeight = 10.0f;
@@ -192,7 +192,7 @@ FMatrix FShadowPass::GetDirectionalLightViewProj(UDirectionalLightComponent* Dir
         OrthoHeight * AspectRatio, // Width  - Scene 크기에 맞게
         OrthoHeight, // Height
         0.1f,  // Near
-        500.0f // Far
+        2000.0f // Far
     );
 
     return LightView * LightProj;
