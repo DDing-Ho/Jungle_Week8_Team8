@@ -12,6 +12,10 @@ bool FDecalRenderPass::Initialize()
 bool FDecalRenderPass::Release()
 {
     VisibleLightConstantBuffer.Reset();
+    SpotShadowInfoConstantBuffer.Reset();
+    SpotShadowConstantsBuffer.Reset();
+    SpotShadowConstantsSRV.Reset();
+    SpotShadowConstantsCapacity = 0;
     return true;
 }
 
@@ -61,7 +65,13 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
         return true;
     }
 
-    SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
+    SceneLightBinding::BindResources(
+        Context,
+        VisibleLightConstantBuffer,
+        SpotShadowInfoConstantBuffer,
+        SpotShadowConstantsBuffer,
+        SpotShadowConstantsSRV,
+        SpotShadowConstantsCapacity);
 
     for (const FRenderCommand& Cmd : Commands)
     {
@@ -95,7 +105,13 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
                 &Cmd.DecalConstants);
         }
 
-        SceneLightBinding::BindResources(Context, VisibleLightConstantBuffer);
+        SceneLightBinding::BindResources(
+            Context,
+            VisibleLightConstantBuffer,
+            SpotShadowInfoConstantBuffer,
+            SpotShadowConstantsBuffer,
+            SpotShadowConstantsSRV,
+            SpotShadowConstantsCapacity);
 
         CheckOverrideViewMode(Context);
 

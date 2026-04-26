@@ -31,6 +31,9 @@
 
 namespace
 {
+	constexpr float SpotShadowNearPlane = 0.1f;
+	constexpr float SpotShadowBaseResolution = 1024.0f;
+
 	FVector MakeLightColorVector(const ULightComponentBase* LightComponent)
 	{
 		if (LightComponent == nullptr)
@@ -53,12 +56,24 @@ namespace
 		return Up;
 	}
 
-	FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection)
+	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight)
+	{
+		return std::max(SpotLight->GetAttenuationRadius(), SpotShadowNearPlane + 1.0f);
+	}
+
+	float MakeSpotShadowResolution(const ULightComponent* LightComponent)
+	{
+		return std::max(1.0f, SpotShadowBaseResolution * LightComponent->GetShadowResolutionScale());
+	}
+
+	FMatrix MakeSpotShadowViewProjection(
+		const USpotLightComponent* SpotLight,
+		const FVector& LightDirection,
+		float NearPlane,
+		float FarPlane)
 	{
 		const FVector Direction = LightDirection.GetSafeNormal();
 		const FVector LightPosition = SpotLight->GetWorldLocation();
-		const float NearPlane = 0.1f;
-		const float FarPlane = std::max(SpotLight->GetAttenuationRadius(), NearPlane + 1.0f);
 		const float FovY = MathUtil::DegreesToRadians(
 			MathUtil::Clamp(SpotLight->GetOuterConeAngle() * 2.0f, 1.0f, 175.0f));
 
@@ -401,6 +416,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 {
     const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
 	int32 Next2DShadowSlice = 0;
+	int32 NextSpotShadowIndex = 0;
 
 	for (const FLightSlot& Slot : LightSlots)
 	{
@@ -543,20 +559,26 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.FalloffExponent = SpotLight->GetLightFalloffExponent();
 			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngle));
 			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngle));
-			RenderBus.AddLight(RenderLight);
 
 			if (LightComponent->IsCastShadows())
 			{
-                FShadowConstants ShadowData{};
-				ShadowData.LightViewProj[0] = MakeSpotShadowViewProjection(SpotLight, LightDirection);
-				ShadowData.ShadowMapIndex = Next2DShadowSlice;
-				ShadowData.NumSlices = 1;
-				ShadowData.AtlasType = 0;
-				ShadowData.ShadowBias = LightComponent->GetShadowBias();
-				RenderBus.AddCastShadowLight(ShadowData);
-				++Next2DShadowSlice;
+				const int32 ShadowMapIndex = NextSpotShadowIndex++;
+				const float NearPlane = SpotShadowNearPlane;
+				const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
+				const float ShadowBias = LightComponent->GetShadowBias();
+
+				RenderLight.bCastShadows = 1;
+				RenderLight.ShadowMapIndex = ShadowMapIndex;
+				RenderLight.ShadowBias = ShadowBias;
+
+				FSpotShadowConstants ShadowData{};
+				ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
+				ShadowData.ShadowResolution = MakeSpotShadowResolution(LightComponent);
+				ShadowData.ShadowBias = ShadowBias;
+				RenderBus.AddCastShadowSpotLight(ShadowData);
 			}
 
+			RenderBus.AddLight(RenderLight);
 			break;
 		}
 

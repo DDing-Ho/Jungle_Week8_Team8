@@ -15,4 +15,8 @@ protected:
 
 private:
     TComPtr<ID3D11Buffer> VisibleLightConstantBuffer;
+    TComPtr<ID3D11Buffer> SpotShadowInfoConstantBuffer;
+    TComPtr<ID3D11Buffer> SpotShadowConstantsBuffer;
+    TComPtr<ID3D11ShaderResourceView> SpotShadowConstantsSRV;
+    uint32 SpotShadowConstantsCapacity = 0;
 };

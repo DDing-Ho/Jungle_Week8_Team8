@@ -13,7 +13,11 @@ struct FLightDataCS
     float SpotInnerCos;
     float SpotOuterCos;
     float3 Direction;
-    float Padding;
+    uint bCastShadows;
+    int ShadowMapIndex;
+    float ShadowBias;
+    float Padding0;
+    float Padding1;
 };
 
 cbuffer LightCullingConstants : register(b0)

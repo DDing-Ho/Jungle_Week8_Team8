@@ -18,10 +18,12 @@ public:
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
 	void AddLight(const FRenderLight& InLight) { Lights.push_back(InLight); }
     void AddCastShadowLight(const FShadowConstants& InCastShadowLight) { CastShadowLights.push_back(InCastShadowLight); }
-
-	const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
+    void AddCastShadowSpotLight(const FSpotShadowConstants& InCastShadowLight) { CastShadowSpotLights.push_back(InCastShadowLight); }
+    void AddCastPointShadowLight(const FSpotShadowConstants& InCastShadowLight) { AddCastShadowSpotLight(InCastShadowLight); }
+    const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
 	const TArray<FRenderLight>& GetLights() const { return Lights; }
     const TArray<FShadowConstants>& GetCastShadowLights() const { return CastShadowLights; }
+    const TArray<FSpotShadowConstants>& GetCastShadowSpotLights() const { return CastShadowSpotLights; }
 
 	// Getter, Setter
 	void SetViewProjection(const FMatrix& InView, const FMatrix& InProj);
@@ -59,8 +61,9 @@ public:
 private:
 	TArray<FRenderCommand> PassQueues[(uint32)ERenderPass::MAX];
 	TArray<FRenderLight> Lights;
-    TArray<FShadowConstants> CastShadowLights;
+    TArray<FShadowConstants> CastShadowLights; // TODO: 추후 필요없어질 경우 삭제
 	std::optional<FDirectionalShadowConstants> DirectionalShadow;
+    TArray<FSpotShadowConstants> CastShadowSpotLights;
 
 	FMatrix View;
 	FMatrix Proj;

@@ -24,7 +24,12 @@ struct FGPULight
     float SpotOuterCos;
 
     float3 Direction;
+    uint bCastShadows;
+
+    int ShadowMapIndex;
+    float ShadowBias;
     float Padding0;
+    float Padding1;
 };
 
 StructuredBuffer<FGPULight> GlobalLights : register(t3);
@@ -43,19 +48,44 @@ struct FVisibleLightData
 {
     float3 WorldPos;
     float Radius;
+    
     float3 Color;
     float Intensity;
+    
     float RadiusFalloff;
     uint Type;
     float SpotInnerCos;
     float SpotOuterCos;
+
     float3 Direction;
-    float _Pad;
+    uint bCastShadows;
+
+    int ShadowMapIndex;
+    float ShadowBias;
+    float Padding0;
+    float Padding1;
 };
 
 StructuredBuffer<FVisibleLightData> VisibleLights : register(t8);
 StructuredBuffer<uint> TileVisibleLightCount : register(t9);
 StructuredBuffer<uint> TileVisibleLightIndices : register(t10);
+
+struct FSpotShadowConstants
+{
+    row_major float4x4 LightViewProj;
+    float ShadowResolution;
+    float ShadowBias;
+    float2 Padding;
+};
+
+cbuffer SpotShadowInfo : register(b6)
+{
+    uint SpotShadowCount;
+    float3 _SpotShadowInfoPad0;
+}
+
+StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
+Texture2DArray<float> SpotShadowMap : register(t12);
 
 static const uint LIGHT_TYPE_DIRECTIONAL = 0u;
 static const uint LIGHT_TYPE_POINT = 1u;
@@ -120,6 +150,49 @@ void AccumulateDirectLight(float3 WorldPos, float3 N, float3 V, float3 L, float3
 #endif
 }
 
+float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapIndex, float LightShadowBias)
+{
+    if (bCastShadows == 0u || ShadowMapIndex < 0)
+    {
+        return 1.0f;
+    }
+
+    const uint ShadowSlice = (uint)ShadowMapIndex;
+    if (ShadowSlice >= SpotShadowCount)
+    {
+        return 1.0f;
+    }
+
+    const FSpotShadowConstants Shadow = SpotShadowData[ShadowSlice];
+    const int Resolution = max((int)Shadow.ShadowResolution, 1);
+
+    const float4 ShadowClip = mul(float4(WorldPos, 1.0f), Shadow.LightViewProj);
+    if (ShadowClip.w <= 1.0e-5f)
+    {
+        return 1.0f;
+    }
+
+    const float3 ShadowNDC = ShadowClip.xyz / ShadowClip.w;
+    if (ShadowNDC.x < -1.0f || ShadowNDC.x > 1.0f ||
+        ShadowNDC.y < -1.0f || ShadowNDC.y > 1.0f ||
+        ShadowNDC.z < 0.0f || ShadowNDC.z > 1.0f)
+    {
+        return 1.0f;
+    }
+
+    const float2 ShadowUV = float2(
+        ShadowNDC.x * 0.5f + 0.5f,
+        0.5f - ShadowNDC.y * 0.5f);
+
+    const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
+    const int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)Resolution), int2(0, 0), MaxTexel);
+    const float CurrentDepth = ShadowNDC.z;
+    const float Bias = max(LightShadowBias, Shadow.ShadowBias);
+    const float StoredDepth = SpotShadowMap.Load(int4(ShadowTexel.x, ShadowTexel.y, (int)ShadowSlice, 0));
+
+    return (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
+}
+
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)
 {
     if (VisibleLightCount == 0u || TileCountX == 0u || TileCountY == 0u || TileSize == 0u || MaxLightsPerTile == 0u)
@@ -164,6 +237,12 @@ void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 Sc
             const float CosAngle = dot(SpotDir, -L);
             const float ConeRange = max(Light.SpotInnerCos - Light.SpotOuterCos, 1.0e-4f);
             Att *= saturate((CosAngle - Light.SpotOuterCos) / ConeRange);
+            if (Att <= 0.0f)
+            {
+                continue;
+            }
+
+            Att *= ComputeSpotShadowFactor(WorldPos, Light.bCastShadows, Light.ShadowMapIndex, Light.ShadowBias);
             if (Att <= 0.0f)
             {
                 continue;

@@ -40,12 +40,31 @@ namespace
         float SpotInnerCos = 1.0f;
         float SpotOuterCos = 0.0f;
         FVector Direction = FVector::ZeroVector;
-        float _Pad = 0.0f;
+        uint32 bCastShadows = 0u;
+
+        int ShadowMapIndex = -1;
+        float ShadowBias = 0.f;
+        float Padding0 = 0.f;
+        float Padding1 = 0.f;
     };
+
+    static_assert(sizeof(FLightCullingLight) == 80, "FLightCullingLight layout must match FVisibleLightData in HLSL.");
 
     uint32 CeilDivide(uint32 Numerator, uint32 Denominator)
     {
         return (Numerator + Denominator - 1u) / Denominator;
+    }
+
+    void UnbindVisibleLightSRVs(ID3D11DeviceContext* DeviceContext)
+    {
+        if (DeviceContext == nullptr)
+        {
+            return;
+        }
+
+        ID3D11ShaderResourceView* NullSRVs[3] = { nullptr, nullptr, nullptr };
+        DeviceContext->VSSetShaderResources(8, 3, NullSRVs);
+        DeviceContext->PSSetShaderResources(8, 3, NullSRVs);
     }
 
     FLightCullingOutputs GLightCullingOutputs = {};
@@ -157,6 +176,9 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
         CullingLight.SpotInnerCos = Light.SpotInnerCos;
         CullingLight.SpotOuterCos = Light.SpotOuterCos;
         CullingLight.Direction = Light.Direction;
+        CullingLight.bCastShadows = Light.bCastShadows;
+        CullingLight.ShadowMapIndex = Light.ShadowMapIndex;
+        CullingLight.ShadowBias = Light.ShadowBias;
 
         float Dist = FVector::DistSquared(CameraPos, Light.Position);
 
@@ -226,6 +248,8 @@ bool FLightCullingPass::DrawCommand(const FRenderPassContext* Context)
     UINT ClearValues[4] = { 0u, 0u, 0u, 0u };
     Context->DeviceContext->ClearUnorderedAccessViewUint(TileLightCountUAV.Get(), ClearValues);
     Context->DeviceContext->ClearUnorderedAccessViewUint(TileLightIndexUAV.Get(), ClearValues);
+
+    UnbindVisibleLightSRVs(Context->DeviceContext);
 
     ID3D11UnorderedAccessView* UAVs[] = { TileLightCountUAV.Get(), TileLightIndexUAV.Get() };
     Context->DeviceContext->CSSetUnorderedAccessViews(0, 2, UAVs, nullptr);

@@ -31,6 +31,9 @@ struct FRenderTargetSet
     ID3D11DepthStencilView*   DepthStencilView = nullptr;
     ID3D11ShaderResourceView* SceneDepthSRV = nullptr;
 
+	ID3D11ShaderResourceView* SpotShadowSRV = nullptr;
+    uint32 SpotShadowCount = 0;
+
 	ID3D11RenderTargetView* FinalRTV = nullptr;
     ID3D11ShaderResourceView* FinalSRV = nullptr;
 

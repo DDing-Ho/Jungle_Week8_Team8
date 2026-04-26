@@ -15,6 +15,7 @@
 #include "EditorRenderPass.h"
 #include "DepthLessRenderPass.h"
 #include "PostProcessOutlineRenderPass.h"
+#include "ShadowPass.h"
 #include "ToonOutlineRenderPass.h"
 
 bool FRenderPipeline::Initialize()
@@ -24,6 +25,9 @@ bool FRenderPipeline::Initialize()
 
     SkyRenderPass = std::make_shared<FSkyRenderPass>();
     SkyRenderPass->Initialize();
+
+	ShadowPass = std::make_shared<FShadowPass>();
+    ShadowPass->Initialize();
 
     OpaqueRenderPass = std::make_shared<FOpaqueRenderPass>();
     OpaqueRenderPass->Initialize();
@@ -80,6 +84,7 @@ bool FRenderPipeline::Initialize()
 	 */
     RenderPasses.push_back(LightCullingPass);
     RenderPasses.push_back(SkyRenderPass);
+    RenderPasses.push_back(ShadowPass);
     RenderPasses.push_back(ToonOutlineRenderPass);
 	RenderPasses.push_back(OpaqueRenderPass);
 
@@ -136,6 +141,12 @@ void FRenderPipeline::Release()
         SkyRenderPass->Release();
         SkyRenderPass.reset();
     }
+
+	if (ShadowPass)
+	{
+        ShadowPass->Release();
+		ShadowPass.reset();
+	}
 
 	if (OpaqueRenderPass)
     {

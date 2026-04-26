@@ -1,11 +1,18 @@
 ﻿#pragma once
 
 #include "LightCullingPass.h"
+#include "Render/Device/D3DDevice.h"
 #include "Render/Common/ComPtr.h"
+#include "Render/Scene/RenderBus.h"
 #include <cstring>
+#include <utility>
 
 namespace SceneLightBinding
 {
+	constexpr uint32 SpotShadowInfoRegister = 6;
+	constexpr uint32 SpotShadowConstantsRegister = 11;
+	constexpr uint32 SpotShadowMapRegister = 12;
+
 	struct FVisibleLightConstants
 	{
 		uint32 TileCountX = 0;
@@ -13,6 +20,12 @@ namespace SceneLightBinding
 		uint32 TileSize = 0;
 		uint32 MaxLightsPerTile = 0;
 		uint32 LightCount = 0;
+		float Padding[3] = { 0.0f, 0.0f, 0.0f };
+	};
+
+	struct FSpotShadowInfoConstants
+	{
+		uint32 SpotShadowCount = 0;
 		float Padding[3] = { 0.0f, 0.0f, 0.0f };
 	};
 
@@ -30,6 +43,152 @@ namespace SceneLightBinding
 		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, VisibleLightConstantBuffer.GetAddressOf()));
+	}
+
+	inline bool EnsureSpotShadowInfoConstantBuffer(ID3D11Device* Device, TComPtr<ID3D11Buffer>& SpotShadowInfoConstantBuffer)
+	{
+		if (SpotShadowInfoConstantBuffer)
+		{
+			return true;
+		}
+
+		D3D11_BUFFER_DESC Desc = {};
+		Desc.ByteWidth = sizeof(FSpotShadowInfoConstants);
+		Desc.Usage = D3D11_USAGE_DYNAMIC;
+		Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, SpotShadowInfoConstantBuffer.GetAddressOf()));
+	}
+
+	inline bool EnsureSpotShadowConstantsBuffer(
+		ID3D11Device* Device,
+		uint32 RequiredCount,
+		TComPtr<ID3D11Buffer>& SpotShadowConstantsBuffer,
+		TComPtr<ID3D11ShaderResourceView>& SpotShadowConstantsSRV,
+		uint32& SpotShadowConstantsCapacity)
+	{
+		if (RequiredCount == 0)
+		{
+			return true;
+		}
+
+		if (RequiredCount <= SpotShadowConstantsCapacity && SpotShadowConstantsBuffer && SpotShadowConstantsSRV)
+		{
+			return true;
+		}
+
+		D3D11_BUFFER_DESC BufferDesc = {};
+		BufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		BufferDesc.ByteWidth = sizeof(FSpotShadowConstants) * RequiredCount;
+		BufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		BufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		BufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		BufferDesc.StructureByteStride = sizeof(FSpotShadowConstants);
+
+		TComPtr<ID3D11Buffer> NewBuffer;
+		if (FAILED(Device->CreateBuffer(&BufferDesc, nullptr, NewBuffer.GetAddressOf())))
+		{
+			return false;
+		}
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+		SRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+		SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		SRVDesc.Buffer.FirstElement = 0;
+		SRVDesc.Buffer.NumElements = RequiredCount;
+
+		TComPtr<ID3D11ShaderResourceView> NewSRV;
+		if (FAILED(Device->CreateShaderResourceView(NewBuffer.Get(), &SRVDesc, NewSRV.GetAddressOf())))
+		{
+			return false;
+		}
+
+		SpotShadowConstantsBuffer = std::move(NewBuffer);
+		SpotShadowConstantsSRV = std::move(NewSRV);
+		SpotShadowConstantsCapacity = RequiredCount;
+		return true;
+	}
+
+	inline void BindSpotShadowResources(
+		const FRenderPassContext* Context,
+		TComPtr<ID3D11Buffer>& SpotShadowInfoConstantBuffer,
+		TComPtr<ID3D11Buffer>& SpotShadowConstantsBuffer,
+		TComPtr<ID3D11ShaderResourceView>& SpotShadowConstantsSRV,
+		uint32& SpotShadowConstantsCapacity)
+	{
+		if (Context == nullptr || Context->Device == nullptr || Context->DeviceContext == nullptr)
+		{
+			return;
+		}
+
+		uint32 SpotShadowCount = 0;
+		ID3D11ShaderResourceView* SpotShadowMapSRV = nullptr;
+		if (Context->RenderTargets != nullptr)
+		{
+			SpotShadowCount = Context->RenderTargets->SpotShadowCount;
+			SpotShadowMapSRV = Context->RenderTargets->SpotShadowSRV;
+		}
+
+		const TArray<FSpotShadowConstants>* SpotShadows = nullptr;
+		if (Context->RenderBus != nullptr)
+		{
+			SpotShadows = &Context->RenderBus->GetCastShadowSpotLights();
+			if (SpotShadowCount > SpotShadows->size())
+			{
+				SpotShadowCount = static_cast<uint32>(SpotShadows->size());
+			}
+		}
+		else
+		{
+			SpotShadowCount = 0;
+		}
+
+		if (!EnsureSpotShadowInfoConstantBuffer(Context->Device, SpotShadowInfoConstantBuffer))
+		{
+			return;
+		}
+
+		if (!EnsureSpotShadowConstantsBuffer(
+			Context->Device,
+			SpotShadowCount,
+			SpotShadowConstantsBuffer,
+			SpotShadowConstantsSRV,
+			SpotShadowConstantsCapacity))
+		{
+			SpotShadowCount = 0;
+		}
+
+		FSpotShadowInfoConstants InfoConstants = {};
+		InfoConstants.SpotShadowCount = SpotShadowCount;
+
+		D3D11_MAPPED_SUBRESOURCE MappedInfo = {};
+		if (SUCCEEDED(Context->DeviceContext->Map(SpotShadowInfoConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedInfo)))
+		{
+			std::memcpy(MappedInfo.pData, &InfoConstants, sizeof(InfoConstants));
+			Context->DeviceContext->Unmap(SpotShadowInfoConstantBuffer.Get(), 0);
+		}
+
+		if (SpotShadowCount > 0 && SpotShadows != nullptr && SpotShadowConstantsBuffer)
+		{
+			D3D11_MAPPED_SUBRESOURCE MappedShadows = {};
+			if (SUCCEEDED(Context->DeviceContext->Map(SpotShadowConstantsBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedShadows)))
+			{
+				std::memcpy(MappedShadows.pData, SpotShadows->data(), sizeof(FSpotShadowConstants) * SpotShadowCount);
+				Context->DeviceContext->Unmap(SpotShadowConstantsBuffer.Get(), 0);
+			}
+		}
+
+		ID3D11Buffer* InfoCBuffer = SpotShadowInfoConstantBuffer.Get();
+		Context->DeviceContext->PSSetConstantBuffers(SpotShadowInfoRegister, 1, &InfoCBuffer);
+		Context->DeviceContext->VSSetConstantBuffers(SpotShadowInfoRegister, 1, &InfoCBuffer);
+
+		ID3D11ShaderResourceView* ShadowConstantsSRV = SpotShadowCount > 0 ? SpotShadowConstantsSRV.Get() : nullptr;
+		Context->DeviceContext->PSSetShaderResources(SpotShadowConstantsRegister, 1, &ShadowConstantsSRV);
+		Context->DeviceContext->VSSetShaderResources(SpotShadowConstantsRegister, 1, &ShadowConstantsSRV);
+
+		ID3D11ShaderResourceView* ShadowMapSRV = SpotShadowCount > 0 ? SpotShadowMapSRV : nullptr;
+		Context->DeviceContext->PSSetShaderResources(SpotShadowMapRegister, 1, &ShadowMapSRV);
 	}
 
 	inline void BindResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
@@ -74,6 +233,23 @@ namespace SceneLightBinding
         Context->DeviceContext->VSSetConstantBuffers(4, 1, &CBuffer);
 	}
 
+	inline void BindResources(
+		const FRenderPassContext* Context,
+		TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer,
+		TComPtr<ID3D11Buffer>& SpotShadowInfoConstantBuffer,
+		TComPtr<ID3D11Buffer>& SpotShadowConstantsBuffer,
+		TComPtr<ID3D11ShaderResourceView>& SpotShadowConstantsSRV,
+		uint32& SpotShadowConstantsCapacity)
+	{
+		BindResources(Context, VisibleLightConstantBuffer);
+		BindSpotShadowResources(
+			Context,
+			SpotShadowInfoConstantBuffer,
+			SpotShadowConstantsBuffer,
+			SpotShadowConstantsSRV,
+			SpotShadowConstantsCapacity);
+	}
+
 	inline void UnbindResources(ID3D11DeviceContext* DeviceContext)
 	{
 		if (DeviceContext == nullptr)
@@ -81,11 +257,14 @@ namespace SceneLightBinding
 			return;
 		}
 
-		ID3D11ShaderResourceView* NullSRVs[3] = { nullptr, nullptr, nullptr };
-		DeviceContext->PSSetShaderResources(8, 3, NullSRVs);
-		DeviceContext->VSSetShaderResources(8, 3, NullSRVs);
+		ID3D11ShaderResourceView* NullSRVs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+		DeviceContext->PSSetShaderResources(8, 5, NullSRVs);
+		DeviceContext->VSSetShaderResources(8, 5, NullSRVs);
 
 		ID3D11Buffer* NullCB = nullptr;
 		DeviceContext->PSSetConstantBuffers(4, 1, &NullCB);
+		DeviceContext->VSSetConstantBuffers(4, 1, &NullCB);
+		DeviceContext->PSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
+		DeviceContext->VSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
 	}
 }
