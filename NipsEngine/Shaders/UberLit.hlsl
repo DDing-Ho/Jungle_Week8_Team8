@@ -1,4 +1,5 @@
 #include "UberSurface.hlsli"
+#include "ShadowSample.hlsli"
 
 #if !defined(MATERIAL_DOMAIN_DECAL) && !defined(LIGHTING_MODEL_GOURAUD) && !defined(LIGHTING_MODEL_LAMBERT) && !defined(LIGHTING_MODEL_PHONG) && !defined(LIGHTING_MODEL_TOON)
 #define LIGHTING_MODEL_PHONG 1
@@ -184,13 +185,10 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
         ShadowNDC.x * 0.5f + 0.5f,
         0.5f - ShadowNDC.y * 0.5f);
 
-    const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-    const int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)Resolution), int2(0, 0), MaxTexel);
     const float CurrentDepth = ShadowNDC.z;
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
-    const float StoredDepth = SpotShadowMap.Load(int4(ShadowTexel.x, ShadowTexel.y, (int)ShadowSlice, 0));
-
-    return (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
+    
+    return SampleShadowPoissonDisk(ShadowUV, CurrentDepth - Bias, SpotShadowMap, ShadowSlice, Resolution);
 }
 
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)
