@@ -42,6 +42,7 @@ struct FEditorViewportState
 	bool bShowStatMemory     = false;
 	bool bShowStatNameTable  = false;
 	bool bShowStatLightCull  = false;
+	bool bShowStatShadowAtlas = false; // Spot shadow atlas 디버그 뷰 토글
 
 	// NameTable 오버레이 스크롤 오프셋 (휠로 조작)
 	int32 NameTableScrollLine = 0;

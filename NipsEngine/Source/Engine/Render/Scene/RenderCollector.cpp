@@ -1,6 +1,7 @@
 ﻿#include "RenderCollector.h"
 
 #include "Render/LineBatcher.h"
+#include "Render/Renderer/RenderFlow/ShadowAtlasManager.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
 #include "Object/ActorIterator.h"
@@ -563,20 +564,27 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 
 			if (LightComponent->IsCastShadows())
 			{
-				const int32 ShadowMapIndex = NextSpotShadowIndex++;
-				const float NearPlane = SpotShadowNearPlane;
-				const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
-				const float ShadowBias = LightComponent->GetShadowBias();
+				const int32 ShadowMapIndex = NextSpotShadowIndex;
+			    FSpotAtlasSlotDesc SpotSlot = {};
+			    if (FShadowAtlasManager::BuildFixedSpotSlot(static_cast<uint32>(ShadowMapIndex), SpotSlot))
+			    {
+			        ++NextSpotShadowIndex;
+			        
+			        const float NearPlane = SpotShadowNearPlane;
+			        const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
+			        const float ShadowBias = LightComponent->GetShadowBias();
 
-				RenderLight.bCastShadows = 1;
-				RenderLight.ShadowMapIndex = ShadowMapIndex;
-				RenderLight.ShadowBias = ShadowBias;
+			        RenderLight.bCastShadows = 1;
+			        RenderLight.ShadowMapIndex = ShadowMapIndex;
+			        RenderLight.ShadowBias = ShadowBias;
 
-				FSpotShadowConstants ShadowData{};
-				ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
-				ShadowData.ShadowResolution = MakeSpotShadowResolution(LightComponent);
-				ShadowData.ShadowBias = ShadowBias;
-				RenderBus.AddCastShadowSpotLight(ShadowData);
+			        FSpotShadowConstants ShadowData{};
+			        ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
+			        ShadowData.AtlasRect = SpotSlot.AtlasRect;
+			        ShadowData.ShadowResolution = static_cast<float>(FShadowAtlasManager::SpotTileResolution);
+			        ShadowData.ShadowBias = ShadowBias;
+			        RenderBus.AddCastShadowSpotLight(ShadowData);
+			    }
 			}
 
 			RenderBus.AddLight(RenderLight);

@@ -255,6 +255,12 @@ void FEditorConsoleWidget::CmdStat(const TArray<FString>& Args)
 		bFlag = !bFlag;
 		AddLog("Stat LightCull %s (viewport %d)\n", bFlag ? "Enabled" : "Disabled", FocusedIdx);
 	}
+	else if (Target == "shadowatlas")
+	{
+		bool& bFlag = Layout.GetViewportState(FocusedIdx).bShowStatShadowAtlas;
+		bFlag = !bFlag;
+		AddLog("Stat ShadowAtlas %s (viewport %d)\n", bFlag ? "Enabled" : "Disabled", FocusedIdx);
+	}
 	else if (Target == "none")
 	{
 		for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
@@ -263,6 +269,7 @@ void FEditorConsoleWidget::CmdStat(const TArray<FString>& Args)
 			Layout.GetViewportState(i).bShowStatMemory    = false;
 			Layout.GetViewportState(i).bShowStatNameTable = false;
 			Layout.GetViewportState(i).bShowStatLightCull = false;
+			Layout.GetViewportState(i).bShowStatShadowAtlas = false;
 		}
 		AddLog("All Stats Disabled\n");
 	}

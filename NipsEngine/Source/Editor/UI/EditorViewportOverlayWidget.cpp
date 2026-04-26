@@ -13,6 +13,7 @@
 #include "Engine/Component/GizmoComponent.h"
 #include "Engine/Object/FName.h"
 #include "Engine/Render/Renderer/RenderFlow/LightCullingPass.h"
+#include "Engine/Render/Renderer/RenderFlow/ShadowAtlasManager.h"
 
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
@@ -211,7 +212,11 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
         const FEditorViewportState& VS = Layout.GetViewportState(i);
         FViewportRect ViewportRect = Layout.GetSceneViewport(i).GetRect();
 
-        if (!VS.bShowStatFPS && !VS.bShowStatMemory && !VS.bShowStatNameTable && !VS.bShowStatLightCull) 
+        if (!VS.bShowStatFPS &&
+            !VS.bShowStatMemory &&
+            !VS.bShowStatNameTable &&
+            !VS.bShowStatLightCull &&
+            !VS.bShowStatShadowAtlas)
             continue;
         
         if (ViewportRect.Width <= 0 || ViewportRect.Height <= 0) 
@@ -228,7 +233,13 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
             CurrentDrawPos.x += NTWidth + 8.f;
 
         float LightCullWidth = RenderLightCullWindow(i, VS, CurrentDrawPos);
+        if (LightCullWidth > 0.f)
+            CurrentDrawPos.x += LightCullWidth + 8.f;
 
+        float ShadowAtlasWidth = RenderShadowAtlasWindow(i, VS, CurrentDrawPos);
+        if (ShadowAtlasWidth > 0.f)
+            CurrentDrawPos.x += ShadowAtlasWidth + 8.f;
+        
 		// [중요] 통계를 띄우고 싶을 경우엔 여기에 위의 양식과 똑같이 추가합니다.
     }
 }
@@ -617,4 +628,81 @@ float FEditorViewportOverlayWidget::RenderLightCullWindow(int32 ViewportIndex, c
     ImGui::End();
 
 	return 280.0f;
+}
+
+float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex, const FEditorViewportState& VS, const ImVec2& Pos)
+{
+    if (!VS.bShowStatShadowAtlas || !EditorEngine)
+    {
+        return 0.0f;
+    }
+
+    FSceneViewport& SceneViewport = EditorEngine->GetViewportLayout().GetSceneViewport(ViewportIndex);
+    FRenderTargetSet* RenderTargets = SceneViewport.GetRenderTargetSet();
+    if (RenderTargets == nullptr || RenderTargets->SpotShadowSRV == nullptr)
+    {
+        return 0.0f;
+    }
+
+    constexpr float PreviewSize = 256.0f;
+    constexpr float WindowWidth = 300.0f;
+
+    ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.3f);
+
+    char WinId[40];
+    snprintf(WinId, sizeof(WinId), "##ShadowAtlasOverlay_%d", ViewportIndex);
+
+    if (ImGui::Begin(WinId, nullptr, kStatFlags))
+    {
+        ImGui::TextColored(ColorOrange, "Spot Shadow Atlas");
+        ImGui::Separator();
+        ImGui::TextColored(ColorPaleBlue, "- Active Tiles: %u", RenderTargets->SpotShadowCount);
+        ImGui::TextColored(ColorPaleBlue, "- Atlas: %ux%u",
+            FShadowAtlasManager::SpotAtlasResolution,
+            FShadowAtlasManager::SpotAtlasResolution);
+
+        // 실제 depth atlas를 그대로 보여줍니다.
+        ImGui::Image(reinterpret_cast<ImTextureID>(RenderTargets->SpotShadowSRV), ImVec2(PreviewSize, PreviewSize));
+
+        // 타일 경계선을 눈으로 확인할 수 있게 4x4 그리드를 얹습니다.
+        ImDrawList* DrawList = ImGui::GetWindowDrawList();
+        const ImVec2 Min = ImGui::GetItemRectMin();
+        const ImVec2 Max = ImGui::GetItemRectMax();
+        const float Cell = PreviewSize / static_cast<float>(FShadowAtlasManager::SpotTilesPerRow);
+
+        DrawList->AddRect(Min, Max, IM_COL32(255, 255, 255, 180));
+
+        for (uint32 Line = 1; Line < FShadowAtlasManager::SpotTilesPerRow; ++Line)
+        {
+            const float X = Min.x + Cell * static_cast<float>(Line);
+            const float Y = Min.y + Cell * static_cast<float>(Line);
+
+            DrawList->AddLine(ImVec2(X, Min.y), ImVec2(X, Max.y), IM_COL32(255, 255, 255, 90));
+            DrawList->AddLine(ImVec2(Min.x, Y), ImVec2(Max.x, Y), IM_COL32(255, 255, 255, 90));
+        }
+
+        // 각 타일 번호를 찍어두면 "몇 번째 light가 어느 칸을 쓰는지" 보기 쉽습니다.
+        for (uint32 TileIndex = 0; TileIndex < FShadowAtlasManager::MaxSpotShadowCount; ++TileIndex)
+        {
+            FSpotAtlasSlotDesc Slot = {};
+            if (!FShadowAtlasManager::BuildFixedSpotSlot(TileIndex, Slot))
+            {
+                continue;
+            }
+
+            const float TileX = Min.x + (static_cast<float>(Slot.X) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+            const float TileY = Min.y + (static_cast<float>(Slot.Y) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+
+            const ImU32 LabelColor =
+                (TileIndex < RenderTargets->SpotShadowCount) ? IM_COL32(0, 255, 120, 255) : IM_COL32(180, 180, 180, 180);
+
+            char Label[8];
+            snprintf(Label, sizeof(Label), "%u", TileIndex);
+            DrawList->AddText(ImVec2(TileX + 4.0f, TileY + 4.0f), LabelColor, Label);
+        }
+    }
+    ImGui::End();
+
+    return WindowWidth;
 }

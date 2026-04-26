@@ -73,6 +73,7 @@ StructuredBuffer<uint> TileVisibleLightIndices : register(t10);
 struct FSpotShadowConstants
 {
     row_major float4x4 LightViewProj;
+    float4 AtlasRect; // xy = offset, zw = scale
     float ShadowResolution;
     float ShadowBias;
     float2 Padding;
@@ -85,7 +86,7 @@ cbuffer SpotShadowInfo : register(b6)
 }
 
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
-Texture2DArray<float> SpotShadowMap : register(t12);
+Texture2D<float> SpotShadowMap : register(t12);
 
 static const uint LIGHT_TYPE_DIRECTIONAL = 0u;
 static const uint LIGHT_TYPE_POINT = 1u;
@@ -164,7 +165,6 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
     }
 
     const FSpotShadowConstants Shadow = SpotShadowData[ShadowSlice];
-    const int Resolution = max((int)Shadow.ShadowResolution, 1);
 
     const float4 ShadowClip = mul(float4(WorldPos, 1.0f), Shadow.LightViewProj);
     if (ShadowClip.w <= 1.0e-5f)
@@ -180,15 +180,17 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
         return 1.0f;
     }
 
-    const float2 ShadowUV = float2(
+    const float2 LocalUV = float2(
         ShadowNDC.x * 0.5f + 0.5f,
         0.5f - ShadowNDC.y * 0.5f);
 
-    const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-    const int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)Resolution), int2(0, 0), MaxTexel);
+    const float2 AtlasUV = Shadow.AtlasRect.xy + LocalUV * Shadow.AtlasRect.zw;
+    const int2 AtlasSize = int2(4096, 4096);
+    const int2 ShadowTexel = clamp((int2)floor(AtlasUV * (float2)AtlasSize), int2(0, 0), AtlasSize - 1);
+    
     const float CurrentDepth = ShadowNDC.z;
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
-    const float StoredDepth = SpotShadowMap.Load(int4(ShadowTexel.x, ShadowTexel.y, (int)ShadowSlice, 0));
+    const float StoredDepth = SpotShadowMap.Load(int3(ShadowTexel, 0));
 
     return (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
 }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "RenderPass.h"
+#include "ShadowAtlasManager.h"
 
 class FShadowPass : public FBaseRenderPass
 {
@@ -16,12 +17,15 @@ private:
     bool EnsureSpotShadowResources(ID3D11Device* Device);
 
 private:
+    FShadowAtlasManager ShadowAtlasManager;
+	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
+    
+    /*
     static constexpr uint32 MaxSpotShadowCount = 8;
     static constexpr uint32 SpotShadowResolution = 1024;
 
     TComPtr<ID3D11Texture2D> SpotShadowTexture;
     TArray<TComPtr<ID3D11DepthStencilView>> SpotShadowDSVs;
     TComPtr<ID3D11ShaderResourceView> SpotShadowSRV;
-
-	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
+    */
 };
