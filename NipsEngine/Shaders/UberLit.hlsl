@@ -88,7 +88,6 @@ cbuffer SpotShadowInfo : register(b6)
     float3 _SpotShadowInfoPad0;
 }
 
-
 #define MAX_CASCADE_COUNT 4
 
 cbuffer DirectionalShadowInfo : register(b7)

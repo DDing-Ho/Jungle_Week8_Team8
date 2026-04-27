@@ -100,6 +100,8 @@ public:
 
 	static const FTypeInfo s_TypeInfo;
 
+	static bool IsValid(const UObject* Obj);
+
 protected:
 	FName ObjectName;
 

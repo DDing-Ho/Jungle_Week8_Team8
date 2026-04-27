@@ -41,9 +41,19 @@ void UWorld::PostDuplicate(UObject* Original)
         PersistentLevel = Cast<ULevel>(OrigWorld->PersistentLevel->Duplicate());
         for (AActor* DuplicatedActor : PersistentLevel->GetActors())
         {
-            if (DuplicatedActor)
+            if (!DuplicatedActor) continue;
+
+            const TArray<UActorComponent*>& Comps = DuplicatedActor->GetComponents();
+            for (int32 i = static_cast<int32>(Comps.size()) - 1; i >= 0; --i)
             {
-                DuplicatedActor->SetWorld(this);
+                if (Comps[i]) Comps[i]->OnUnregister();
+            }
+
+            DuplicatedActor->SetWorld(this);
+
+            for (UActorComponent* Comp : Comps)
+            {
+                if (Comp) Comp->OnRegister();
             }
         }
     }

@@ -59,33 +59,44 @@ public:
 	void InitDefaultComponents();
 };
 
-class ADirectionalLightActor : public AActor {
+class ALightActor : public AActor {
 public:
-	DECLARE_CLASS(ADirectionalLightActor, AActor)
+    DECLARE_CLASS(ALightActor, AActor)
+    ALightActor() = default;
+
+    void PostDuplicate(UObject* Original) override;
+
+protected:
+    void SetupBillboard(class USceneComponent* Root);
+};
+
+class ADirectionalLightActor : public ALightActor {
+public:
+	DECLARE_CLASS(ADirectionalLightActor, ALightActor)
 	ADirectionalLightActor() = default;
 
 	void InitDefaultComponents();
 };
 
-class AAmbientLightActor : public AActor {
+class AAmbientLightActor : public ALightActor {
 public:
-	DECLARE_CLASS(AAmbientLightActor, AActor)
+	DECLARE_CLASS(AAmbientLightActor, ALightActor)
 	AAmbientLightActor() = default;
 
 	void InitDefaultComponents();
 };
 
-class APointLightActor : public AActor {
+class APointLightActor : public ALightActor {
 public:
-	DECLARE_CLASS(APointLightActor, AActor)
+	DECLARE_CLASS(APointLightActor, ALightActor)
 	APointLightActor() = default;
 
 	void InitDefaultComponents();
 };
 
-class ASpotLightActor : public AActor {
+class ASpotLightActor : public ALightActor {
 public:
-	DECLARE_CLASS(ASpotLightActor, AActor)
+	DECLARE_CLASS(ASpotLightActor, ALightActor)
 	ASpotLightActor() = default;
 
 	void InitDefaultComponents();

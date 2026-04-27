@@ -20,6 +20,11 @@
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
 
+namespace
+{
+    void OverrideCameraWithLightPerspective(ULightComponent* LightComp, UEditorEngine* EditorEngine);
+}
+
 void FEditorPropertyWidget::Initialize(UEditorEngine* InEditorEngine)
 {
     FEditorWidget::Initialize(InEditorEngine);
@@ -54,6 +59,13 @@ void FEditorPropertyWidget::Render(float DeltaTime)
     }
 
     UpdateSelectionState(PrimaryActor);
+
+    // SelectedComponent 유효성 검사 (다른 곳에서 삭제되었을 가능성 대비)
+    if (SelectedComponent && !UObject::IsValid(SelectedComponent))
+    {
+        SelectedComponent = nullptr;
+        bActorSelected = true;
+    }
 
     const TArray<AActor*>& SelectedActors = SelectionManager->GetSelectedActors();
 
@@ -487,6 +499,17 @@ void FEditorPropertyWidget::RenderComponentProperties()
         RenderInterpControlPoints(InterpComp);
     }
 
+    // Special: Light component — override camera with light's perspective
+    if (SelectedComponent->IsA<ULightComponent>())
+    {
+        ULightComponent* LightComp = static_cast<ULightComponent*>(SelectedComponent);
+        SEPARATOR();
+        if (ImGui::Button("Override Camera with Light's Perspective", ImVec2(-1, 0)))
+        {
+            OverrideCameraWithLightPerspective(LightComp, EditorEngine);
+        }
+    }
+
     ImGui::Separator();
 
     // 변경이 있을 경우에만 월드 행렬 갱신
@@ -721,6 +744,29 @@ void FEditorPropertyWidget::AttachAndSelectNewComponent(AActor* PrimaryActor, UA
 
     SelectedComponent = NewComp;
     bActorSelected = false;
+}
+
+// ─────────────────── namespace ───────────────────────────────────────────────
+
+namespace
+{
+    void OverrideCameraWithLightPerspective(ULightComponent* LightComp, UEditorEngine* EditorEngine)
+    {
+        FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
+        FEditorViewportClient* Client = Layout.GetViewportClient(Layout.GetLastFocusedViewportIndex());
+        if (Client == nullptr)
+            return;
+
+        FViewportCamera* Camera = Client->GetCamera();
+        if (Camera == nullptr)
+            return;
+
+        Camera->SetLocation(LightComp->GetWorldLocation());
+        Camera->SetRotation(LightComp->GetWorldTransform().GetRotation());
+        Camera->ClearCustomLookDir();
+        Camera->SetProjectionType(EViewportProjectionType::Perspective);
+        Client->SyncCameraTarget();
+    }
 }
 
 // 액터나 컴포넌트의 이름을 입력 창을 통해 실시간으로 수정할 수 있게 합니다.

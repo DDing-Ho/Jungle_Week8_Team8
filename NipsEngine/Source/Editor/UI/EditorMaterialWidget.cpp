@@ -94,6 +94,13 @@ void FEditorMaterialWidget::Render(float DeltaTime)
 		SelectedMaterialPtr = nullptr;
 	}
 
+	if (!UObject::IsValid(SelectedComponent))
+	{
+		SelectedComponent = nullptr;
+		SelectedSectionIndex = -1;
+		SelectedMaterialPtr = nullptr;
+	}
+
 	if (!SelectedComponent)
 	{
 		ImGui::TextDisabled("Select an actor with PrimitiveComponent to edit materials.");

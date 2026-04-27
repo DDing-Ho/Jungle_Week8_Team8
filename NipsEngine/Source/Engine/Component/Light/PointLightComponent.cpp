@@ -1,4 +1,4 @@
-#include "PointLightComponent.h"
+﻿#include "PointLightComponent.h"
 #include "Object/ObjectFactory.h"
 
 DEFINE_CLASS(UPointLightComponent, ULightComponent)
@@ -30,7 +30,7 @@ void UPointLightComponent::PostDuplicate(UObject* Original)
     ULightComponent::PostDuplicate(Original);
 
     const UPointLightComponent* Orig = Cast<UPointLightComponent>(Original);
-    if (!Orig) return;
+    if (!Orig) { return; }
 
     AttenuationRadius    = Orig->AttenuationRadius;
     LightFalloffExponent = Orig->LightFalloffExponent;

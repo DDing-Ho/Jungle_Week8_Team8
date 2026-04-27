@@ -34,16 +34,19 @@ REGISTER_FACTORY(ABillboardActor)
 DEFINE_CLASS(ADecalActor, AActor)
 REGISTER_FACTORY(ADecalActor)
 
-DEFINE_CLASS(ADirectionalLightActor, AActor)
+DEFINE_CLASS(ALightActor, AActor)
+// Base class, REGISTER_FACTORY 없음
+
+DEFINE_CLASS(ADirectionalLightActor, ALightActor)
 REGISTER_FACTORY(ADirectionalLightActor)
 
-DEFINE_CLASS(AAmbientLightActor, AActor)
+DEFINE_CLASS(AAmbientLightActor, ALightActor)
 REGISTER_FACTORY(AAmbientLightActor)
 
-DEFINE_CLASS(APointLightActor, AActor)
+DEFINE_CLASS(APointLightActor, ALightActor)
 REGISTER_FACTORY(APointLightActor)
 
-DEFINE_CLASS(ASpotLightActor, AActor)
+DEFINE_CLASS(ASpotLightActor, ALightActor)
 REGISTER_FACTORY(ASpotLightActor)
 
 DEFINE_CLASS(ASkyAtmosphereActor, AActor)
@@ -111,49 +114,30 @@ void ADirectionalLightActor::InitDefaultComponents()
 {
 	UDirectionalLightComponent* DirLight = AddComponent<UDirectionalLightComponent>();
 	SetRootComponent(DirLight);
-	
-	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
-	Billboard->AttachToComponent(DirLight);
-	Billboard->SetEditorOnly(true);
-	Billboard->SetHiddenInEditor(true);
-	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightDirectional.PNG");
+	SetupBillboard(DirLight);
 }
 
 void AAmbientLightActor::InitDefaultComponents()
 {
 	UAmbientLightComponent* AmbientLight = AddComponent<UAmbientLightComponent>();
 	SetRootComponent(AmbientLight);
-
-	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
-	Billboard->AttachToComponent(AmbientLight);
-	Billboard->SetEditorOnly(true);
-	Billboard->SetHiddenInEditor(true);
-	Billboard->SetTexturePath("Asset/Texture/Icons/SkyLight.PNG");
+	SetupBillboard(AmbientLight);
 }
 
 void APointLightActor::InitDefaultComponents()
 {
 	UPointLightComponent* PointLight = AddComponent<UPointLightComponent>();
 	SetRootComponent(PointLight);
-	
-	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
-	Billboard->AttachToComponent(PointLight);
-	Billboard->SetEditorOnly(true);
-	Billboard->SetHiddenInEditor(true);
-	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightPoint.PNG");
+	SetupBillboard(PointLight);
 }
 
 void ASpotLightActor::InitDefaultComponents()
 {
 	USpotLightComponent* SpotLight = AddComponent<USpotLightComponent>();
 	SetRootComponent(SpotLight);
-	
-	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
-	Billboard->AttachToComponent(SpotLight);
-	Billboard->SetEditorOnly(true);
-	Billboard->SetHiddenInEditor(true);
-	Billboard->SetTexturePath("Asset/Texture/Icons/S_LightSpot.PNG");
+	SetupBillboard(SpotLight);
 }
+
 
 void ASkyAtmosphereActor::InitDefaultComponents()
 {
@@ -177,4 +161,37 @@ void AHeightFogActor::InitDefaultComponents()
 	Billboard->SetEditorOnly(true);
 	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/S_ExpoHeightFog.PNG");
+}
+
+void ALightActor::PostDuplicate(UObject* Original)
+{
+    AActor::PostDuplicate(Original);
+
+    ULightComponentBase* LightComp = Cast<ULightComponentBase>(GetRootComponent());
+    if (!LightComp)
+    {
+        for (UActorComponent* Comp : GetComponents())
+        {
+            if (LightComp = Cast<ULightComponentBase>(Comp))
+                break;
+        }
+    }
+
+    if (LightComp)
+    {
+        SetupBillboard(LightComp);
+    }
+}
+
+void ALightActor::SetupBillboard(USceneComponent* Root)
+{
+    ULightComponentBase* LightComp = Cast<ULightComponentBase>(Root);
+    if (LightComp && LightComp->GetBillboardTexturePath())
+    {
+        UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
+        Billboard->AttachToComponent(LightComp);
+        Billboard->SetEditorOnly(true);
+        Billboard->SetHiddenInEditor(true);
+        Billboard->SetTexturePath(LightComp->GetBillboardTexturePath());
+    }
 }

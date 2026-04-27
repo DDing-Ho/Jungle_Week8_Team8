@@ -14,4 +14,6 @@ public:
     void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
     void Serialize(FArchive& Ar) override;
     void PostDuplicate(UObject* Original) override;
+
+    const char* GetBillboardTexturePath() const override { return BillboardTexturePath; }
 };
