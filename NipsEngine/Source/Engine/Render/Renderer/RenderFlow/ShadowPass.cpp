@@ -8,8 +8,13 @@ bool FShadowPass::Initialize()
 	return true;
 }
 
-bool FShadowRenderPass::Release()
-{
+bool FShadowPass::Release()
+{	
+	DirectionalShaderBinding.reset();
+	DirectionalShadowSRV.Reset();
+	DirectionalShadowDSVs.clear();
+	DirectionalShadowTexture.Reset();
+
     ShaderBinding.reset();
     SpotShadowSRV.Reset();
     SpotShadowDSVs.clear();
@@ -18,7 +23,7 @@ bool FShadowRenderPass::Release()
 	return true;
 }
 
-bool FShadowRenderPass::Begin(const FRenderPassContext* Context)
+bool FShadowPass::Begin(const FRenderPassContext* Context)
 {
     OutSRV = PrevPassSRV;
     OutRTV = PrevPassRTV;
@@ -30,6 +35,7 @@ bool FShadowRenderPass::Begin(const FRenderPassContext* Context)
 
     if (Context->RenderTargets != nullptr)
     {
+		Context->RenderTargets->DirectionalShadowSRV = nullptr;
         Context->RenderTargets->SpotShadowSRV = nullptr;
         Context->RenderTargets->SpotShadowCount = 0;
     }
@@ -42,17 +48,17 @@ bool FShadowRenderPass::Begin(const FRenderPassContext* Context)
     return true;
 }
 
-bool FShadowRenderPass::DrawCommand(const FRenderPassContext* Context)
+bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 {
     if (Context == nullptr || Context->RenderBus == nullptr || Context->DeviceContext == nullptr || !ShaderBinding)
     {
         return false;
     }
 
-	// TODO : Directional
+	// ─────────────────── Directional Shadow ───────────────────
 
 
-	// TODO : Spot
+	// ─────────────────── Spot Shadow ───────────────────
     const TArray<FSpotShadowConstants>& SpotShadows = Context->RenderBus->GetCastShadowSpotLights();
     if (SpotShadows.empty())
     {
@@ -181,6 +187,16 @@ bool FShadowPass::End(const FRenderPassContext* Context)
     }
 
 	return true;
+}
+
+bool FShadowPass::EnsureDirectionalShadowResources(ID3D11Device* Device, uint32 CascadeCount)
+{
+	if (Device == nullptr) 
+	{
+		return false;
+	}
+
+	if (DirectionalShadowTexture && DirectionalShadowSRV && DirectionalShadowDSVs.size() == MAX_CASCADE_COUNT)
 }
 
 bool FShadowPass::EnsureSpotShadowResources(ID3D11Device* Device)

@@ -23,7 +23,8 @@ void FRenderer::Create(HWND hWindow)
 	}
 
 	FResourceManager::Get().SetCachedDevice(Device.GetDevice());
-    FResourceManager::Get().LoadShader("Shaders/Multipass/SpotShadowDepth.hlsl","mainVS","mainPS",NormalVertexInputLayout,ARRAYSIZE(NormalVertexInputLayout),nullptr);
+	FResourceManager::Get().LoadShader("Shaders/Multipass/DirectionalShadowDepth.hlsl", "mainVS", "mainPS", NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout), nullptr);
+    FResourceManager::Get().LoadShader("Shaders/Multipass/SpotShadowDepth.hlsl", "mainVS", "mainPS", NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/Primitive.hlsl", "VS", "PS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
     FResourceManager::Get().LoadShader("Shaders/ShaderSubUV.hlsl", "VS", "PS", TextureVertexInputLayout, ARRAYSIZE(TextureVertexInputLayout), nullptr);
     FResourceManager::Get().LoadShader("Shaders/Gizmo.hlsl", "VS", "PS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);

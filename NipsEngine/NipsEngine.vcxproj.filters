@@ -192,6 +192,9 @@
     <FxCompile Include="Shaders\ShaderSubUV.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\ShadowSample.hlsli">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\UberLit.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -207,6 +210,9 @@
     <FxCompile Include="Shaders\Multipass\BufferVisualizationPass.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Multipass\DirectionalShadowDepth.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Multipass\FXAAPass.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
@@ -217,6 +223,9 @@
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Multipass\SkyPass.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Multipass\SpotShadowDepth.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Multipass\ToonOutlinePass.hlsl">

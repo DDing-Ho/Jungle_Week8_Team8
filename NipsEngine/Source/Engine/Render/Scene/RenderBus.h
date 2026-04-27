@@ -54,15 +54,15 @@ public:
 	void SetViewportOrigin(const FVector2& InViewportOrigin) { ViewportOrigin = InViewportOrigin; }
 	const FVector2& GetViewportOrigin() const { return ViewportOrigin; }
 
-	void SetDirectionalShadow(const FDirectionalShadowConstants& InShadow) { DirectionalShadow = InShadow; }
-	bool HasDirectionalShadow() const { return DirectionalShadow.has_value(); }
-	const FDirectionalShadowConstants* GetDirectionalShadow() const { DirectionalShadow.has_value() ? &DirectionalShadow.value() : nullptr; }
+	void SetDirectionalShadow(const FDirectionalShadowConstants& InShadow) { CastShadowDirectionalLight = InShadow; }
+	bool HasDirectionalShadow() const { return CastShadowDirectionalLight.has_value(); }
+	const FDirectionalShadowConstants* GetDirectionalShadow() const { return CastShadowDirectionalLight.has_value() ? &CastShadowDirectionalLight.value() : nullptr; }
 
 private:
 	TArray<FRenderCommand> PassQueues[(uint32)ERenderPass::MAX];
 	TArray<FRenderLight> Lights;
     TArray<FShadowConstants> CastShadowLights; // TODO: 추후 필요없어질 경우 삭제
-	std::optional<FDirectionalShadowConstants> DirectionalShadow;
+	std::optional<FDirectionalShadowConstants> CastShadowDirectionalLight;
     TArray<FSpotShadowConstants> CastShadowSpotLights;
 
 	FMatrix View;

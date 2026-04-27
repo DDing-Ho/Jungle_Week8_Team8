@@ -71,6 +71,8 @@ StructuredBuffer<FVisibleLightData> VisibleLights : register(t8);
 StructuredBuffer<uint> TileVisibleLightCount : register(t9);
 StructuredBuffer<uint> TileVisibleLightIndices : register(t10);
 
+// ─────────────────── Shadows ───────────────────
+
 struct FSpotShadowConstants
 {
     row_major float4x4 LightViewProj;
@@ -85,8 +87,50 @@ cbuffer SpotShadowInfo : register(b6)
     float3 _SpotShadowInfoPad0;
 }
 
+#define MAX_CASCADE_COUNT 4
+
+cbuffer DirectionalShadowInfo : register(b7)
+{
+    row_major float4x4 LightViewProj[MAX_CASCADE_COUNT];
+    float4 CascadeSplitDistances;
+    float ShadowBias;
+    float3 _Directional;
+}
+
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
 Texture2DArray<float> SpotShadowMap : register(t12);
+Texture2DArray<float> DirectionalShadowMap : register(t13);
+
+static const int kCascadeShadowResoultion = 2048; // ShadowPass::CascadeShadowResolution과 일치
+
+// 뷰 공간 깊이로 Cascade Index를 결정한다.
+float ComputeDirectionalShadowFactor(float3 WorldPos)
+{
+    float ViewDepth = mul(float4(WorldPos, 1.0f), View).z;
+        
+    // remove branching 
+    int CascadeIndex = (int)(step(CascadeSplitDistances.x, ViewDepth));
+    CascadeIndex += step(CascadeSplitDistances.y, ViewDepth);
+    CascadeIndex += step(CascadeSplitDistances.z, ViewDepth);
+    CascadeIndex = min(CascadeIndex, MAX_CASCADE_COUNT - 1);
+    
+    float4 ShadowClip = mul(float4(WorldPos, 1.0f), LightViewProj[CascadeIndex]);
+    
+    float W = (ShadowClip.w <= 1.0e-5f) ? 1.0f : ShadowClip.w;
+    float3 ShadowNDC = ShadowClip.xyz / W;
+    float InBounds = step(abs(ShadowNDC.x), 1.0f) * step(abs(ShadowNDC.y), 1.0f) * step(0.0f, ShadowNDC.z) * step(ShadowNDC.z, 1.0f) * step(1.0e-5f, ShadowClip.w);
+        
+    float2 ShadowUV = float2(ShadowNDC.x * 0.5f + 0.5f, ShadowNDC.y * -0.5f + 0.5f);
+    int2 MaxTexel = int2(kCascadeShadowResoultion - 1, kCascadeShadowResoultion - 1);
+    int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)kCascadeShadowResoultion), int2(0, 0), MaxTexel);
+    float StoredDepth = DirectionalShadowMap.Load(int4(ShadowTexel.xy, CascadeIndex, 0));
+    
+    float ShadowFactor = step(ShadowNDC.z - ShadowBias, StoredDepth); // 저장된 깊이와 비교해 빛을 받는지 여부 도출
+    
+    return lerp(1.0f, ShadowFactor, InBounds);
+}
+
+// ─────────────────── Lights ───────────────────
 
 static const uint LIGHT_TYPE_DIRECTIONAL = 0u;
 static const uint LIGHT_TYPE_POINT = 1u;
@@ -328,7 +372,12 @@ FLightingResult EvaluateLightingFromWorldVertex(float3 WorldPos, float3 WorldNor
         if (Light.Type == LIGHT_TYPE_DIRECTIONAL)
         {
             const float3 L = normalize(Light.Direction);
-            AccumulateDirectLight(WorldPos, N, V, L, LightColor, Result);
+            float ShadowFactor = 1.0f;
+            if (Light.bCastShadows != 0u)
+            {
+                ShadowFactor = ComputeDirectionalShadowFactor(WorldPos);
+            }
+            AccumulateDirectLight(WorldPos, N, V, L, LightColor * ShadowFactor, Result);
         }
     }
 

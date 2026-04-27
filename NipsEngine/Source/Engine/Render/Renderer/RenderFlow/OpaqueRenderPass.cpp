@@ -60,13 +60,14 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     UShader* ShaderOverride = ResolveOpaqueShaderOverride(Context);
 
-    SceneLightBinding::BindResources(
-        Context,
+    SceneLightBinding::BindResources(Context,
         VisibleLightConstantBuffer,
         SpotShadowInfoConstantBuffer,
         SpotShadowConstantsBuffer,
         SpotShadowConstantsSRV,
         SpotShadowConstantsCapacity);
+
+	SceneLightBinding::BindDirectionalShadowResources(Context, DirecitonalShadowInfoConstantBuffer);
 
     for (const FRenderCommand& Cmd : Commands)
     {
@@ -137,6 +138,7 @@ bool FOpaqueRenderPass::End(const FRenderPassContext* Context)
 bool FOpaqueRenderPass::Release()
 {
     VisibleLightConstantBuffer.Reset();
+	DirecitonalShadowInfoConstantBuffer.Reset();
     SpotShadowInfoConstantBuffer.Reset();
     SpotShadowConstantsBuffer.Reset();
     SpotShadowConstantsSRV.Reset();

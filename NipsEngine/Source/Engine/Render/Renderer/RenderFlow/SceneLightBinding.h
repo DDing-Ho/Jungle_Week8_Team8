@@ -10,8 +10,10 @@
 namespace SceneLightBinding
 {
 	constexpr uint32 SpotShadowInfoRegister = 6;
+	constexpr uint32 DirectionalShadowInfoRegister = 7;
 	constexpr uint32 SpotShadowConstantsRegister = 11;
 	constexpr uint32 SpotShadowMapRegister = 12;
+	constexpr uint32 DirectionalShadowMapRegister = 13;
 
 	struct FVisibleLightConstants
 	{
@@ -26,6 +28,14 @@ namespace SceneLightBinding
 	struct FSpotShadowInfoConstants
 	{
 		uint32 SpotShadowCount = 0;
+		float Padding[3] = { 0.0f, 0.0f, 0.0f };
+	};
+
+	struct FDirectionalShadowInfoConstants
+	{
+		FMatrix LightViewProj[MAX_CASCADE_COUNT];
+		FVector4 SplitDistances;
+		float ShadowBias = 0.001f;
 		float Padding[3] = { 0.0f, 0.0f, 0.0f };
 	};
 
@@ -59,6 +69,22 @@ namespace SceneLightBinding
 		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, SpotShadowInfoConstantBuffer.GetAddressOf()));
+	}
+
+	inline bool EnsureDirectionalShadowInfoCB(ID3D11Device* Device, TComPtr<ID3D11Buffer>& DirectionalShadowInfoCB)
+	{
+		if (DirectionalShadowInfoCB)
+		{
+			return true;
+		}
+
+		D3D11_BUFFER_DESC Desc = {};
+		Desc.ByteWidth = sizeof(FDirectionalShadowInfoConstants);
+		Desc.Usage = D3D11_USAGE_DYNAMIC;
+		Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, DirectionalShadowInfoCB.GetAddressOf()));
 	}
 
 	inline bool EnsureSpotShadowConstantsBuffer(
@@ -191,6 +217,53 @@ namespace SceneLightBinding
 		Context->DeviceContext->PSSetShaderResources(SpotShadowMapRegister, 1, &ShadowMapSRV);
 	}
 
+	inline void BindDirectionalShadowResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& DirectionalShadowInfoCB)
+	{
+		if (Context == nullptr || Context->Device == nullptr || Context->DeviceContext == nullptr)
+		{
+			return;
+		}
+
+		if (!EnsureDirectionalShadowInfoCB(Context->Device, DirectionalShadowInfoCB))
+		{
+			return;
+		}
+
+		const FDirectionalShadowConstants* DirShadow = nullptr;
+		if (Context->RenderBus != nullptr)
+		{
+			DirShadow = Context->RenderBus->GetDirectionalShadow();
+		}
+
+		ID3D11ShaderResourceView* ShadowMapSRV = nullptr;
+		if (Context->RenderTargets != nullptr && DirShadow != nullptr)
+		{
+			ShadowMapSRV = Context->RenderTargets->DirectionalShadowSRV;
+		}
+
+		static_assert(sizeof(FDirectionalShadowInfoConstants) == sizeof(FDirectionalShadowConstants),
+			"FDirectionalShadowInfoConstants and FDirectionalShadowConstants layout mismatch");
+
+		FDirectionalShadowInfoConstants InfoConstants = {};
+		if (DirShadow != nullptr)
+		{
+			std::memcpy(&InfoConstants, DirShadow, sizeof(InfoConstants));
+		}
+
+		D3D11_MAPPED_SUBRESOURCE Mapped = {};
+		if (SUCCEEDED(Context->DeviceContext->Map(DirectionalShadowInfoCB.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &Mapped)))
+		{
+			std::memcpy(Mapped.pData, &InfoConstants, sizeof(InfoConstants));
+			Context->DeviceContext->Unmap(DirectionalShadowInfoCB.Get(), 0);
+		}
+
+		ID3D11Buffer* InfoCBuffer = DirectionalShadowInfoCB.Get();
+		Context->DeviceContext->PSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &InfoCBuffer);
+		Context->DeviceContext->VSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &InfoCBuffer);
+
+		Context->DeviceContext->PSSetShaderResources(DirectionalShadowMapRegister, 1, &ShadowMapSRV);
+	}
+
 	inline void BindResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
 	{
 		if (Context == nullptr || Context->Device == nullptr || Context->DeviceContext == nullptr)
@@ -257,14 +330,16 @@ namespace SceneLightBinding
 			return;
 		}
 
-		ID3D11ShaderResourceView* NullSRVs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-		DeviceContext->PSSetShaderResources(8, 5, NullSRVs);
-		DeviceContext->VSSetShaderResources(8, 5, NullSRVs);
+		ID3D11ShaderResourceView* NullSRVs[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		DeviceContext->PSSetShaderResources(8, 6, NullSRVs);
+		DeviceContext->VSSetShaderResources(8, 6, NullSRVs);
 
 		ID3D11Buffer* NullCB = nullptr;
 		DeviceContext->PSSetConstantBuffers(4, 1, &NullCB);
 		DeviceContext->VSSetConstantBuffers(4, 1, &NullCB);
 		DeviceContext->PSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
 		DeviceContext->VSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
+		DeviceContext->PSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &NullCB);
+		DeviceContext->VSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &NullCB);
 	}
 }

@@ -37,7 +37,6 @@ private:
     std::shared_ptr<FLightCullingPass> LightCullingPass;
 	std::shared_ptr<FShadowPass> ShadowPass;
     std::shared_ptr<FSkyRenderPass> SkyRenderPass;
-    std::shared_ptr<FShadowPass> ShadowPass;
     std::shared_ptr<FOpaqueRenderPass> OpaqueRenderPass;
     std::shared_ptr<FDecalRenderPass> DecalRenderPass;
     std::shared_ptr<FBufferVisualizationRenderPass> BufferVisualizationRenderPass;

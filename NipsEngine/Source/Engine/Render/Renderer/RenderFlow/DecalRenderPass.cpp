@@ -1,4 +1,4 @@
-#include "DecalRenderPass.h"
+﻿#include "DecalRenderPass.h"
 #include "Render/Scene/RenderBus.h"
 #include "Render/Resource/RenderResources.h"
 #include "Render/Resource/Material.h"
@@ -6,16 +6,6 @@
 
 bool FDecalRenderPass::Initialize()
 {
-    return true;
-}
-
-bool FDecalRenderPass::Release()
-{
-    VisibleLightConstantBuffer.Reset();
-    SpotShadowInfoConstantBuffer.Reset();
-    SpotShadowConstantsBuffer.Reset();
-    SpotShadowConstantsSRV.Reset();
-    SpotShadowConstantsCapacity = 0;
     return true;
 }
 
@@ -64,6 +54,8 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
     {
         return true;
     }
+	
+	SceneLightBinding::BindDirectionalShadowResources(Context, DirectionalShadowConstantBuffer);
 
     SceneLightBinding::BindResources(
         Context,
@@ -137,5 +129,16 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
 bool FDecalRenderPass::End(const FRenderPassContext* Context)
 {
     SceneLightBinding::UnbindResources(Context ? Context->DeviceContext : nullptr);
+    return true;
+}
+
+bool FDecalRenderPass::Release()
+{
+    VisibleLightConstantBuffer.Reset();
+    DirectionalShadowConstantBuffer.Reset();
+    SpotShadowInfoConstantBuffer.Reset();
+    SpotShadowConstantsBuffer.Reset();
+    SpotShadowConstantsSRV.Reset();
+    SpotShadowConstantsCapacity = 0;
     return true;
 }

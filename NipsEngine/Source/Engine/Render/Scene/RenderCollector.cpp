@@ -31,373 +31,34 @@
 
 namespace
 {
-	constexpr float SpotShadowNearPlane = 0.1f;
-	constexpr float SpotShadowBaseResolution = 1024.0f;
+	// ─────────────────── Constants ───────────────────
+    constexpr float SpotShadowNearPlane = 0.1f;
+    constexpr float SpotShadowBaseResolution = 1024.0f;
 
-	FVector MakeLightColorVector(const ULightComponentBase* LightComponent)
-	{
-		if (LightComponent == nullptr)
-		{
-			return FVector::ZeroVector;
-		}
+    // ─────────────────── Vector ───────────────────
+    FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
+    FVector MakeStableUpVector(const FVector& Direction);
 
-		const FColor& LightColor = LightComponent->GetLightColor();
-		return FVector(LightColor.r, LightColor.g, LightColor.b);
-	}
+	// ─────────────────── Shadow ───────────────────
+    float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
+    float MakeSpotShadowResolution(const ULightComponent* LightComponent);
+    FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
+    FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
+    void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
+    void BuildDirectionalShadowViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalShadowConstants& ShadowConstants);
+    
+	// ─────────────────── Billboard, SubUV ───────────────────
+    FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus);
+    FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus);
 
-	FVector MakeStableUpVector(const FVector& Direction)
-	{
-		const FVector NormalizedDirection = Direction.GetSafeNormal();
-		FVector Up = FVector::UpVector;
-		if (std::fabs(FVector::DotProduct(Up, NormalizedDirection)) > 0.98f)
-		{
-			Up = FVector::RightVector;
-		}
-		return Up;
-	}
-
-	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight)
-	{
-		return std::max(SpotLight->GetAttenuationRadius(), SpotShadowNearPlane + 1.0f);
-	}
-
-	float MakeSpotShadowResolution(const ULightComponent* LightComponent)
-	{
-		return std::max(1.0f, SpotShadowBaseResolution * LightComponent->GetShadowResolutionScale());
-	}
-
-	FMatrix MakeSpotShadowViewProjection(
-		const USpotLightComponent* SpotLight,
-		const FVector& LightDirection,
-		float NearPlane,
-		float FarPlane)
-	{
-		const FVector Direction = LightDirection.GetSafeNormal();
-		const FVector LightPosition = SpotLight->GetWorldLocation();
-		const float FovY = MathUtil::DegreesToRadians(
-			MathUtil::Clamp(SpotLight->GetOuterConeAngle() * 2.0f, 1.0f, 175.0f));
-
-		const FMatrix LightView = FMatrix::MakeViewLookAtLH(
-			LightPosition,
-			LightPosition + Direction,
-			MakeStableUpVector(Direction));
-		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
-		return LightView * LightProjection;
-	}
-
-	FVector InterpolateFrustumCorner(
-		const FVector& NearCorner,
-		const FVector& FarCorner,
-		float NearDepth,
-		float FarDepth,
-		float TargetDepth)
-	{
-		const float Range = FarDepth - NearDepth;
-		if (std::fabs(Range) <= MathUtil::KindaSmallNumber)
-		{
-			return FarCorner;
-		}
-
-		const float T = (TargetDepth - NearDepth) / Range;
-		return NearCorner + (FarCorner - NearCorner) * T;
-	}
-
-	/* PSSM(Parallel - Split Shadow Map) 공식에 따라 View Frustum을 평행 분할
-	 * Lambda[0, 1] → Linear : 0.0f, Logarithmic : 1.0f */
-	void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits)
-	{
-		OutSplits[0] = NearPlane;
-		for (int32 i = 1; i < CascadeCount; ++i)
-		{
-			float Fraction = static_cast<float>(i) / CascadeCount; // 전체 Cascade 구간 중 경계선
-			float LogarithmSplit = std::pow(ShadowDistance / NearPlane, Fraction);
-			float UniformSplit = NearPlane + (ShadowDistance - NearPlane) * Fraction;
-			OutSplits[i] = Lambda * LogarithmSplit + (1.0f - Lambda) * Fraction;
-		}
-		OutSplits[CascadeCount] = ShadowDistance;
-	}
-
-	/* View Frustum을 PSSM 공식에 따라 Cascade 구간으로 분할한 뒤,
-	 * 각 구간을 포함하는 최소 크기의 Bounding Sphere를 구하고, 
-	 * 빛의 시점에서 Bounding Sphere를 덮는 직교 투영 행렬과 뷰 행렬을 생성한다. */
-	void BuildDirectionalShadowViewProjection(
-		const UDirectionalLightComponent* Light,
-		const FRenderBus& RenderBus, 
-		const FVector& DirectionToLight,
-		int32 CascadeCount,
-		FShadowConstants& ShadowData)
-	{
-		const float NearPlane = std::max(RenderBus.GetNear(), 1.0f);
-		const float Lambda = Light->GetCascadeSplitWeight();
-		const float ShadowDistance = Light->GetShadowDistance();
-
-		float Splits[5]; // CascadeCount + 1
-		CalculatePSSMSplits(CascadeCount, NearPlane, ShadowDistance, Lambda, Splits);
-
-		const FMatrix InverseViewProjection = (RenderBus.GetView() * RenderBus.GetProj()).GetInverse();
-		static constexpr float NdcX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-		static constexpr float NdcY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-		FVector NearCorners[4];
-		FVector FarCorners[4];
-		for (int32 i = 0; i < 4; ++i) // i: Corner Index
-		{
-			NearCorners[i] = InverseViewProjection.TransformPosition(FVector(NdcX[i], NdcY[i], 0.0f));
-			FarCorners[i] = InverseViewProjection.TransformPosition(FVector(NdcX[i], NdcY[i], 1.0f));
-		}
-
-		const FVector& CameraPosition = RenderBus.GetCameraPosition();
-		const FVector& CameraForward = RenderBus.GetCameraForward();
-		const float NearDepth = FVector::DotProduct(NearCorners[0] - CameraPosition, CameraForward);
-		const float FarDepth = FVector::DotProduct(FarCorners[0] - CameraPosition, CameraForward);
-		const FVector LightDirection = (DirectionToLight * -1.0f).GetSafeNormal();
-
-		for (int32 i = 0; i < CascadeCount; ++i) // i: Cascade Index
-		{
-			const float CascadeNear = Splits[i];
-			const float CascadeFar = Splits[i + 1];
-			ShadowData.SplitDistances.XYZW[i] = CascadeFar;
-
-			FVector CascadeCorners[8];
-			for (int32 j = 0; j < 4; ++j) // j: Corner Index
-			{
-				CascadeCorners[j] = InterpolateFrustumCorner(NearCorners[j], FarCorners[j], NearDepth, FarDepth, CascadeNear);
-				CascadeCorners[j + 4] = InterpolateFrustumCorner(NearCorners[j], FarCorners[j], NearDepth, FarDepth, CascadeFar);
-			}
-
-			FVector Center = FVector::ZeroVector;
-			for (const FVector& Corner : CascadeCorners)
-			{
-				Center += Corner;
-			}
-			Center *= 1.0f / 8.0f;
-
-			float Radius = 1.0f;
-			for (const FVector& Corner : CascadeCorners)
-			{
-				Radius = std::max(Radius, FVector::Dist(Center, Corner));
-			}
-
-			// Depth 값을 매우 여유롭게 잡아 Shadow Culling 개선, 추후 무난한 정도까지 수정
-			const float DepthRange = 50000.0f;
-			const FVector LightPosition = Center - LightDirection * (DepthRange * 0.5f);
-
-			const FMatrix LightView = FMatrix::MakeViewLookAtLH(LightPosition, Center, MakeStableUpVector(LightDirection));
-			const FMatrix LightProjection = FMatrix::MakeOrthographicLH(Radius * 2.0f, Radius * 2.0f, 0.0f, DepthRange);
-			ShadowData.LightViewProj[i] = LightView * LightProjection;
-		}
-	}
-
-	FColor MakeBVHInternalNodeColor(int32 PathIndexFromLeaf, int32 PathLength)
-	{
-		if (PathLength <= 1)
-		{
-			return FColor::Yellow();
-		}
-
-		const float T = static_cast<float>(PathIndexFromLeaf) / static_cast<float>(PathLength - 1);
-		return FColor::Lerp(FColor::Cyan(), FColor::Yellow(), T);
-	}
-
-	bool UsesCameraDependentRenderBounds(const UPrimitiveComponent* PrimitiveComponent)
-	{
-		if (PrimitiveComponent == nullptr)
-		{
-			return false;
-		}
-
-		switch (PrimitiveComponent->GetPrimitiveType())
-		{
-		case EPrimitiveType::EPT_Billboard:
-		case EPrimitiveType::EPT_Text:
-		case EPrimitiveType::EPT_SubUV:
-			return true;
-		default:
-			return false;
-		}
-	}
-
-	FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus)
-	{
-		const FMatrix WorldMatrix = Primitive->GetWorldMatrix();
-		return UBillboardComponent::MakeBillboardWorldMatrix(
-			WorldMatrix.GetOrigin(),
-			WorldMatrix.GetScaleVector(),
-			RenderBus.GetCameraForward(),
-			RenderBus.GetCameraRight(),
-			RenderBus.GetCameraUp());
-	}
-
-	FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus)
-	{
-		const FVector WorldScale = SubUVComp->GetWorldScale();
-		return USubUVComponent::MakeBillboardWorldMatrix(
-			SubUVComp->GetWorldLocation(),
-			FVector(
-				WorldScale.X > 0.01f ? WorldScale.X : 0.01f,
-				SubUVComp->GetWidth() * WorldScale.Y,
-				SubUVComp->GetHeight() * WorldScale.Z),
-			RenderBus.GetCameraForward(),
-			RenderBus.GetCameraRight(),
-			RenderBus.GetCameraUp());
-	}
-	/*
-	* BillBoardComponent를 상속받은 text, SubUV가 사용하는 AABB 계산함수(의존성 분리)
-	*/
-	FAABB BuildQuadAABB(const FMatrix& WorldMatrix)
-	{
-		static constexpr FVector LocalQuadCorners[4] =
-		{
-			FVector(0.0f, -0.5f,  0.5f),
-			FVector(0.0f,  0.5f,  0.5f),
-			FVector(0.0f,  0.5f, -0.5f),
-			FVector(0.0f, -0.5f, -0.5f)
-		};
-
-		FAABB Box;
-		Box.Reset();
-
-		for (const FVector& Corner : LocalQuadCorners)
-		{
-			Box.Expand(WorldMatrix.TransformPosition(Corner));
-		}
-
-		return Box;
-	}
-
-	FAABB BuildRenderAABB(const UPrimitiveComponent* PrimitiveComponent, const FRenderBus& RenderBus)
-	{
-		switch (PrimitiveComponent->GetPrimitiveType())
-		{
-		case EPrimitiveType::EPT_Billboard:
-        {
-            const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
-            return BuildQuadAABB(UBillboardComponent::MakeBillboardWorldMatrix(
-                BillboardComponent->GetWorldLocation(),
-                FVector(0.00f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
-                RenderBus.GetCameraForward(),
-                RenderBus.GetCameraRight(),
-                RenderBus.GetCameraUp()));
-        }
-		case EPrimitiveType::EPT_Text:
-		{
-			const UTextRenderComponent* TextComp = static_cast<const UTextRenderComponent*>(PrimitiveComponent);
-			return BuildQuadAABB(TextComp->GetTextMatrix());
-		}
-		case EPrimitiveType::EPT_SubUV:
-		{
-			const USubUVComponent* SubUVComp = static_cast<const USubUVComponent*>(PrimitiveComponent);
-			return BuildQuadAABB(MakeViewSubUVSelectionMatrix(SubUVComp, RenderBus));
-		}
-
-		default:
-			return PrimitiveComponent->GetWorldAABB();
-		}
-	}
-
-	int32 SelectLODLevel(const FVector& CameraPos, const FAABB& Bounds, const FMatrix& ProjMatrix, int32 ValidLODCount)
-	{
-		bool IsOrthoGraphic = (std::abs(ProjMatrix.M[3][3] - 1.0f) < 1e-4f);
-		if (ValidLODCount <= 1 || IsOrthoGraphic) return 0;
-
-		// 1. 바운딩 박스를 통해 바운딩 스피어 반지름 및 카메라와의 거리 계산
-		const FVector Center = (Bounds.Min + Bounds.Max) * 0.5f;
-		const FVector Extent = (Bounds.Max - Bounds.Min) * 0.5f;
-		const float SphereRadius = std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z);
-
-		const FVector Diff = Center - CameraPos;
-		const float Dist = std::sqrt(Diff.X * Diff.X + Diff.Y * Diff.Y + Diff.Z * Diff.Z);
-
-		if (Dist <= 1e-4f) return 0;
-
-		const float ProjectedRadius = (SphereRadius / Dist) * ProjMatrix.M[2][1];
-		const float ScreenCoverage = ProjectedRadius; 
-
-		static constexpr float Thresholds[] = { 0.15f, 0.08f, 0.05f, 0.02f };
-		static constexpr int32 ThresholdCount = static_cast<int32>(sizeof(Thresholds) / sizeof(Thresholds[0]));
-
-		const int32 MaxLOD = ValidLODCount - 1;
-		for (int32 LOD = 0; LOD < MaxLOD; ++LOD)
-		{
-			float Threshold = (LOD < ThresholdCount) ? Thresholds[LOD] : 0.0f;
-			if (ScreenCoverage >= Threshold)
-				return LOD;
-		}
-
-		// 화면에 차지하는 비율이 가장 낮을 경우 최하위 LOD 반환
-		return MaxLOD;
-	}
-}
-
-void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus,
-	const FFrustum* ViewFrustum)
-{
-	ResetCullingStats();
-	ResetDecalStats();
-
-	if (!World) return;
-	
-	CollectLight(World, RenderBus, ViewFrustum);
-
-	if (ViewFrustum)
-	{
-		VisiblePrimitiveScratch.clear();
-		World->GetSpatialIndex().FrustumQueryPrimitives(*ViewFrustum, VisiblePrimitiveScratch, FrustumQueryScratch);
-
-		for (UPrimitiveComponent* Primitive : VisiblePrimitiveScratch)
-		{
-			if (Primitive == nullptr || UsesCameraDependentRenderBounds(Primitive) || !Primitive->IsEnableCull()) continue;
-			++LastCullingStats.BVHPassedPrimitiveCount;
-			CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
-		}
-	}
-
-	std::unordered_set<UPrimitiveComponent*> CollectCameraDependentPrimitives;
-	if (ViewFrustum)
-	{
-		CollectCameraDependentPrimitives.reserve(32);
-	}
-	
-	// Frustum이 없다면 액터 단위로 통째로 수집하고, 그렇지 않다면 BVH에서 누락된 컴포넌트들을 개별 수집
-	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
-	{
-		AActor* Actor = *Iter;
-		if (!Actor || !Actor->IsVisible()) continue;
-
-		if (!ViewFrustum)
-		{
-			for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
-			{	
-				if (Primitive != nullptr && !Primitive->IsVisible())
-				{
-					++LastCullingStats.TotalVisiblePrimitiveCount;
-				}
-			}
-			CollectFromActor(Actor, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
-			continue; // early-continue
-		}
-
-		// 이미 처리된 컴포넌트, 중복된 컴포넌트는 제외하고 Frustum Culling 수행
-		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
-		{
-			if (!Primitive || !Primitive->IsVisible()) continue;
-
-			++LastCullingStats.TotalVisiblePrimitiveCount;
-
-			const bool bIsCameraDependent = UsesCameraDependentRenderBounds(Primitive);
-			if (!bIsCameraDependent && Primitive->IsEnableCull()) continue;
-			if (!CollectCameraDependentPrimitives.insert(Primitive).second) continue;
-
-			if (bIsCameraDependent && Primitive->IsEnableCull())
-			{
-				if (ViewFrustum->Intersects(BuildRenderAABB(Primitive, RenderBus)) == FFrustum::EFrustumIntersectResult::Outside)
-					continue;
-			}
-
-			++LastCullingStats.FallbackPassedPrimitiveCount;
-            CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
-		}
-	}
+	// ─────────────────── AABB, BVH ───────────────────
+	FColor MakeBVHInternalNodeColor(int32 PathIndexFromLeaf, int32 PathLength);
+    bool UsesCameraDependentRenderBounds(const UPrimitiveComponent* PrimitiveComponent);
+    FAABB BuildQuadAABB(const FMatrix& WorldMatrix);
+    FAABB BuildRenderAABB(const UPrimitiveComponent* PrimitiveComponent, const FRenderBus& RenderBus);
+    
+	// ─────────────────── LOD ───────────────────
+	int32 SelectLODLevel(const FVector& CameraPos, const FAABB& Bounds, const FMatrix& ProjMatrix, int32 ValidLODCount);
 }
 
 void FRenderCollector::ResetCullingStats()
@@ -449,28 +110,22 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.Direction = Direction;
 			RenderBus.AddLight(RenderLight);
 
-			// 첫 번째로 추가된 Directional Light만 그림자를 반영한다.
-			if (!RenderBus.HasDirectionalShadow())
+			// 씬의 첫 번째 Directional Light만 그림자를 반영한다.
+			if (!RenderBus.HasDirectionalShadow() && LightComponent->IsCastShadows())
 			{
 				const UDirectionalLightComponent* DirectionalLight = Cast<UDirectionalLightComponent>(LightComponent);
 				if (DirectionalLight != nullptr)
 				{
-					const int32 CascadeCount = MathUtil::Clamp(DirectionalLight->GetCascadeCount(), 1, 4);
-					FShadowConstants ShadowData{};
-					ShadowData.ShadowMapIndex = Next2DShadowSlice;
-					ShadowData.NumSlices = CascadeCount;
-					ShadowData.AtlasType = 0;
-					ShadowData.ShadowBias = LightComponent->GetShadowBias();
-					BuildDirectionalShadowViewProjections(
-						DirectionalLight,
-						RenderBus,
-						RenderLight.Direction,
-						CascadeCount,
-						ShadowData);
-					RenderBus.AddCastShadowLight(ShadowData);
-					Next2DShadowSlice += CascadeCount;
+					FDirectionalShadowConstants ShadowConstants;
+					ShadowConstants.ShadowBias = LightComponent->GetShadowBias();
+					BuildDirectionalShadowViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, ShadowConstants);
+
+					RenderBus.SetDirectionalShadow(ShadowConstants);
+					RenderLight.bCastShadows = 1; // uint32
 				}
 			}
+			
+			RenderBus.AddLight(RenderLight);
 
 			// TODO: PIE에서도 화살표를 보여주고 있음.. PIE 월드를 감지할 필요가 있다.
             LineBatcher->AddDirectionalLight(
@@ -1193,3 +848,376 @@ void FRenderCollector::CollectBVHInternalNodeAABBs(UPrimitiveComponent* Primitiv
 	}
 }
 
+void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus,
+	const FFrustum* ViewFrustum)
+{
+	ResetCullingStats();
+	ResetDecalStats();
+
+	if (!World) return;
+	
+	CollectLight(World, RenderBus, ViewFrustum);
+
+	if (ViewFrustum)
+	{
+		VisiblePrimitiveScratch.clear();
+		World->GetSpatialIndex().FrustumQueryPrimitives(*ViewFrustum, VisiblePrimitiveScratch, FrustumQueryScratch);
+
+		for (UPrimitiveComponent* Primitive : VisiblePrimitiveScratch)
+		{
+			if (Primitive == nullptr || UsesCameraDependentRenderBounds(Primitive) || !Primitive->IsEnableCull()) continue;
+			++LastCullingStats.BVHPassedPrimitiveCount;
+			CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+		}
+	}
+
+	std::unordered_set<UPrimitiveComponent*> CollectCameraDependentPrimitives;
+	if (ViewFrustum)
+	{
+		CollectCameraDependentPrimitives.reserve(32);
+	}
+	
+	// Frustum이 없다면 액터 단위로 통째로 수집하고, 그렇지 않다면 BVH에서 누락된 컴포넌트들을 개별 수집
+	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
+	{
+		AActor* Actor = *Iter;
+		if (!Actor || !Actor->IsVisible()) continue;
+
+		if (!ViewFrustum)
+		{
+			for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+			{	
+				if (Primitive != nullptr && !Primitive->IsVisible())
+				{
+					++LastCullingStats.TotalVisiblePrimitiveCount;
+				}
+			}
+			CollectFromActor(Actor, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+			continue; // early-continue
+		}
+
+		// 이미 처리된 컴포넌트, 중복된 컴포넌트는 제외하고 Frustum Culling 수행
+		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+		{
+			if (!Primitive || !Primitive->IsVisible()) continue;
+
+			++LastCullingStats.TotalVisiblePrimitiveCount;
+
+			const bool bIsCameraDependent = UsesCameraDependentRenderBounds(Primitive);
+			if (!bIsCameraDependent && Primitive->IsEnableCull()) continue;
+			if (!CollectCameraDependentPrimitives.insert(Primitive).second) continue;
+
+			if (bIsCameraDependent && Primitive->IsEnableCull())
+			{
+				if (ViewFrustum->Intersects(BuildRenderAABB(Primitive, RenderBus)) == FFrustum::EFrustumIntersectResult::Outside)
+					continue;
+			}
+
+			++LastCullingStats.FallbackPassedPrimitiveCount;
+            CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+		}
+	}
+}
+
+// ─────────────────── namespace ────────────────────────────────────────────────────────────
+
+namespace
+{
+	constexpr float SpotShadowNearPlane = 0.1f;
+	constexpr float SpotShadowBaseResolution = 1024.0f;
+
+	FVector MakeLightColorVector(const ULightComponentBase* LightComponent)
+	{
+		if (LightComponent == nullptr)
+		{
+			return FVector::ZeroVector;
+		}
+
+		const FColor& LightColor = LightComponent->GetLightColor();
+		return FVector(LightColor.r, LightColor.g, LightColor.b);
+	}
+
+	FVector MakeStableUpVector(const FVector& Direction)
+	{
+		const FVector NormalizedDirection = Direction.GetSafeNormal();
+		FVector Up = FVector::UpVector;
+		if (std::fabs(FVector::DotProduct(Up, NormalizedDirection)) > 0.98f)
+		{
+			Up = FVector::RightVector;
+		}
+		return Up;
+	}
+
+	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight)
+	{
+		return std::max(SpotLight->GetAttenuationRadius(), SpotShadowNearPlane + 1.0f);
+	}
+
+	float MakeSpotShadowResolution(const ULightComponent* LightComponent)
+	{
+		return std::max(1.0f, SpotShadowBaseResolution * LightComponent->GetShadowResolutionScale());
+	}
+
+	FMatrix MakeSpotShadowViewProjection(
+		const USpotLightComponent* SpotLight,
+		const FVector& LightDirection,
+		float NearPlane,
+		float FarPlane)
+	{
+		const FVector Direction = LightDirection.GetSafeNormal();
+		const FVector LightPosition = SpotLight->GetWorldLocation();
+		const float FovY = MathUtil::DegreesToRadians(
+			MathUtil::Clamp(SpotLight->GetOuterConeAngle() * 2.0f, 1.0f, 175.0f));
+
+		const FMatrix LightView = FMatrix::MakeViewLookAtLH(
+			LightPosition,
+			LightPosition + Direction,
+			MakeStableUpVector(Direction));
+		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
+		return LightView * LightProjection;
+	}
+
+	/* Frustum 근평면, 원평면 꼭짓점 기준으로 비례식을 세워서 TargetDepth 깊이의 절단면의 꼭짓점을 찾습니다. */
+	FVector InterpolateFrustumCorner(
+		const FVector& NearCorner,
+		const FVector& FarCorner,
+		float NearDepth,
+		float FarDepth,
+		float TargetDepth)
+	{
+		const float Range = FarDepth - NearDepth;
+		if (std::fabs(Range) <= MathUtil::KindaSmallNumber)
+		{
+			return FarCorner;
+		}
+
+		const float T = (TargetDepth - NearDepth) / Range;
+		return NearCorner + (FarCorner - NearCorner) * T;
+	}
+
+	/* PSSM(Parallel - Split Shadow Map) 공식에 따라 View Frustum을 평행 분할합니다.
+	 * Lambda[0, 1] → Linear : 0.0f, Logarithmic : 1.0f */
+	void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits)
+	{
+		OutSplits[0] = NearPlane;
+		for (int32 i = 1; i < CascadeCount; ++i)
+		{
+			float Fraction = static_cast<float>(i) / CascadeCount; // 전체 Cascade 구간 중 경계선
+			float LogarithmSplit = std::pow(ShadowDistance / NearPlane, Fraction);
+			float UniformSplit = NearPlane + (ShadowDistance - NearPlane) * Fraction;
+			OutSplits[i] = Lambda * LogarithmSplit + (1.0f - Lambda) * UniformSplit;
+		}
+		OutSplits[CascadeCount] = ShadowDistance;
+	}
+
+	/* View Frustum을 PSSM 공식에 따라 평행하게 잘라서 Cascade 구간으로 나눕니다.
+	 * 이후 각 구간을 포함하는 최소 크기의 Bounding Sphere를 구하고,
+	 * 빛의 시점에서 Bounding Sphere를 덮는 직교 투영 행렬과 뷰 행렬을 생성합니다. */
+	void BuildDirectionalShadowViewProjection(
+		const UDirectionalLightComponent* Light,
+		const FRenderBus& RenderBus, 
+		const FVector& ToLight,
+		FDirectionalShadowConstants& ShadowConstants)
+	{
+		constexpr int32 CascadeCount = MAX_CASCADE_COUNT;
+		const float NearPlane = std::max(RenderBus.GetNear(), 1.0f);
+		const float Lambda = Light->GetCascadeSplitWeight();
+		const float ShadowDistance = Light->GetShadowDistance();
+
+		float Splits[MAX_CASCADE_COUNT + 1]; // CascadeCount + 1
+		CalculatePSSMSplits(CascadeCount, Lambda, NearPlane, ShadowDistance, Splits);
+
+		const FMatrix InverseViewProjection = (RenderBus.GetView() * RenderBus.GetProj()).GetInverse();
+		static constexpr float NdcX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+		static constexpr float NdcY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+		FVector NearCorners[4];
+		FVector FarCorners[4];
+		for (int32 i = 0; i < 4; ++i) // i: Corner Index
+		{
+			NearCorners[i] = InverseViewProjection.TransformPosition(FVector(NdcX[i], NdcY[i], 0.0f));
+			FarCorners[i] = InverseViewProjection.TransformPosition(FVector(NdcX[i], NdcY[i], 1.0f));
+		}
+
+		const FVector& CameraPosition = RenderBus.GetCameraPosition();
+		const FVector& CameraForward = RenderBus.GetCameraForward();
+		const float NearDepth = FVector::DotProduct(NearCorners[0] - CameraPosition, CameraForward);
+		const float FarDepth = FVector::DotProduct(FarCorners[0] - CameraPosition, CameraForward);
+		const FVector LightDirection = (ToLight * -1.0f).GetSafeNormal();
+
+		for (int32 i = 0; i < CascadeCount; ++i) // i: Cascade Index
+		{
+			const float CascadeNear = Splits[i];
+			const float CascadeFar = Splits[i + 1];
+			ShadowConstants.SplitDistances.XYZW[i] = CascadeFar;
+
+			FVector CascadeCorners[8];
+			for (int32 j = 0; j < 4; ++j) // j: Corner Index
+			{
+				CascadeCorners[j] = InterpolateFrustumCorner(NearCorners[j], FarCorners[j], NearDepth, FarDepth, CascadeNear);
+				CascadeCorners[j + 4] = InterpolateFrustumCorner(NearCorners[j], FarCorners[j], NearDepth, FarDepth, CascadeFar);
+			}
+
+			FVector Center = FVector::ZeroVector;
+			for (const FVector& Corner : CascadeCorners)
+			{
+				Center += Corner;
+			}
+			Center *= 1.0f / 8.0f;
+
+			float Radius = 1.0f;
+			for (const FVector& Corner : CascadeCorners)
+			{
+				Radius = std::max(Radius, FVector::Dist(Center, Corner));
+			}
+
+			// Depth 값을 여유롭게 잡아 Shadow Culling 개선 (필요시 수정)
+			const float DepthRange = 50000.0f;
+			const FVector LightPosition = Center - LightDirection * (DepthRange * 0.5f);
+
+			const FMatrix LightView = FMatrix::MakeViewLookAtLH(LightPosition, Center, MakeStableUpVector(LightDirection));
+			const FMatrix LightProjection = FMatrix::MakeOrthographicLH(Radius * 2.0f, Radius * 2.0f, 0.0f, DepthRange);
+			ShadowConstants.LightViewProj[i] = LightView * LightProjection;
+		}
+	}
+
+	FColor MakeBVHInternalNodeColor(int32 PathIndexFromLeaf, int32 PathLength)
+	{
+		if (PathLength <= 1)
+		{
+			return FColor::Yellow();
+		}
+
+		const float T = static_cast<float>(PathIndexFromLeaf) / static_cast<float>(PathLength - 1);
+		return FColor::Lerp(FColor::Cyan(), FColor::Yellow(), T);
+	}
+
+	bool UsesCameraDependentRenderBounds(const UPrimitiveComponent* PrimitiveComponent)
+	{
+		if (PrimitiveComponent == nullptr)
+		{
+			return false;
+		}
+
+		switch (PrimitiveComponent->GetPrimitiveType())
+		{
+		case EPrimitiveType::EPT_Billboard:
+		case EPrimitiveType::EPT_Text:
+		case EPrimitiveType::EPT_SubUV:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus)
+	{
+		const FMatrix WorldMatrix = Primitive->GetWorldMatrix();
+		return UBillboardComponent::MakeBillboardWorldMatrix(
+			WorldMatrix.GetOrigin(),
+			WorldMatrix.GetScaleVector(),
+			RenderBus.GetCameraForward(),
+			RenderBus.GetCameraRight(),
+			RenderBus.GetCameraUp());
+	}
+
+	FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus)
+	{
+		const FVector WorldScale = SubUVComp->GetWorldScale();
+		return USubUVComponent::MakeBillboardWorldMatrix(
+			SubUVComp->GetWorldLocation(),
+			FVector(
+				WorldScale.X > 0.01f ? WorldScale.X : 0.01f,
+				SubUVComp->GetWidth() * WorldScale.Y,
+				SubUVComp->GetHeight() * WorldScale.Z),
+			RenderBus.GetCameraForward(),
+			RenderBus.GetCameraRight(),
+			RenderBus.GetCameraUp());
+	}
+	/*
+	* BillBoardComponent를 상속받은 text, SubUV가 사용하는 AABB 계산함수(의존성 분리)
+	*/
+	FAABB BuildQuadAABB(const FMatrix& WorldMatrix)
+	{
+		static constexpr FVector LocalQuadCorners[4] =
+		{
+			FVector(0.0f, -0.5f,  0.5f),
+			FVector(0.0f,  0.5f,  0.5f),
+			FVector(0.0f,  0.5f, -0.5f),
+			FVector(0.0f, -0.5f, -0.5f)
+		};
+
+		FAABB Box;
+		Box.Reset();
+
+		for (const FVector& Corner : LocalQuadCorners)
+		{
+			Box.Expand(WorldMatrix.TransformPosition(Corner));
+		}
+
+		return Box;
+	}
+
+	FAABB BuildRenderAABB(const UPrimitiveComponent* PrimitiveComponent, const FRenderBus& RenderBus)
+	{
+		switch (PrimitiveComponent->GetPrimitiveType())
+		{
+		case EPrimitiveType::EPT_Billboard:
+        {
+            const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
+            return BuildQuadAABB(UBillboardComponent::MakeBillboardWorldMatrix(
+                BillboardComponent->GetWorldLocation(),
+                FVector(0.00f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
+                RenderBus.GetCameraForward(),
+                RenderBus.GetCameraRight(),
+                RenderBus.GetCameraUp()));
+        }
+		case EPrimitiveType::EPT_Text:
+		{
+			const UTextRenderComponent* TextComp = static_cast<const UTextRenderComponent*>(PrimitiveComponent);
+			return BuildQuadAABB(TextComp->GetTextMatrix());
+		}
+		case EPrimitiveType::EPT_SubUV:
+		{
+			const USubUVComponent* SubUVComp = static_cast<const USubUVComponent*>(PrimitiveComponent);
+			return BuildQuadAABB(MakeViewSubUVSelectionMatrix(SubUVComp, RenderBus));
+		}
+
+		default:
+			return PrimitiveComponent->GetWorldAABB();
+		}
+	}
+
+	int32 SelectLODLevel(const FVector& CameraPos, const FAABB& Bounds, const FMatrix& ProjMatrix, int32 ValidLODCount)
+	{
+		bool IsOrthoGraphic = (std::abs(ProjMatrix.M[3][3] - 1.0f) < 1e-4f);
+		if (ValidLODCount <= 1 || IsOrthoGraphic) return 0;
+
+		// 1. 바운딩 박스를 통해 바운딩 스피어 반지름 및 카메라와의 거리 계산
+		const FVector Center = (Bounds.Min + Bounds.Max) * 0.5f;
+		const FVector Extent = (Bounds.Max - Bounds.Min) * 0.5f;
+		const float SphereRadius = std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z);
+
+		const FVector Diff = Center - CameraPos;
+		const float Dist = std::sqrt(Diff.X * Diff.X + Diff.Y * Diff.Y + Diff.Z * Diff.Z);
+
+		if (Dist <= 1e-4f) return 0;
+
+		const float ProjectedRadius = (SphereRadius / Dist) * ProjMatrix.M[2][1];
+		const float ScreenCoverage = ProjectedRadius; 
+
+		static constexpr float Thresholds[] = { 0.15f, 0.08f, 0.05f, 0.02f };
+		static constexpr int32 ThresholdCount = static_cast<int32>(sizeof(Thresholds) / sizeof(Thresholds[0]));
+
+		const int32 MaxLOD = ValidLODCount - 1;
+		for (int32 LOD = 0; LOD < MaxLOD; ++LOD)
+		{
+			float Threshold = (LOD < ThresholdCount) ? Thresholds[LOD] : 0.0f;
+			if (ScreenCoverage >= Threshold)
+				return LOD;
+		}
+
+		// 화면에 차지하는 비율이 가장 낮을 경우 최하위 LOD 반환
+		return MaxLOD;
+	}
+}

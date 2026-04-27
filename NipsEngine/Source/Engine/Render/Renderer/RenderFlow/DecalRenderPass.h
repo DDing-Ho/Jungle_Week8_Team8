@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "RenderPass.h"
 #include "Render/Common/ComPtr.h"
 
@@ -16,6 +16,7 @@ private:
 private:
     bool bSkipDecalDraw = false;
     TComPtr<ID3D11Buffer> VisibleLightConstantBuffer;
+    TComPtr<ID3D11Buffer> DirectionalShadowConstantBuffer;
     TComPtr<ID3D11Buffer> SpotShadowInfoConstantBuffer;
     TComPtr<ID3D11Buffer> SpotShadowConstantsBuffer;
     TComPtr<ID3D11ShaderResourceView> SpotShadowConstantsSRV;
