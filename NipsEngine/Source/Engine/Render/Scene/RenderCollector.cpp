@@ -27,6 +27,7 @@
 #include "Object/ObjectIterator.h"
 #include "Runtime/Stats/ScopeCycleCounter.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <unordered_set>
 
@@ -44,10 +45,24 @@ namespace
     float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
     float MakeSpotShadowResolution(const ULightComponent* LightComponent);
     FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
+    float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
+    int32 ExtractActorNumericSuffix(const AActor* Actor);
     FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
     void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
     void BuildDirectionalShadowViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalShadowConstants& ShadowConstants);
-    
+    struct FSpotShadowCandidate
+    {
+        FRenderLight RenderLight = {};
+        const ULightComponent* LightComponent = nullptr;
+        const USpotLightComponent* SpotLight = nullptr;
+
+        FVector LightDirection = FVector::ZeroVector;
+
+        float RequestedResolution = 0.0f;
+        uint32 RequestedTileSize = 0;
+        float PriorityScore = 0.0f;
+    };    
+
 	// ─────────────────── Billboard, SubUV ───────────────────
     FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus);
     FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus);
@@ -80,6 +95,11 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 	int32 Next2DShadowSlice = 0;
 	int32 NextSpotShadowIndex = 0;
 
+    // shadow-casting Spot Light 후보를 잠시 모아두는 배열입니다.
+    // Spot shadow는 "보이는 순서"가 아니라 "중요한 라이트 순서"로 atlas에 넣어야 하므로,
+    // Spot Light를 발견하자마자 바로 할당하지 않고 먼저 후보를 수집합니다.
+    TArray<FSpotShadowCandidate> SpotShadowCandidates;
+    
     // Spot atlas allocation 상태는 프레임마다 다시 시작함.
     FShadowAtlasManager::BeginSpotFrame();
     
@@ -218,50 +238,115 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.FalloffExponent = SpotLight->GetLightFalloffExponent();
 			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngle));
 			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngle));
-
-		    if (LightComponent->IsCastShadows())
+		    
+		    if (!LightComponent->IsCastShadows())
 		    {
-		        // 1) 라이트가 원하는 shadow 해상도 계산
-		        const float RequestedResolution = MakeSpotShadowResolution(LightComponent);
-
-		        // 2) allocator가 산정한 PoT 타일 크기로 정규화
-		        const uint32 DesiredTileSize = FShadowAtlasManager::SnapSpotTileSize(RequestedResolution);
-
-		        // 3) atlas 빈 영역에 할당
-		        FSpotAtlasSlotDesc SpotSlot = {};
-		        if (FShadowAtlasManager::RequestSpotSlot(DesiredTileSize, SpotSlot))
-		        {
-		            // ShadowMapIndex는 "SpotShadowData 배열에서 몇 번째 shadow metadata인가"를 뜻합니다.
-		            // atlas 내부 위치는 SpotSlot.AtlasRect가 담당하므로 둘은 역할이 다릅니다.
-		            const int32 ShadowMapIndex = NextSpotShadowIndex++;
-		            const float NearPlane = SpotShadowNearPlane;
-		            const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
-		            const float ShadowBias = LightComponent->GetShadowBias();
-
-		            RenderLight.bCastShadows = 1;
-		            RenderLight.ShadowMapIndex = ShadowMapIndex;
-		            RenderLight.ShadowBias = ShadowBias;
-
-		            FSpotShadowConstants ShadowData{};
-		            ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
-		            ShadowData.AtlasRect = SpotSlot.AtlasRect;
-
-		            // 실제 할당된 타일 크기를 넘겨줌
-		            ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
-		            ShadowData.ShadowBias = ShadowBias;
-
-		            RenderBus.AddCastShadowSpotLight(ShadowData);
-		        }
+		        RenderBus.AddLight(RenderLight);
+		        break;
 		    }
+		    
+		    FSpotShadowCandidate Candidate = {};
+		    Candidate.RenderLight = RenderLight;
+		    Candidate.LightComponent = LightComponent;
+		    Candidate.SpotLight = SpotLight;
+		    Candidate.LightDirection = LightDirection;
 
-			RenderBus.AddLight(RenderLight);
+		    // 1) 라이트가 원하는 shadow 해상도 계산
+		    Candidate.RequestedResolution = MakeSpotShadowResolution(LightComponent);
+
+		    // 2) allocator가 산정한 PoT 타일 크기로 정규화
+		    Candidate.RequestedTileSize = FShadowAtlasManager::SnapSpotTileSize(Candidate.RequestedResolution);
+
+		    // 3) 후보들에 대해서 priority score 산출
+		    Candidate.PriorityScore = ComputeSpotShadowPriority(
+                LightComponent, LightLocation,
+                Attenuation, RenderBus.GetCameraPosition());
+		    
+		    SpotShadowCandidates.push_back(Candidate);
 			break;
 		}
-
 		default:
 			break;
 		}
 	}
+    // ----------------------------------------------
+    // A) Priority에 따른 atlas 영역 할당 및 downgrade
+    // ----------------------------------------------
+    // Priority가 높은 라이트부터 atlas에 넣고, 같은 priority라면 큰 타일부터 먼저 넣음.
+    std::sort(SpotShadowCandidates.begin(), SpotShadowCandidates.end(),
+        [](const FSpotShadowCandidate& A, const FSpotShadowCandidate& B)
+        {
+            if (std::fabs(A.PriorityScore - B.PriorityScore) > 1.0e-4f)
+            {
+                return A.PriorityScore > B.PriorityScore;
+            }
+            if (A.RequestedTileSize != B.RequestedTileSize)
+            {
+                return A.RequestedTileSize > B.RequestedTileSize;
+            }
+            return A.RenderLight.Intensity > B.RenderLight.Intensity;
+        });
+    
+    // 정렬된 순서대로 atlas 영역을 배정.
+    for (FSpotShadowCandidate& Candidate : SpotShadowCandidates)
+    {
+        FSpotAtlasSlotDesc SpotSlot = {};
+        bool bAllocated = false;
+        
+        // 1차 시도: 라이트가 원한 타일 크기로 먼저 배정
+        uint32 AttemptTileSize = Candidate.RequestedTileSize;
+        while (true)
+        {
+            if (FShadowAtlasManager::RequestSpotSlot(AttemptTileSize, SpotSlot))
+            {
+                bAllocated = true;
+                break;
+            }
+            
+            // 실패하면 절반 크기로 낮춰서 다시 시도
+            if (AttemptTileSize <= FShadowAtlasManager::MinSpotTileResolution)
+            {
+                break;
+            }
+            
+            AttemptTileSize >>= 1u;
+            if (AttemptTileSize < FShadowAtlasManager::MinSpotTileResolution)
+            {
+                AttemptTileSize = FShadowAtlasManager::MinSpotTileResolution;
+            }
+        }
+        
+        FRenderLight FinalLight = Candidate.RenderLight;
+        
+        if (bAllocated)
+        {
+            const int32 ShadowMapIndex = NextSpotShadowIndex++;
+            const float NearPlane = SpotShadowNearPlane;
+            const float FarPlane = MakeSpotShadowFarPlane(Candidate.SpotLight);
+            const float ShadowBias = Candidate.LightComponent->GetShadowBias();
+            const int32 DebugLightId = ExtractActorNumericSuffix(Candidate.LightComponent->GetOwner());
+            
+            FinalLight.bCastShadows = 1;
+            FinalLight.ShadowMapIndex = ShadowMapIndex;
+            FinalLight.ShadowBias = ShadowBias;
+
+            SpotSlot.DebugLightId = DebugLightId;
+            FShadowAtlasManager::UpdateSpotSlotDebugLightId(SpotSlot.TileIndex, DebugLightId);
+            
+            FSpotShadowConstants ShadowData = {};
+            ShadowData.LightViewProj = MakeSpotShadowViewProjection(Candidate.SpotLight, Candidate.LightDirection, NearPlane, FarPlane);
+            ShadowData.AtlasRect = SpotSlot.AtlasRect;
+            
+            // 실제 할당된 타일 크기를 넘겨줌
+            ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
+            ShadowData.ShadowBias = ShadowBias;
+            
+            RenderBus.AddCastShadowSpotLight(ShadowData);
+        }
+
+        // 끝까지 atlas에 못 들어간 경우에는 shadow만 빠지고 light만 살아있음.
+        RenderBus.AddLight(FinalLight);
+    }
 }
 
 void FRenderCollector::CollectSelection(const TArray<AActor*>& SelectedActors, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus)
@@ -994,6 +1079,52 @@ namespace
 		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
 		return LightView * LightProjection;
 	}
+    
+    /* 밝을수록/반경이 클수록/카메라에 가까울수록 점수를 크게 주도록 합니다. */
+    float ComputeSpotShadowPriority(
+        const ULightComponent* LightComponent,
+        const FVector& LightLocation,
+        float AttenuationRadius,
+        const FVector& CameraPosition)
+	{
+	    const FVector ToCamera = LightLocation - CameraPosition;
+	    const float DistanceSq = std::max(FVector::DotProduct(ToCamera, ToCamera), 1.0f);
+	    
+	    const float ScreenCoverage = std::clamp((AttenuationRadius * AttenuationRadius) / DistanceSq, 0.05f, 8.0f);
+	
+	    return std::max(LightComponent->GetIntensity(), 0.0f) * ScreenCoverage;
+	}
+
+    int32 ExtractActorNumericSuffix(const AActor* Actor)
+    {
+        if (Actor == nullptr)
+        {
+            return -1;
+        }
+
+        const FString ActorName = Actor->GetFName().ToString();
+        const size_t UnderscorePos = ActorName.find_last_of('_');
+        if (UnderscorePos == FString::npos || UnderscorePos + 1 >= ActorName.size())
+        {
+            return -1;
+        }
+
+        int32 Value = 0;
+        bool bHasDigit = false;
+        for (size_t Index = UnderscorePos + 1; Index < ActorName.size(); ++Index)
+        {
+            const unsigned char Ch = static_cast<unsigned char>(ActorName[Index]);
+            if (!std::isdigit(Ch))
+            {
+                return -1;
+            }
+
+            bHasDigit = true;
+            Value = (Value * 10) + static_cast<int32>(Ch - '0');
+        }
+
+        return bHasDigit ? Value : -1;
+    }
 
 	/* Frustum 근평면, 원평면 꼭짓점 기준으로 비례식을 세워서 TargetDepth 깊이의 절단면의 꼭짓점을 찾습니다. */
 	FVector InterpolateFrustumCorner(

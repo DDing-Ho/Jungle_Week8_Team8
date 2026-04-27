@@ -220,7 +220,7 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
             !VS.bShowStatMemory &&
             !VS.bShowStatNameTable &&
             !VS.bShowStatLightCull &&
-			!VS.bShowStatShadow &&
+            !VS.bShowStatShadow &&
             !VS.bShowStatShadowAtlas)
             continue;
         
@@ -233,9 +233,9 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
         if (GeneralWidth > 0.f)
             CurrentDrawPos.x += GeneralWidth + 8.f;
 
-        float NameTableWidth = RenderNameTableWindow(i, VS, CurrentDrawPos);
-        if (NameTableWidth > 0.f)
-            CurrentDrawPos.x += NameTableWidth + 8.f;
+        float NTWidth = RenderNameTableWindow(i, VS, CurrentDrawPos);
+        if (NTWidth > 0.f)
+            CurrentDrawPos.x += NTWidth + 8.f;
 
         float LightCullWidth = RenderLightCullWindow(i, VS, CurrentDrawPos);
         if (LightCullWidth > 0.f)
@@ -256,8 +256,11 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
 // 다중 뷰포트 모드에서 뷰포트 간의 경계선(Splitter) 및 교차점(Cross)을 드래그 시 강조해 렌더링합니다.
 void FEditorViewportOverlayWidget::RenderSplitterBar()
 {
+	 // 뷰포트를 클릭했거나, 휠 드래그를 하고 있을 때 강조하지 않습니다.
 	if (FSlateApplication::Get().GetCapturedWidget() || InputSystem::Get().GetMiddleDragging())
 		 return;
+
+	// 기즈모를 잡고 있을 때 강조하지 않습니다.
 	bool bIsHodingGizmo = EditorEngine->GetGizmo()->IsHolding();
 	if (bIsHodingGizmo || InputSystem::Get().GetRightDragging())
 	{
@@ -833,7 +836,15 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
                     DrawList->AddRect(ImVec2(X0, Y0), ImVec2(X1, Y1), IM_COL32(0, 255, 120, 220), 0.0f, 0, 2.0f);
 
                     char Label[32];
-                    snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
+                    if (Slot.DebugLightId >= 0)
+                    {
+                        snprintf(Label, sizeof(Label), "%d (%u)", Slot.DebugLightId, Slot.Width);
+                    }
+                    else
+                    {
+                        // actor 번호를 아직 얻지 못한 경우에만 기존 tile index를 fallback으로 보여줍니다.
+                        snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
+                    }
                     DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(0, 255, 120, 255), Label);
                 }
             }

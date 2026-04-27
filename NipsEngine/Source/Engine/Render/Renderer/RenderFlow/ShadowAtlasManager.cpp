@@ -236,16 +236,6 @@ void FShadowAtlasManager::BeginSpotFrame()
 
 uint32 FShadowAtlasManager::SnapSpotTileSize(float RequestedResolution)
 {
-    /*float Clamped = RequestedResolution;
-    if (Clamped < static_cast<float>(MinSpotTileResolution))
-    {
-        Clamped = static_cast<float>(MinSpotTileResolution);
-    }
-    if (Clamped > static_cast<float>(MaxSpotTileResolution))
-    {
-        Clamped = static_cast<float>(MaxSpotTileResolution);
-    }*/
-    
     float Clamped = std::clamp(
         RequestedResolution,
         static_cast<float>(MinSpotTileResolution),
@@ -279,6 +269,16 @@ bool FShadowAtlasManager::RequestSpotSlot(uint32 DesiredResolution, FSpotAtlasSl
 const TArray<FSpotAtlasSlotDesc>& FShadowAtlasManager::GetActiveSpotSlots()
 {
     return ActiveSpotSlots;
+}
+
+void FShadowAtlasManager::UpdateSpotSlotDebugLightId(uint32 TileIndex, int32 DebugLightId)
+{
+    if (TileIndex >= ActiveSpotSlots.size())
+    {
+        return;
+    }
+
+    ActiveSpotSlots[TileIndex].DebugLightId = DebugLightId;
 }
 
 uint32 FShadowAtlasManager::SanitizeSpotTileSize(uint32 DesiredResolution)
@@ -368,6 +368,7 @@ void FShadowAtlasManager::MarkSpotRegion(uint32 CellX, uint32 CellY, uint32 Cell
 void FShadowAtlasManager::BuildSpotSlotDesc(uint32 CellX, uint32 CellY, uint32 TileResolution, uint32 TileIndex, FSpotAtlasSlotDesc& OutSlot)
 {
     OutSlot.TileIndex = TileIndex;
+    OutSlot.DebugLightId = -1;
     OutSlot.X = CellX * SpotCellResolution;
     OutSlot.Y = CellY * SpotCellResolution;
     OutSlot.Width = TileResolution;
