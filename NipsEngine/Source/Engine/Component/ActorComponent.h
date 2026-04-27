@@ -52,15 +52,17 @@ public:
     virtual void OnRegister() {}
     // AActor에서 제거될 때 호출. OnRegister에서 등록한 내용을 정리하는 곳.
     virtual void OnUnregister() {}
+    bool IsRegistered() const { return bRegistered; }
 
-protected:
-	virtual void TickComponent(float DeltaTime) {}
+    protected:
+    virtual void TickComponent(float DeltaTime) {}
 
-protected:
-	AActor* Owner = nullptr;
+    protected:
+    AActor* Owner = nullptr;
+    bool bRegistered = false;
 
-private:
-	bool bIsActive = true;
+    protected:
+    bool bIsActive = true;
 	bool bAutoActivate = true;
 	bool bCanEverTick = true;
     bool bTransient = false;                // 런타임에만 존재, 직렬화 완전 제외

@@ -101,11 +101,7 @@ namespace EditorUIUtils
         }
 
         // 대상이 없는 경우
-        FString DefaultName = MoveComp->GetFName().ToString();
-        if (DefaultName.empty())
-        {
-            DefaultName = MoveComp->GetTypeInfo()->name;
-        }
-        return DefaultName;
+
+        return FString("MC_None");
     }
 }

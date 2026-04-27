@@ -16,6 +16,8 @@ public:
     void Serialize(FArchive& Ar) override;
     void PostDuplicate(UObject* Original) override;
 
+    const char* GetBillboardTexturePath() const override { return BillboardTexturePath; }
+
 public:
     float GetInnerConeAngle() const { return InnerConeAngle; }
     float GetOuterConeAngle() const { return OuterConeAngle; }

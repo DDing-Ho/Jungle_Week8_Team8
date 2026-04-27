@@ -79,7 +79,6 @@ UActorComponent* FEditorComponentFactory::RegisterComp<UHeightFogComponent>(AAct
     return Comp;
 }
 
-// UWorld의 RegisterL
 template <typename LightType>
 UActorComponent* FEditorComponentFactory::RegisterLightComp(AActor* Actor)
 {

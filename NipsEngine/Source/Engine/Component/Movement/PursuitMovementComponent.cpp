@@ -11,88 +11,106 @@ REGISTER_FACTORY(UPursuitMovementComponent)
 
 namespace
 {
-// Returns normalized direction from A to B
-FVector GetNormalizedDir(const FVector& A, const FVector& B)
-{
-    FVector Dir = B - A;
-    return Dir.GetSafeNormal();
-}
+	// Returns normalized direction from A to B
+	FVector GetNormalizedDir(const FVector& A, const FVector& B)
+	{
+		FVector Dir = B - A;
+		return Dir.GetSafeNormal();
+	}
 
-float GetYaw(const FVector& NormDir)
-{
-    return asinf(NormDir.Z);
-}
+	float GetYaw(const FVector& NormDir)
+	{
+		return asinf(NormDir.Z);
+	}
 
-float GetPitch(const FVector& NormDir)
-{
-    return atan2f(NormDir.Y, NormDir.X);
-}
+	float GetPitch(const FVector& NormDir)
+	{
+		return atan2f(NormDir.Y, NormDir.X);
+	}
 } // namespace
 
-void UPursuitMovementComponent::BeginPlay() {
-	if (bAutoTargetPerspCamera && !Target) {
-		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine)) {
-			Target = EditorEngine->GetCamera();
-		}
-	}
+void UPursuitMovementComponent::BeginPlay()
+{
+    if (bAutoTargetPerspCamera && !Target)
+    {
+        if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+        {
+            Target = EditorEngine->GetCamera();
+        }
+    }
 }
 
-void UPursuitMovementComponent::TickComponent(float DeltaTime) {
-	if (!IsInPursuit()) return;
-	Elapsed += DeltaTime;
+void UPursuitMovementComponent::TickComponent(float DeltaTime)
+{
+    if (!IsInPursuit())
+        return;
+    Elapsed += DeltaTime;
 
-	if (Elapsed >= UpdateLerpInterval) {
-		Elapsed = 0.f;
-		UpdateTargetLoc();
-	}
+    if (Elapsed >= UpdateLerpInterval)
+    {
+        Elapsed = 0.f;
+        UpdateTargetLoc();
+    }
 
-	UpdateLerp(DeltaTime);
+    UpdateLerp(DeltaTime);
 
-	if (bFaceTargetDir)
-		FaceTargetDir(DeltaTime);
+    if (bFaceTargetDir)
+        FaceTargetDir(DeltaTime);
 }
 
-void UPursuitMovementComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
-	OutProps.push_back({ "Detection Radius",	EPropertyType::Float, &DetectionRadius , 0.01f, 4096.f, 0.01f });
-    OutProps.push_back({ "Pursuit Speed",		EPropertyType::Float, &PursuitSpeed, 0.01f, 100.f, 0.01f });
-    OutProps.push_back({ "Pursuit Interval",	EPropertyType::Float, &UpdateLerpInterval, 0.01f, 5.f, 0.01f });
-    OutProps.push_back({ "Orient To Target",	EPropertyType::Bool,  &bFaceTargetDir });
+void UPursuitMovementComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
+{
+    OutProps.push_back({ "Detection Radius", EPropertyType::Float, &DetectionRadius, 0.01f, 4096.f, 0.01f });
+    OutProps.push_back({ "Pursuit Speed", EPropertyType::Float, &PursuitSpeed, 0.01f, 100.f, 0.01f });
+    OutProps.push_back({ "Pursuit Interval", EPropertyType::Float, &UpdateLerpInterval, 0.01f, 5.f, 0.01f });
+    OutProps.push_back({ "Orient To Target", EPropertyType::Bool, &bFaceTargetDir });
 }
 
-void UPursuitMovementComponent::PostDuplicate(UObject* Original) {
+void UPursuitMovementComponent::PostDuplicate(UObject* Original)
+{
     UActorComponent::PostDuplicate(Original);
     const UPursuitMovementComponent* Orig = Cast<UPursuitMovementComponent>(Original);
 
     // Copy configuration
-    UpdateLerpInterval		= Orig->UpdateLerpInterval;
-    DetectionRadius			= Orig->DetectionRadius;
-    PursuitSpeed			= Orig->PursuitSpeed;
+    UpdateLerpInterval = Orig->UpdateLerpInterval;
+    DetectionRadius = Orig->DetectionRadius;
+    PursuitSpeed = Orig->PursuitSpeed;
 
     Elapsed = 0.f;
 }
 
-void UPursuitMovementComponent::SetPursuitTarget(FViewportCamera* InTarget) {
-	if (InTarget) Target = InTarget;
+void UPursuitMovementComponent::SetPursuitTarget(FViewportCamera* InTarget)
+{
+    if (InTarget)
+        Target = InTarget;
 }
 
-void UPursuitMovementComponent::ClearTarget() {
-	Target = nullptr;
+void UPursuitMovementComponent::ClearTarget()
+{
+    Target = nullptr;
 }
 
-bool UPursuitMovementComponent::IsInPursuit() const {
-	if (!Target || !bIsActive) return false;
-	return true;
+bool UPursuitMovementComponent::IsInPursuit() const
+{
+    if (!Target || !bIsActive)
+        return false;
+    return true;
 }
 
-void UPursuitMovementComponent::UpdateTargetLoc() {
-	if (!IsInPursuit()) return;
-	TargetPoint = Target->GetLocation();
+void UPursuitMovementComponent::UpdateTargetLoc()
+{
+    if (!IsInPursuit())
+        return;
+    TargetPoint = Target->GetLocation();
 }
 
-void UPursuitMovementComponent::UpdateLerp(float DeltaTime) {
+void UPursuitMovementComponent::UpdateLerp(float DeltaTime)
+{
+    if (!UpdatedComponent)
+        return;
     CurrentPoint = UpdatedComponent->GetWorldLocation();
-    float Alpha  = PursuitSpeed * DeltaTime;
-    Alpha        = Alpha < 1.f ? Alpha : 1.f;
+    float Alpha = PursuitSpeed * DeltaTime;
+    Alpha = Alpha < 1.f ? Alpha : 1.f;
     UpdatedComponent->SetWorldLocation(FVector::Lerp(CurrentPoint, TargetPoint, Alpha));
 }
 

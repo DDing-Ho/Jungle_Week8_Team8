@@ -26,6 +26,8 @@ public:
     void OnRegister() override;
     void OnUnregister() override;
 
+    virtual const char* GetBillboardTexturePath() const { return nullptr; }
+
 public:
     const FColor& GetLightColor() const { return LightColor; }
     float GetIntensity() const { return Intensity; }
@@ -79,6 +81,4 @@ private:
 	float ShadowBias = 0.001f;
 	float ShadowSlopeBias = 0.5f;
 	float ShadowSharpen = 0.0f; 
-
-	bool bOverrideCamera = false;
 };

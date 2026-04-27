@@ -15,6 +15,8 @@ public:
     void Serialize(FArchive& Ar) override;
     void PostDuplicate(UObject* Original) override;
 
+    const char* GetBillboardTexturePath() const override { return BillboardTexturePath; }
+
 	// ──────────── Cascade Shadow Map ────────────
 	float GetShadowDistance() const { return ShadowDistance; }
 	float GetCascadeSplitWeight() const { return CascadeSplitWeight;  }

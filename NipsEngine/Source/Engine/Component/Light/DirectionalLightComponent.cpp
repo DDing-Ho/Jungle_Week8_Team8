@@ -28,5 +28,11 @@ void UDirectionalLightComponent::Serialize(FArchive& Ar)
 void UDirectionalLightComponent::PostDuplicate(UObject* Original)
 {
     ULightComponent::PostDuplicate(Original);
+
+    const UDirectionalLightComponent* Orig = Cast<UDirectionalLightComponent>(Original);
+    if (!Orig) { return; }
+
+    ShadowDistance = Orig->ShadowDistance;
+    CascadeSplitWeight = Orig->CascadeSplitWeight;
 }
 

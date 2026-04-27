@@ -115,23 +115,22 @@ void UPrimitiveComponent::OnTransformDirty()
 
 void UPrimitiveComponent::OnRegister()
 {
-    AActor* Owner = GetOwner();
-    if (!Owner) { return; }
+    if (!Owner || bRegistered) { return; }
     UWorld* World = Owner->GetFocusedWorld();
     if (!World) { return; }
 
     World->GetSpatialIndex().RegisterPrimitive(this);
-    World->GetSpatialIndex().FlushDirtyBounds();
+    bRegistered = true;
 }
 
 void UPrimitiveComponent::OnUnregister()
 {
-    AActor* Owner = GetOwner();
-    if (!Owner) { return; }
+    if (!Owner || !bRegistered) { return; }
     UWorld* World = Owner->GetFocusedWorld();
     if (!World) { return; }
 
     World->GetSpatialIndex().UnregisterPrimitive(this);
+    bRegistered = false;
 }
 
 void UPrimitiveComponent::NotifySpatialIndexDirty() const

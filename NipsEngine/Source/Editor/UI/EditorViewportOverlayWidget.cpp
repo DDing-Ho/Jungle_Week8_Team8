@@ -668,13 +668,6 @@ float FEditorViewportOverlayWidget::RenderShadowWindow(int32 ViewportIndex, cons
 
     const FDirectionalShadowConstants& SC = RenderPipeline->GetViewportShadowConstants(ViewportIndex);
 
-    // 씬에 방향광이 있는지 체크 (SplitDistances가 모두 0이면 표시하지 않음)
-    bool bHasLight = false;
-    for (int i = 0; i < MAX_CASCADE_COUNT; ++i) {
-        if (SC.SplitDistances.XYZW[i] > 1.0e-5f) { bHasLight = true; break; }
-    }
-    if (!bHasLight) return 0.f;
-
     ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.3f);
 
@@ -700,8 +693,8 @@ float FEditorViewportOverlayWidget::RenderShadowWindow(int32 ViewportIndex, cons
             const float TexelSize = (Radius * 2.0f) / static_cast<float>(Res);
 
             ImGui::TextColored(ColorPaleBlue, "[%d] Split: %.1f", i, Split);
-            ImGui::SameLine(100.f);
-            ImGui::TextColored(ColorPaleBlue, "TexSize: %.4f", TexelSize);
+            ImGui::SameLine(105.f);
+            ImGui::TextColored(ColorPaleBlue, "TexSize: %.2f", TexelSize);
         }
         WindowWidth = ImGui::GetWindowSize().x;
     }
