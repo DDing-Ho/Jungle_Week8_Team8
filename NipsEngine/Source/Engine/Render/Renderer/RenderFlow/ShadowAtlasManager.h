@@ -71,10 +71,14 @@ public:
     
     ID3D11DepthStencilView* GetSpotAtlasDSV() const { return SpotAtlasDSV.Get(); }
     ID3D11ShaderResourceView* GetSpotAtlasSRV() const { return SpotAtlasSRV.Get(); }
+    ID3D11RenderTargetView* GetSpotVSMAtlasRTV() const { return SpotVSMAtlasRTV.Get(); }
+    ID3D11ShaderResourceView* GetSpotVSMAtlasSRV() const { return SpotVSMAtlasSRV.Get(); }
     
     bool InitializeDirectionalAtlas(ID3D11Device* Device);
     ID3D11DepthStencilView* GetDirectionalAtlasDSV() const { return DirectionalAtlasDSV.Get(); }
     ID3D11ShaderResourceView* GetDirectionalAtlasSRV() const { return DirectionalAtlasSRV.Get(); }
+    ID3D11RenderTargetView* GetDirectionalVSMAtlasRTV() const { return DirectionalVSMAtlasRTV.Get(); }
+    ID3D11ShaderResourceView* GetDirectionalVSMAtlasSRV() const { return DirectionalVSMAtlasSRV.Get(); }
     
     static const TArray<FDirectionalAtlasSlotDesc>& GetDirectionalCascadeSlots();
 
@@ -86,12 +90,15 @@ private:
     static bool IsSpotRegionFree(uint32 CellX, uint32 CellY, uint32 CellSpan);
     static void MarkSpotRegion(uint32 CellX, uint32 CellY, uint32 CellSpan, bool bOccupied);
     static void BuildSpotSlotDesc(uint32 CellX, uint32 CellY, uint32 TileResolution, uint32 TileIndex, FSpotAtlasSlotDesc& OutSlot);
-
     
 private:
     TComPtr<ID3D11Texture2D> SpotAtlasTexture;
     TComPtr<ID3D11DepthStencilView> SpotAtlasDSV;
     TComPtr<ID3D11ShaderResourceView> SpotAtlasSRV;
+
+	TComPtr<ID3D11Texture2D> SpotVSMAtlasTexture;
+    TComPtr<ID3D11RenderTargetView> SpotVSMAtlasRTV;
+    TComPtr<ID3D11ShaderResourceView> SpotVSMAtlasSRV;
 
     // 16x16 cell occupancy map
     // 각 셀은 256x256 영역을 의미함
@@ -101,6 +108,10 @@ private:
     TComPtr<ID3D11Texture2D> DirectionalAtlasTexture;
     TComPtr<ID3D11DepthStencilView> DirectionalAtlasDSV;
     TComPtr<ID3D11ShaderResourceView> DirectionalAtlasSRV;
+
+	TComPtr<ID3D11Texture2D> DirectionalVSMAtlasTexture;
+    TComPtr<ID3D11RenderTargetView> DirectionalVSMAtlasRTV;
+    TComPtr<ID3D11ShaderResourceView> DirectionalVSMAtlasSRV;
     
     static TArray<FDirectionalAtlasSlotDesc> DirectionalCascadeSlots;
 };

@@ -21,17 +21,22 @@ struct FDirectionalShadowVSInput
 struct FDirectionalShadowVSOutput
 {
     float4 ClipPos : SV_POSITION;
+    float4 ClipPosW : TEXCOORD0;
 };
 
 FDirectionalShadowVSOutput mainVS(FDirectionalShadowVSInput Input)
 {
     FDirectionalShadowVSOutput Output;
+
     float4 WorldPos = mul(float4(Input.Position, 1.0f), World);
     Output.ClipPos = mul(WorldPos, LightViewProj);
+    Output.ClipPosW = Output.ClipPos;
     
     return Output;
 }
 
-void mainPS(FDirectionalShadowVSOutput Input)
+float2 mainPS(FDirectionalShadowVSOutput Input) : SV_Target0
 {
+    float d = Input.ClipPosW.z / Input.ClipPosW.w;
+    return float2(d, d * d);
 }

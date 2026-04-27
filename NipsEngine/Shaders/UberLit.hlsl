@@ -104,8 +104,12 @@ cbuffer DirectionalShadowInfo : register(b7)
 
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
 Texture2D<float> SpotShadowMap : register(t12);
-
 Texture2D<float> DirectionalShadowMap : register(t13);
+// TODO: Point(t14)
+
+Texture2D<float2> SpotShadowVSMMap : register(t15);
+Texture2D<float2> DirectionalShadowVSMMap : register(t16);
+//Texture2D<float2> PointShadowVSMMap : register(t17);
 
 static const int kCascadeShadowResoultion = 2048; // ShadowPass::CascadeShadowResolution과 일치
 static const int kDirectionalAtlasResolution = 4096;
@@ -149,12 +153,9 @@ float ComputeDirectionalShadowFactor(float3 WorldPos)
     float2 AtlasUV = AtlasRect.xy + LocalUV * AtlasRect.zw;
     
     int2 AtlasSize = int2(kDirectionalAtlasResolution, kDirectionalAtlasResolution);
-    int2 ShadowTexel = clamp((int2)floor(AtlasUV * (float2)AtlasSize), int2(0, 0), AtlasSize - 1);
-    float StoredDepth = DirectionalShadowMap.Load(int3(ShadowTexel, 0));
     
-    float ShadowFactor = step(ShadowNDC.z - ShadowBias, StoredDepth); // 저장된 깊이와 비교해 빛을 받는지 여부 도출
-    
-    return lerp(1.0f, ShadowFactor, InBounds);
+    //return SampleShadowVSM(AtlasUV, ShadowNDC.z - ShadowBias, DirectionalShadowVSMMap, AtlasSize);
+    return SampleShadowPoissonDisk(AtlasUV, ShadowNDC.z - ShadowBias, DirectionalShadowMap, AtlasSize);
 }
 
 // ─────────────────── Lights ───────────────────
@@ -257,13 +258,12 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
 
     const float2 AtlasUV = Shadow.AtlasRect.xy + LocalUV * Shadow.AtlasRect.zw;
     const int2 AtlasSize = int2(4096, 4096);
-    const int2 ShadowTexel = clamp((int2)floor(AtlasUV * (float2)AtlasSize), int2(0, 0), AtlasSize - 1);
     
     const float CurrentDepth = ShadowNDC.z;
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
-    const float StoredDepth = SpotShadowMap.Load(int3(ShadowTexel, 0));
-
-    return (CurrentDepth - Bias <= StoredDepth) ? 1.0f : 0.0f;
+    
+    //return SampleShadowVSM(AtlasUV, CurrentDepth - Bias, SpotShadowVSMMap, AtlasSize);
+    return SampleShadowPoissonDisk(AtlasUV, CurrentDepth - Bias, SpotShadowMap, AtlasSize);
 }
 
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)

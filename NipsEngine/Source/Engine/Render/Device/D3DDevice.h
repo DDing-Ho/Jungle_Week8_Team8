@@ -35,7 +35,10 @@ struct FRenderTargetSet
     ID3D11ShaderResourceView* SpotShadowSRV = nullptr;
     uint32 SpotShadowCount = 0;
 
-    ID3D11RenderTargetView* FinalRTV = nullptr;
+    ID3D11ShaderResourceView* DirectionalShadowVSMSRV = nullptr;
+    ID3D11ShaderResourceView* SpotShadowVSMSRV = nullptr;
+
+	ID3D11RenderTargetView* FinalRTV = nullptr;
     ID3D11ShaderResourceView* FinalSRV = nullptr;
 
     float Width = 0.0f;

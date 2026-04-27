@@ -30,12 +30,14 @@ private:
     TComPtr<ID3D11Texture2D> DirectionalShadowTexture;
     TArray<TComPtr<ID3D11DepthStencilView>> DirectionalShadowDSVs;
     TComPtr<ID3D11ShaderResourceView> DirectionalShadowSRV;
+
     std::shared_ptr<FShaderBindingInstance> DirectionalShaderBinding;
 
 	// ── Spot Shadow Map (Directional Light) ────────────────────
     TComPtr<ID3D11Texture2D> SpotShadowTexture;
     TArray<TComPtr<ID3D11DepthStencilView>> SpotShadowDSVs;
     TComPtr<ID3D11ShaderResourceView> SpotShadowSRV;
+
 	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 	
 	// ── Shadow Atlas Manager ────────────────────────────────────

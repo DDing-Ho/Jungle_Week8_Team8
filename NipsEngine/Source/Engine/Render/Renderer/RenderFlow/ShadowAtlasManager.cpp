@@ -58,6 +58,49 @@ bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
         Release();        
         return false;
     }
+
+	// VSM
+    D3D11_TEXTURE2D_DESC VSMTextureDesc = {};
+    VSMTextureDesc.Width = SpotAtlasResolution;
+    VSMTextureDesc.Height = SpotAtlasResolution;
+    VSMTextureDesc.MipLevels = 1;
+    VSMTextureDesc.ArraySize = 1;
+    VSMTextureDesc.Format = DXGI_FORMAT_R32G32_FLOAT; // R=depth G=depth²
+    VSMTextureDesc.SampleDesc.Count = 1;
+    VSMTextureDesc.SampleDesc.Quality = 0;
+    VSMTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    VSMTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    VSMTextureDesc.CPUAccessFlags = 0;
+    VSMTextureDesc.MiscFlags = 0;
+
+    if (FAILED(Device->CreateTexture2D(&VSMTextureDesc, nullptr, SpotVSMAtlasTexture.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+    RTVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    RTVDesc.Texture2D.MipSlice = 0;
+
+    if (FAILED(Device->CreateRenderTargetView(SpotVSMAtlasTexture.Get(), &RTVDesc, SpotVSMAtlasRTV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC VSMSRVDesc = {};
+    VSMSRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    VSMSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    VSMSRVDesc.Texture2D.MostDetailedMip = 0;
+    VSMSRVDesc.Texture2D.MipLevels = 1;
+
+    if (FAILED(Device->CreateShaderResourceView(SpotVSMAtlasTexture.Get(), &VSMSRVDesc, SpotVSMAtlasSRV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
     
     return true;
 }
@@ -112,6 +155,49 @@ bool FShadowAtlasManager::InitializeDirectionalAtlas(ID3D11Device* Device)
         DirectionalAtlasTexture.Reset();      
         return false;
     }
+
+	// VSM
+    D3D11_TEXTURE2D_DESC VSMTextureDesc = {};
+    VSMTextureDesc.Width = DirectionalAtlasResolution;
+    VSMTextureDesc.Height = DirectionalAtlasResolution;
+    VSMTextureDesc.MipLevels = 1;
+    VSMTextureDesc.ArraySize = 1;
+    VSMTextureDesc.Format = DXGI_FORMAT_R32G32_FLOAT; // R=depth G=depth²
+    VSMTextureDesc.SampleDesc.Count = 1;
+    VSMTextureDesc.SampleDesc.Quality = 0;
+    VSMTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    VSMTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    VSMTextureDesc.CPUAccessFlags = 0;
+    VSMTextureDesc.MiscFlags = 0;
+
+    if (FAILED(Device->CreateTexture2D(&VSMTextureDesc, nullptr, DirectionalVSMAtlasTexture.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+    RTVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    RTVDesc.Texture2D.MipSlice = 0;
+
+    if (FAILED(Device->CreateRenderTargetView(DirectionalVSMAtlasTexture.Get(), &RTVDesc, DirectionalVSMAtlasRTV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC VSMSRVDesc = {};
+    VSMSRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    VSMSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    VSMSRVDesc.Texture2D.MostDetailedMip = 0;
+    VSMSRVDesc.Texture2D.MipLevels = 1;
+
+    if (FAILED(Device->CreateShaderResourceView(DirectionalVSMAtlasTexture.Get(), &VSMSRVDesc, DirectionalVSMAtlasSRV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
     
     return true;
 }
@@ -122,9 +208,17 @@ void FShadowAtlasManager::Release()
     SpotAtlasDSV.Reset();
     SpotAtlasTexture.Reset();
 
+	SpotVSMAtlasSRV.Reset();
+    SpotVSMAtlasRTV.Reset();
+    SpotVSMAtlasTexture.Reset();
+
     DirectionalAtlasTexture.Reset();
     DirectionalAtlasDSV.Reset();
     DirectionalAtlasSRV.Reset();
+
+    DirectionalVSMAtlasSRV.Reset();
+    DirectionalVSMAtlasRTV.Reset();
+    DirectionalVSMAtlasTexture.Reset();
 }
 
 void FShadowAtlasManager::BeginSpotFrame()
