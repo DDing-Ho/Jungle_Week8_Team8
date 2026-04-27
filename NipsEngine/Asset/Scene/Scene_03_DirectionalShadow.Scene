@@ -1,13 +1,13 @@
 {
   "ClassName" : "UWorld",
   "Name" : "Scene_03_DirectionalShadow",
-  "NextUUID" : 143,
+  "NextUUID" : 152,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [1.439663, -0.355291, -2.328603],
+    "Location" : [-2.390464, 1.648853, 1.471419],
     "NearClip" : 0.100000,
-    "Rotation" : [6.005489, -30.023041, -168.126175]
+    "Rotation" : [36.908432, 21.574228, -63.914154]
   },
   "Primitives" : {
     "135" : {
@@ -19,7 +19,7 @@
       "Materials" : ["DicePaper"],
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset\\Mesh\\Dice\\Dice.obj",
-      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Rotation" : [-0.000000, -2.788635, -0.000000],
       "Scale" : [1.000000, 1.000000, 3.890884],
       "Scroll U" : 0.000000,
       "Scroll V" : 0.000000,
@@ -27,7 +27,7 @@
       "Visible" : true
     },
     "138" : {
-      "CascadeSplitWeight" : 0.700000,
+      "CascadeSplitWeight" : 1.000000,
       "CastShadows" : true,
       "EditorOnly" : false,
       "EnableTick" : true,
