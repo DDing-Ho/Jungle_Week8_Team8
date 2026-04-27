@@ -14,9 +14,9 @@ static const float2 PoissonDisk[16] =
 };
 
 // PCF 
-float SampleShadow(float2 ShadowUV, float CurrentDepth, Texture2DArray<float> ShadowMaps, uint ShadowSlice, int Resolution)
+float SampleShadow(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowMap, int2 AtlasSize)
 {
-    float2 TexelSize = 1.0f / float2(Resolution, Resolution);
+    float2 TexelSize = 1.0f / (float2) AtlasSize;
     
     float Shadow = 0.0f;
 
@@ -28,10 +28,9 @@ float SampleShadow(float2 ShadowUV, float CurrentDepth, Texture2DArray<float> Sh
             float2 Offset = float2(x, y) * TexelSize;
             float2 SampleUV = ShadowUV + Offset;
             
-            const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-            const int2 ShadowTexel = clamp((int2)floor(SampleUV * (float)Resolution), int2(0, 0), MaxTexel);
+            const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float2) AtlasSize), int2(0, 0), AtlasSize - 1);
 
-            float StoredDepth = ShadowMaps.Load(int4(ShadowTexel.x, ShadowTexel.y, (int) ShadowSlice, 0));
+            float StoredDepth = ShadowMap.Load(int3(ShadowTexel, 0));
             Shadow += (CurrentDepth <= StoredDepth) ? 1.0f : 0.0f;
         }
     }
@@ -40,9 +39,9 @@ float SampleShadow(float2 ShadowUV, float CurrentDepth, Texture2DArray<float> Sh
 }
 
 // PCF (Poisson Disk Sampling)
-float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2DArray<float> ShadowMaps, uint ShadowSlice, int Resolution)
+float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowMap, int2 AtlasSize)
 {
-    float2 TexelSize = 1.0f / float2(Resolution, Resolution);  
+    float2 TexelSize = 1.0f / (float2) AtlasSize;
     
     float Shadow = 0.0f;
     float Spread = 3.0f;
@@ -57,10 +56,9 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2DArra
         float2 Offset = mul(PoissonDisk[i], RotationMatrix) * TexelSize * Spread;
         float2 SampleUV = ShadowUV + Offset;
         
-        const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-        const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float) Resolution), int2(0, 0), MaxTexel);
+        const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float2) AtlasSize), int2(0, 0), AtlasSize - 1);
 
-        float StoredDepth = ShadowMaps.Load(int4(ShadowTexel.x, ShadowTexel.y, (int) ShadowSlice, 0));
+        float StoredDepth = ShadowMap.Load(int3(ShadowTexel, 0));
         Shadow += (CurrentDepth <= StoredDepth) ? 1.0f : 0.0f;
     }
 
@@ -69,11 +67,11 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2DArra
 
 // VSM
 // TODO: ESM
-float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2DArray<float2> ShadowMapsVSM, uint ShadowSlice, int Resolution)
+float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapVSM, int2 AtlasSize)
 {
-    float2 TexelSize = 1.0f / float2(Resolution, Resolution);  
+    float2 TexelSize = 1.0f / (float2) AtlasSize;
     
-    float2 Moments = ShadowMapsVSM.Load(int4((int)(ShadowUV.x * Resolution), (int)(ShadowUV.y * Resolution), (int)ShadowSlice, 0)).xy;
+    float2 Moments = ShadowMapVSM.Load(int3(ShadowUV * AtlasSize, 0)).xy;
     float d = Moments.x; // depth
     float dSq = Moments.y; // depth^2
 
@@ -95,9 +93,9 @@ float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2DArray<float2
 }
 
 // PCSS
-float SampleShadowPCSS(float2 ShadowUV, float CurrentDepth, Texture2DArray<float> ShadowMaps, uint ShadowSlice, int Resolution)
+float SampleShadowPCSS(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowMap, int2 AtlasSize)
 {
-    float2 TexelSize = 1.0f / float2(Resolution, Resolution);
+    float2 TexelSize = 1.0f / (float2) AtlasSize;
 
     // 1. Blocker Search (5x5)
     float BlockerSum = 0.0f;
@@ -109,10 +107,9 @@ float SampleShadowPCSS(float2 ShadowUV, float CurrentDepth, Texture2DArray<float
             float2 Offset = float2(bx, by) * TexelSize;
             float2 SampleUV = ShadowUV + Offset;
             
-            const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-            const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float) Resolution), int2(0, 0), MaxTexel);
+            const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float2) AtlasSize), int2(0, 0), AtlasSize - 1);
             
-            float StoredDepth = ShadowMaps.Load(int4(ShadowTexel.x, ShadowTexel.y, (int) ShadowSlice, 0));
+            float StoredDepth = ShadowMap.Load(int3(ShadowTexel, 0));
             if (StoredDepth < CurrentDepth)
             {
                 BlockerSum += StoredDepth;
@@ -140,10 +137,9 @@ float SampleShadowPCSS(float2 ShadowUV, float CurrentDepth, Texture2DArray<float
         float2 Offset = mul(PoissonDisk[i], RotationMatrix) * TexelSize * FilterRadius;
         float2 SampleUV = ShadowUV + Offset;
         
-        const int2 MaxTexel = int2(Resolution - 1, Resolution - 1);
-        const int2 ShadowTexel = clamp((int2) floor(SampleUV * Resolution), int2(0, 0), MaxTexel);
-        
-        float StoredDepth = ShadowMaps.Load(int4(ShadowTexel.x, ShadowTexel.y, (int) ShadowSlice, 0));
+        const int2 ShadowTexel = clamp((int2) floor(SampleUV * (float2) AtlasSize), int2(0, 0), AtlasSize - 1);
+
+        float StoredDepth = ShadowMap.Load(int3(ShadowTexel, 0));
         Shadow += (CurrentDepth <= StoredDepth) ? 1.0f : 0.0f;
     }
     return Shadow / 16.0f;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Core/CoreMinimal.h"
 #include "RenderPassContext.h"
 
@@ -36,7 +36,6 @@ public:
 
 private:
     std::shared_ptr<FLightCullingPass> LightCullingPass;
-	std::shared_ptr<FShadowPass> ShadowPass;
     std::shared_ptr<FSkyRenderPass> SkyRenderPass;
     std::shared_ptr<FShadowPass> ShadowPass;
     std::shared_ptr<FBlurPass> BlurPass;

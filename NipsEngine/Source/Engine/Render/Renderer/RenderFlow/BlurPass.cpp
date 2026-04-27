@@ -39,7 +39,7 @@ bool FBlurPass::Begin(const FRenderPassContext* Context)
 	 }
 	 if (Context->RenderTargets != nullptr)
 	 {
-         ShadowVSMInputSRV = Context->RenderTargets->ShadowVSMSRV;
+         ShadowVSMInputSRV = Context->RenderTargets->SpotShadowVSMSRV;
 	 }
 
      if (!EnsureComputeShader(Context->Device))
@@ -121,7 +121,7 @@ bool FBlurPass::DrawCommand(const FRenderPassContext* Context)
     // ----------------------------------------------------------------
     if (Context->RenderTargets != nullptr)
     {
-        Context->RenderTargets->ShadowVSMSRV = ShadowBlurFinalSRV.Get();
+        Context->RenderTargets->SpotShadowVSMSRV = ShadowBlurFinalSRV.Get();
     }
 
     return true;

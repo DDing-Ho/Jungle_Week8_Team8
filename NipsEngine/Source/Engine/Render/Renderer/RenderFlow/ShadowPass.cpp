@@ -1,4 +1,4 @@
-#include "ShadowPass.h"
+﻿#include "ShadowPass.h"
 
 #include "Core/ResourceManager.h"
 #include "UI/EditorConsoleWidget.h"
@@ -30,10 +30,6 @@ bool FShadowPass::Release()
     ShaderBinding.reset();
     ShadowAtlasManager.Release();
 
-	SpotShadowVSMSRV.Reset();
-    SpotShadowVSMRTVs.clear();
-    SpotShadowVSMTexture.Reset();
-
 	return true;
 }
 
@@ -52,8 +48,6 @@ bool FShadowPass::Begin(const FRenderPassContext* Context)
         Context->RenderTargets->DirectionalShadowSRV = nullptr;
         Context->RenderTargets->SpotShadowSRV = nullptr;
         Context->RenderTargets->SpotShadowCount = 0;
-
-        Context->RenderTargets->ShadowVSMSRV = nullptr;
     }
 
     if (!EnsureDirectionalShadowResources(Context->Device, MAX_CASCADE_COUNT))
@@ -61,7 +55,7 @@ bool FShadowPass::Begin(const FRenderPassContext* Context)
         return false;
     }
 
-    if (!EnsureSpotShadowResources(Context->Device))
+	if (!EnsureSpotShadowResources(Context->Device))
     {
         return false;
     }
@@ -88,7 +82,12 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         Context->DeviceContext->PSSetShaderResources(13, 1, &NullDirectionalShadowSRV);
         Context->DeviceContext->VSSetShaderResources(13, 1, &NullDirectionalShadowSRV);
 
+		Context->DeviceContext->PSSetShaderResources(16, 1, &NullDirectionalShadowSRV);
+        Context->DeviceContext->VSSetShaderResources(16, 1, &NullDirectionalShadowSRV);
+
         ID3D11DepthStencilView* AtlasDSV = ShadowAtlasManager.GetDirectionalAtlasDSV();
+        ID3D11RenderTargetView* AtlasRTV = ShadowAtlasManager.GetDirectionalVSMAtlasRTV();
+
         if (AtlasDSV == nullptr)
         {
             return false;
@@ -106,8 +105,11 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         ID3D11DepthStencilState* DSState =
             FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::Default, Context->Device);
         Context->DeviceContext->OMSetDepthStencilState(DSState, 0);
-        Context->DeviceContext->OMSetRenderTargets(0, nullptr, AtlasDSV);
+        Context->DeviceContext->OMSetRenderTargets(1, &AtlasRTV, AtlasDSV);
         Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Context->DeviceContext->ClearRenderTargetView(AtlasRTV, ClearColor);
 
         const TArray<FDirectionalAtlasSlotDesc>& CascadeSlots = FShadowAtlasManager::GetDirectionalCascadeSlots();
         const uint32 CascadeCount = static_cast<uint32>(CascadeSlots.size());
@@ -118,10 +120,6 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             const D3D11_VIEWPORT DirShadowViewport = 
                 MakeViewportFromAtlasRect(Slot.AtlasRect, static_cast<float>(FShadowAtlasManager::DirectionalAtlasResolution ));
             Context->DeviceContext->RSSetViewports(1, &DirShadowViewport);
-            
-            /*ID3D11DepthStencilView* CascadeDSV = DirectionalShadowDSVs[CascadeIndex].Get();
-            Context->DeviceContext->OMSetRenderTargets(0, nullptr, CascadeDSV);
-            Context->DeviceContext->ClearDepthStencilView(CascadeDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);*/
 
             DirectionalShaderBinding->SetMatrix4("LightViewProj", DirShadow->LightViewProj[CascadeIndex]);
 
@@ -172,6 +170,8 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         if (Context->RenderTargets != nullptr)
         {
             Context->RenderTargets->DirectionalShadowSRV = ShadowAtlasManager.GetDirectionalAtlasSRV();
+
+			Context->RenderTargets->DirectionalShadowVSMSRV = ShadowAtlasManager.GetDirectionalVSMAtlasSRV();
         }
     }
 
@@ -191,9 +191,12 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     // depth를 다시 쓰기 전에 SRV 바인딩 끊어주기
     ID3D11ShaderResourceView* NullShadowSRV = nullptr;
     Context->DeviceContext->PSSetShaderResources(12, 1, &NullShadowSRV);
+    Context->DeviceContext->PSSetShaderResources(15, 1, &NullShadowSRV);
 
     // spot shadow atlas를 depth 타겟으로 바라보는 핸들
     ID3D11DepthStencilView* AtlasDSV = ShadowAtlasManager.GetSpotAtlasDSV();
+    ID3D11RenderTargetView* AtlasRTV = ShadowAtlasManager.GetSpotVSMAtlasRTV();
+
     if (AtlasDSV == nullptr)
     {
         return false;
@@ -203,10 +206,13 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     ID3D11DepthStencilState* DepthStencilState =
         FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::Default, Context->Device);
     Context->DeviceContext->OMSetDepthStencilState(DepthStencilState, 0);
-    Context->DeviceContext->OMSetRenderTargets(0, nullptr, AtlasDSV);
+    Context->DeviceContext->OMSetRenderTargets(1, &AtlasRTV, AtlasDSV);
     
     // 매 프레임 atlas 전체를 초기화하고, 이번 프레임의 visible spot shadow들을 다시 채우기
     Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Context->DeviceContext->ClearRenderTargetView(AtlasRTV, ClearColor);
 
     // 실제로 atlas에 그린 spot shadow 개수를 기록
     uint32 RenderedSpotShadowCount = 0;
@@ -216,15 +222,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         const D3D11_VIEWPORT ShadowViewport =
             MakeViewportFromAtlasRect(SpotShadow.AtlasRect, static_cast<float>(FShadowAtlasManager::SpotAtlasResolution));
         Context->DeviceContext->RSSetViewports(1, &ShadowViewport);
-        
-        ID3D11DepthStencilView* ShadowDSV = SpotShadowDSVs[SliceIndex].Get();
-        ID3D11RenderTargetView** ShadowVSMRTV = SpotShadowVSMRTVs[SliceIndex].GetAddressOf();
-        Context->DeviceContext->OMSetRenderTargets(1, ShadowVSMRTV, ShadowDSV);
-        Context->DeviceContext->ClearDepthStencilView(ShadowDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-		float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-        Context->DeviceContext->ClearRenderTargetView(*ShadowVSMRTV, ClearColor);
         ShaderBinding->SetMatrix4("LightViewProj", SpotShadow.LightViewProj);
         ShaderBinding->SetFloat("ShadowResolution", SpotShadow.ShadowResolution);
         ShaderBinding->SetFloat("ShadowBias", SpotShadow.ShadowBias);
@@ -280,7 +278,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         Context->RenderTargets->SpotShadowSRV = ShadowAtlasManager.GetSpotAtlasSRV();
         Context->RenderTargets->SpotShadowCount = RenderedSpotShadowCount;
 
-		Context->RenderTargets->ShadowVSMSRV = SpotShadowVSMSRV.Get();
+		Context->RenderTargets->SpotShadowVSMSRV = ShadowAtlasManager.GetSpotVSMAtlasSRV();
     }
 
     return true;
@@ -354,85 +352,19 @@ bool FShadowPass::EnsureSpotShadowResources(ID3D11Device* Device)
         return false;
     }
 
-    SpotShadowTexture = std::move(NewTexture);
-    SpotShadowDSVs = std::move(NewDSVs);
-    SpotShadowSRV = std::move(NewSRV);
-
-	// VSM
-    D3D11_TEXTURE2D_DESC VSMTextureDesc = {};
-    VSMTextureDesc.Width = SpotShadowResolution;
-    VSMTextureDesc.Height = SpotShadowResolution;
-    VSMTextureDesc.MipLevels = 1;
-    VSMTextureDesc.ArraySize = MaxSpotShadowCount;
-    VSMTextureDesc.Format = DXGI_FORMAT_R32G32_FLOAT; // R=depth G=depth²
-    VSMTextureDesc.SampleDesc.Count = 1;
-    VSMTextureDesc.SampleDesc.Quality = 0;
-    VSMTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-    VSMTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-    VSMTextureDesc.CPUAccessFlags = 0;
-    VSMTextureDesc.MiscFlags = 0;
-
-    TComPtr<ID3D11Texture2D> NewVSMTexture;
-    if (FAILED(Device->CreateTexture2D(&VSMTextureDesc, nullptr, NewVSMTexture.GetAddressOf())))
-    {
-        UE_LOG("Failed to create spot shadow VSM texture array");
-        return false;
-    }
-
-    TArray<TComPtr<ID3D11RenderTargetView>> NewRTVs;
-    NewRTVs.reserve(MaxSpotShadowCount);
-
-    for (uint32 SliceIndex = 0; SliceIndex < MaxSpotShadowCount; ++SliceIndex)
-    {
-        D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
-        RTVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-        RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-        RTVDesc.Texture2DArray.MipSlice = 0;
-        RTVDesc.Texture2DArray.FirstArraySlice = SliceIndex;
-        RTVDesc.Texture2DArray.ArraySize = 1;
-
-        TComPtr<ID3D11RenderTargetView> NewRTV;
-        if (FAILED(Device->CreateRenderTargetView(NewVSMTexture.Get(), &RTVDesc, NewRTV.GetAddressOf())))
-        {
-            UE_LOG("Failed to create spot shadow render target view");
-            return false;
-        }
-
-        NewRTVs.push_back(std::move(NewRTV));
-    }
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC VSMSRVDesc = {};
-    VSMSRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-    VSMSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-    VSMSRVDesc.Texture2DArray.MostDetailedMip = 0;
-    VSMSRVDesc.Texture2DArray.MipLevels = 1;
-    VSMSRVDesc.Texture2DArray.FirstArraySlice = 0;
-    VSMSRVDesc.Texture2DArray.ArraySize = MaxSpotShadowCount;
-
-    TComPtr<ID3D11ShaderResourceView> NewVSMSRV;
-    if (FAILED(Device->CreateShaderResourceView(NewVSMTexture.Get(), &VSMSRVDesc, NewVSMSRV.GetAddressOf())))
-    {
-        UE_LOG("Failed to create spot shadow VSM shader resource view");
-        return false;
-    }
-
-    SpotShadowVSMTexture = std::move(NewVSMTexture);
-    SpotShadowVSMRTVs = std::move(NewRTVs);
-    SpotShadowVSMSRV = std::move(NewVSMSRV);
-
 	if (!ShaderBinding)
-	{
-        UShader* SpotShadowShader = FResourceManager::Get().GetShader("Shaders/Multipass/SpotShadowDepth.hlsl");
-        if (SpotShadowShader == nullptr)
+    {
+        UShader* SoptShadowShader = FResourceManager::Get().GetShader("Shaders/Multipass/SpotShadowDepth.hlsl");
+        if (SoptShadowShader == nullptr)
         {
-            UE_LOG("Failed to find spot shadow depth shader");
+            UE_LOG("Failed to find directional shadow depth shader");
             return false;
         }
 
-        ShaderBinding = SpotShadowShader->CreateBindingInstance(Device);
+        ShaderBinding = SoptShadowShader->CreateBindingInstance(Device);
         if (!ShaderBinding)
         {
-            UE_LOG("Failed to create spot shadow shader binding");
+            UE_LOG("Failed to create directional shadow shader binding");
             return false;
         }
     }
