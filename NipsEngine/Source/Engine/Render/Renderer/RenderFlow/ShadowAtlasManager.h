@@ -16,6 +16,17 @@ struct FSpotAtlasSlotDesc
     FVector4 AtlasRect = FVector4(0.0f, 0.0f, 1.0f, 1.0f);
 };
 
+struct FDirectionalAtlasSlotDesc
+{
+    uint32 CascadeIndex = 0;
+    uint32 X = 0;
+    uint32 Y = 0;
+    uint32 Width = 0;
+    uint32 Height = 0;
+    
+    FVector4 AtlasRect = FVector4(0.0f, 0.0f, 1.0f, 1.0f);
+};
+
 class FShadowAtlasManager
 {
 public:
@@ -32,6 +43,11 @@ public:
     
     // 이론상 최대 shadow 수
     static constexpr uint32 MaxSpotShadowCount = SpotAtlasCellsPerRow * SpotAtlasCellsPerRow;
+    
+    static constexpr uint32 DirectionalCascadeResolution = 2048;
+    static constexpr uint32 DirectionalAtlasGridDimension = 2;
+    static constexpr uint32 DirectionalAtlasResolution = DirectionalCascadeResolution * DirectionalAtlasGridDimension;
+    static constexpr uint32 DirectionalCascadeCount = 4;
     
 public:
     // Spot shadow atlas 텍스처/DSV/SRV를 생성합니다.
@@ -55,6 +71,12 @@ public:
     
     ID3D11DepthStencilView* GetSpotAtlasDSV() const { return SpotAtlasDSV.Get(); }
     ID3D11ShaderResourceView* GetSpotAtlasSRV() const { return SpotAtlasSRV.Get(); }
+    
+    bool InitializeDirectionalAtlas(ID3D11Device* Device);
+    ID3D11DepthStencilView* GetDirectionalAtlasDSV() const { return DirectionalAtlasDSV.Get(); }
+    ID3D11ShaderResourceView* GetDirectionalAtlasSRV() const { return DirectionalAtlasSRV.Get(); }
+    
+    static const TArray<FDirectionalAtlasSlotDesc>& GetDirectionalCascadeSlots();
 
 private:
     // allocator가 실제로 처리 가능한 PoT 타일 크기로 보정합니다.
@@ -75,4 +97,10 @@ private:
     // 각 셀은 256x256 영역을 의미함
     static TArray<uint8> SpotCellOccupancy;
     static TArray<FSpotAtlasSlotDesc> ActiveSpotSlots;
+    
+    TComPtr<ID3D11Texture2D> DirectionalAtlasTexture;
+    TComPtr<ID3D11DepthStencilView> DirectionalAtlasDSV;
+    TComPtr<ID3D11ShaderResourceView> DirectionalAtlasSRV;
+    
+    static TArray<FDirectionalAtlasSlotDesc> DirectionalCascadeSlots;
 };

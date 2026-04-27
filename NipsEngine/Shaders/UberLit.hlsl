@@ -102,9 +102,18 @@ cbuffer DirectionalShadowInfo : register(b7)
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
 Texture2D<float> SpotShadowMap : register(t12);
 
-Texture2DArray<float> DirectionalShadowMap : register(t13);
+Texture2D<float> DirectionalShadowMap : register(t13);
 
 static const int kCascadeShadowResoultion = 2048; // ShadowPass::CascadeShadowResolution과 일치
+static const int kDirectionalAtlasResolution = 4096;
+
+float4 GetDirectionalCascadeAtlasRect(int CascadeIndex)
+{
+    if (CascadeIndex == 0) return float4(0.0f, 0.0f, 0.5f, 0.5f);
+    if (CascadeIndex == 1) return float4(0.5f, 0.0f, 0.5f, 0.5f);
+    if (CascadeIndex == 2) return float4(0.0f, 0.5f, 0.5f, 0.5f);
+    return float4(0.5f, 0.5f, 0.5f, 0.5f);
+}
 
 // 뷰 공간 깊이로 Cascade Index를 결정한다.
 float ComputeDirectionalShadowFactor(float3 WorldPos)
@@ -123,10 +132,13 @@ float ComputeDirectionalShadowFactor(float3 WorldPos)
     float3 ShadowNDC = ShadowClip.xyz / W;
     float InBounds = step(abs(ShadowNDC.x), 1.0f) * step(abs(ShadowNDC.y), 1.0f) * step(0.0f, ShadowNDC.z) * step(ShadowNDC.z, 1.0f) * step(1.0e-5f, ShadowClip.w);
         
-    float2 ShadowUV = float2(ShadowNDC.x * 0.5f + 0.5f, ShadowNDC.y * -0.5f + 0.5f);
-    int2 MaxTexel = int2(kCascadeShadowResoultion - 1, kCascadeShadowResoultion - 1);
-    int2 ShadowTexel = clamp((int2)floor(ShadowUV * (float)kCascadeShadowResoultion), int2(0, 0), MaxTexel);
-    float StoredDepth = DirectionalShadowMap.Load(int4(ShadowTexel.xy, CascadeIndex, 0));
+    float2 LocalUV = float2(ShadowNDC.x * 0.5f + 0.5f, ShadowNDC.y * -0.5f + 0.5f);
+    float4 AtlasRect = GetDirectionalCascadeAtlasRect(CascadeIndex);
+    float2 AtlasUV = AtlasRect.xy + LocalUV * AtlasRect.zw;
+    
+    int2 AtlasSize = int2(kDirectionalAtlasResolution, kDirectionalAtlasResolution);
+    int2 ShadowTexel = clamp((int2)floor(AtlasUV * (float2)AtlasSize), int2(0, 0), AtlasSize - 1);
+    float StoredDepth = DirectionalShadowMap.Load(int3(ShadowTexel, 0));
     
     float ShadowFactor = step(ShadowNDC.z - ShadowBias, StoredDepth); // 저장된 깊이와 비교해 빛을 받는지 여부 도출
     

@@ -27,15 +27,8 @@ bool FShadowPass::Initialize()
 bool FShadowPass::Release()
 {
     DirectionalShaderBinding.reset();
-    DirectionalShadowSRV.Reset();
-    DirectionalShadowDSVs.clear();
-    DirectionalShadowTexture.Reset();
-
     ShaderBinding.reset();
     ShadowAtlasManager.Release();
-    /*SpotShadowSRV.Reset();
-    SpotShadowDSVs.clear();
-    SpotShadowTexture.Reset();*/
 
     return true;
 }
@@ -81,7 +74,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 
     // ─────────────────── Directional Shadow ───────────────────
     const FDirectionalShadowConstants* DirShadow = Context->RenderBus->GetDirectionalShadow();
-    if (DirShadow != nullptr && DirectionalShaderBinding && !DirectionalShadowDSVs.empty())
+    if (DirShadow != nullptr && DirectionalShaderBinding)
     {
         // 이전 프레임에 shader stage에서 directional shadow array를 읽고 있었을 수 있으니
         // depth target으로 다시 쓰기 전에 SRV 바인딩을 끊어준다.
@@ -89,25 +82,40 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         Context->DeviceContext->PSSetShaderResources(13, 1, &NullDirectionalShadowSRV);
         Context->DeviceContext->VSSetShaderResources(13, 1, &NullDirectionalShadowSRV);
 
-        D3D11_VIEWPORT DirShadowViewport = {};
+        ID3D11DepthStencilView* AtlasDSV = ShadowAtlasManager.GetDirectionalAtlasDSV();
+        if (AtlasDSV == nullptr)
+        {
+            return false;
+        }
+        
+        /*D3D11_VIEWPORT DirShadowViewport = {};
         DirShadowViewport.Width = static_cast<float>(DirectionalShadowResolution);
         DirShadowViewport.Height = static_cast<float>(DirectionalShadowResolution);
         DirShadowViewport.MinDepth = 0.0f;
-        DirShadowViewport.MaxDepth = 1.0f;
+        DirShadowViewport.MaxDepth = 1.0f;*/
 
-        Context->DeviceContext->RSSetViewports(1, &DirShadowViewport);
+        /*Context->DeviceContext->RSSetViewports(1, &DirShadowViewport);*/
         Context->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         ID3D11DepthStencilState* DSState =
             FResourceManager::Get().GetOrCreateDepthStencilState(EDepthStencilType::Default, Context->Device);
         Context->DeviceContext->OMSetDepthStencilState(DSState, 0);
+        Context->DeviceContext->OMSetRenderTargets(0, nullptr, AtlasDSV);
+        Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-        const uint32 CascadeCount = static_cast<uint32>(DirectionalShadowDSVs.size());
+        const TArray<FDirectionalAtlasSlotDesc>& CascadeSlots = FShadowAtlasManager::GetDirectionalCascadeSlots();
+        const uint32 CascadeCount = static_cast<uint32>(CascadeSlots.size());
+        
         for (uint32 CascadeIndex = 0; CascadeIndex < CascadeCount; ++CascadeIndex)
         {
-            ID3D11DepthStencilView* CascadeDSV = DirectionalShadowDSVs[CascadeIndex].Get();
+            const FDirectionalAtlasSlotDesc& Slot = CascadeSlots[CascadeIndex];
+            const D3D11_VIEWPORT DirShadowViewport = 
+                MakeViewportFromAtlasRect(Slot.AtlasRect, static_cast<float>(FShadowAtlasManager::DirectionalAtlasResolution ));
+            Context->DeviceContext->RSSetViewports(1, &DirShadowViewport);
+            
+            /*ID3D11DepthStencilView* CascadeDSV = DirectionalShadowDSVs[CascadeIndex].Get();
             Context->DeviceContext->OMSetRenderTargets(0, nullptr, CascadeDSV);
-            Context->DeviceContext->ClearDepthStencilView(CascadeDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+            Context->DeviceContext->ClearDepthStencilView(CascadeDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);*/
 
             DirectionalShaderBinding->SetMatrix4("LightViewProj", DirShadow->LightViewProj[CascadeIndex]);
 
@@ -135,7 +143,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
                 {
                     continue;
                 }
-
+            
                 uint32 Offset = 0;
                 DirectionalShaderBinding->SetMatrix4("World", Cmd.PerObjectConstants.Model);
                 DirectionalShaderBinding->Bind(Context->DeviceContext);
@@ -157,7 +165,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 
         if (Context->RenderTargets != nullptr)
         {
-            Context->RenderTargets->DirectionalShadowSRV = DirectionalShadowSRV.Get();
+            Context->RenderTargets->DirectionalShadowSRV = ShadowAtlasManager.GetDirectionalAtlasSRV();
         }
     }
 
@@ -291,86 +299,29 @@ bool FShadowPass::EnsureDirectionalShadowResources(ID3D11Device* Device, uint32 
         return false;
     }
 
-    if (DirectionalShadowTexture && DirectionalShadowSRV && DirectionalShadowDSVs.size() == CascadeCount)
+    if (!ShadowAtlasManager.InitializeDirectionalAtlas(Device))
     {
-        return true;
-    }
-
-    DirectionalShaderBinding.reset();
-    DirectionalShadowSRV.Reset();
-    DirectionalShadowDSVs.clear();
-    DirectionalShadowTexture.Reset();
-
-    D3D11_TEXTURE2D_DESC TextureDesc = {};
-    TextureDesc.Width = DirectionalShadowResolution;
-    TextureDesc.Height = DirectionalShadowResolution;
-    TextureDesc.MipLevels = 1;
-    TextureDesc.ArraySize = CascadeCount;
-    TextureDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-    TextureDesc.SampleDesc.Count = 1;
-    TextureDesc.Usage = D3D11_USAGE_DEFAULT;
-    TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-
-    TComPtr<ID3D11Texture2D> NewTexture;
-    if (FAILED(Device->CreateTexture2D(&TextureDesc, nullptr, NewTexture.GetAddressOf())))
-    {
-        UE_LOG("Failed to create directional shadow texture array");
+        UE_LOG("Failed to initialize directional shadow atlas");
         return false;
     }
 
-    TArray<TComPtr<ID3D11DepthStencilView>> NewDSVs;
-    NewDSVs.reserve(CascadeCount);
-
-    for (uint32 SliceIndex = 0; SliceIndex < CascadeCount; ++SliceIndex)
+    if (!DirectionalShaderBinding)
     {
-        D3D11_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-        DSVDesc.Format = DXGI_FORMAT_D32_FLOAT;
-        DSVDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-        DSVDesc.Texture2DArray.FirstArraySlice = SliceIndex;
-        DSVDesc.Texture2DArray.ArraySize = 1;
-
-        TComPtr<ID3D11DepthStencilView> NewDSV;
-        if (FAILED(Device->CreateDepthStencilView(NewTexture.Get(), &DSVDesc, NewDSV.GetAddressOf())))
+        UShader* DirectionalShadowShader = FResourceManager::Get().GetShader("Shaders/Multipass/DirectionalShadowDepth.hlsl");
+        if (DirectionalShadowShader == nullptr)
         {
-            UE_LOG("Failed to create directional shadow depth stencil view");
+            UE_LOG("Failed to find directional shadow depth shader");
             return false;
         }
 
-        NewDSVs.push_back(std::move(NewDSV));
+        DirectionalShaderBinding  = DirectionalShadowShader->CreateBindingInstance(Device);
+        if (!DirectionalShaderBinding )
+        {
+            UE_LOG("Failed to create directional shadow shader binding");
+            return false;
+        }
     }
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
-    SRVDesc.Format = DXGI_FORMAT_R32_FLOAT;
-    SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-    SRVDesc.Texture2DArray.MipLevels = 1;
-    SRVDesc.Texture2DArray.ArraySize = CascadeCount;
-
-    TComPtr<ID3D11ShaderResourceView> NewSRV;
-    if (FAILED(Device->CreateShaderResourceView(NewTexture.Get(), &SRVDesc, NewSRV.GetAddressOf())))
-    {
-        UE_LOG("Failed to create directional shadow shader resource view");
-        return false;
-    }
-
-    UShader* DirShadowShader = FResourceManager::Get().GetShader("Shaders/Multipass/DirectionalShadowDepth.hlsl");
-    if (DirShadowShader == nullptr)
-    {
-        UE_LOG("Failed to find directional shadow depth shader");
-        return false;
-    }
-
-    std::shared_ptr<FShaderBindingInstance> NewBinding = DirShadowShader->CreateBindingInstance(Device);
-    if (!NewBinding)
-    {
-        UE_LOG("Failed to create directional shadow shader binding");
-        return false;
-    }
-
-    DirectionalShadowTexture = std::move(NewTexture);
-    DirectionalShadowDSVs = std::move(NewDSVs);
-    DirectionalShadowSRV = std::move(NewSRV);
-    DirectionalShaderBinding = std::move(NewBinding);
-
+    
     return true;
 }
 

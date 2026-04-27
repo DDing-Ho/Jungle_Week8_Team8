@@ -5,6 +5,7 @@
 
 TArray<uint8> FShadowAtlasManager::SpotCellOccupancy;
 TArray<FSpotAtlasSlotDesc> FShadowAtlasManager::ActiveSpotSlots;
+TArray<FDirectionalAtlasSlotDesc> FShadowAtlasManager::DirectionalCascadeSlots;
 
 bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
 {
@@ -61,11 +62,69 @@ bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
     return true;
 }
 
+bool FShadowAtlasManager::InitializeDirectionalAtlas(ID3D11Device* Device)
+{
+    if (Device == nullptr)
+    {
+        return false;
+    }
+    
+    if (DirectionalAtlasTexture && DirectionalAtlasDSV && DirectionalAtlasSRV)
+    {
+        return true;
+    }
+    
+    D3D11_TEXTURE2D_DESC TextureDesc = {};
+    TextureDesc.Width = DirectionalAtlasResolution;
+    TextureDesc.Height = DirectionalAtlasResolution;
+    TextureDesc.MipLevels = 1;
+    TextureDesc.ArraySize = 1;
+    TextureDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+    TextureDesc.SampleDesc.Count = 1;
+    TextureDesc.SampleDesc.Quality = 0;
+    TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+    
+    if (FAILED(Device->CreateTexture2D(&TextureDesc, nullptr, DirectionalAtlasTexture.GetAddressOf())))
+    {
+        return false;
+    }
+    
+    D3D11_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
+    DSVDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    DSVDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+    DSVDesc.Flags = 0;
+    DSVDesc.Texture2D.MipSlice = 0;
+    if (FAILED(Device->CreateDepthStencilView(DirectionalAtlasTexture.Get(), &DSVDesc, DirectionalAtlasDSV.GetAddressOf())))
+    {
+        DirectionalAtlasTexture.Reset();
+        return false;
+    }
+    
+    D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+    SRVDesc.Format = DXGI_FORMAT_R32_FLOAT;
+    SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    SRVDesc.Texture2D.MostDetailedMip = 0;
+    SRVDesc.Texture2D.MipLevels = 1;
+    if (FAILED(Device->CreateShaderResourceView(DirectionalAtlasTexture.Get(), &SRVDesc, DirectionalAtlasSRV.GetAddressOf())))
+    {
+        DirectionalAtlasDSV.Reset();
+        DirectionalAtlasTexture.Reset();      
+        return false;
+    }
+    
+    return true;
+}
+
 void FShadowAtlasManager::Release()
 {
     SpotAtlasSRV.Reset();
     SpotAtlasDSV.Reset();
     SpotAtlasTexture.Reset();
+
+    DirectionalAtlasTexture.Reset();
+    DirectionalAtlasDSV.Reset();
+    DirectionalAtlasSRV.Reset();
 }
 
 void FShadowAtlasManager::BeginSpotFrame()
@@ -224,4 +283,35 @@ void FShadowAtlasManager::BuildSpotSlotDesc(uint32 CellX, uint32 CellY, uint32 T
         static_cast<float>(OutSlot.Y) / static_cast<float>(SpotAtlasResolution),
         static_cast<float>(OutSlot.Width) / static_cast<float>(SpotAtlasResolution),
         static_cast<float>(OutSlot.Height) / static_cast<float>(SpotAtlasResolution));
+}
+
+const TArray<FDirectionalAtlasSlotDesc>& FShadowAtlasManager::GetDirectionalCascadeSlots()
+{
+    if (!DirectionalCascadeSlots.empty())
+    {
+        return DirectionalCascadeSlots;
+    }
+    
+    DirectionalCascadeSlots.reserve(DirectionalCascadeCount);
+    
+    for (uint32 CascadeIndex = 0; CascadeIndex < DirectionalCascadeCount; ++CascadeIndex)
+    {
+        const uint32 GridX = CascadeIndex % DirectionalAtlasGridDimension;
+        const uint32 GridY = CascadeIndex / DirectionalAtlasGridDimension;
+        
+        FDirectionalAtlasSlotDesc Slot = {};
+        Slot.CascadeIndex = CascadeIndex;
+        Slot.X = GridX * DirectionalCascadeResolution;
+        Slot.Y = GridY * DirectionalCascadeResolution;
+        Slot.Width = DirectionalCascadeResolution;
+        Slot.Height = DirectionalCascadeResolution;
+        Slot.AtlasRect = FVector4(
+            static_cast<float>(Slot.X) / static_cast<float>(DirectionalAtlasResolution),
+            static_cast<float>(Slot.Y) / static_cast<float>(DirectionalAtlasResolution),
+            static_cast<float>(Slot.Width) / static_cast<float>(DirectionalAtlasResolution),
+            static_cast<float>(Slot.Height) / static_cast<float>(DirectionalAtlasResolution));
+        DirectionalCascadeSlots.push_back(Slot);
+    }
+    
+    return DirectionalCascadeSlots;
 }

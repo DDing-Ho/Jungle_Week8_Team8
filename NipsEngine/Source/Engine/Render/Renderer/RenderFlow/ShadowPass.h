@@ -22,10 +22,5 @@ private:
 	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 
 	// ── Cascade Shadow Map (Directional Light) ──────────────────
-    static constexpr uint32 DirectionalShadowResolution = 2048;
-
-    TComPtr<ID3D11Texture2D> DirectionalShadowTexture;
-    TArray<TComPtr<ID3D11DepthStencilView>> DirectionalShadowDSVs;
-    TComPtr<ID3D11ShaderResourceView> DirectionalShadowSRV;
     std::shared_ptr<FShaderBindingInstance> DirectionalShaderBinding;
 };
