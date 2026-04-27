@@ -62,12 +62,11 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 
     SceneLightBinding::BindResources(Context,
         VisibleLightConstantBuffer,
+		DirectionalShadowConstantBuffer,
         SpotShadowInfoConstantBuffer,
         SpotShadowConstantsBuffer,
         SpotShadowConstantsSRV,
         SpotShadowConstantsCapacity);
-
-	SceneLightBinding::BindDirectionalShadowResources(Context, DirecitonalShadowInfoConstantBuffer);
 
     for (const FRenderCommand& Cmd : Commands)
     {
@@ -103,6 +102,7 @@ bool FOpaqueRenderPass::DrawCommand(const FRenderPassContext* Context)
 		SceneLightBinding::BindResources(
             Context,
             VisibleLightConstantBuffer,
+			DirectionalShadowConstantBuffer,
             SpotShadowInfoConstantBuffer,
             SpotShadowConstantsBuffer,
             SpotShadowConstantsSRV,
@@ -138,7 +138,7 @@ bool FOpaqueRenderPass::End(const FRenderPassContext* Context)
 bool FOpaqueRenderPass::Release()
 {
     VisibleLightConstantBuffer.Reset();
-	DirecitonalShadowInfoConstantBuffer.Reset();
+	DirectionalShadowConstantBuffer.Reset();
     SpotShadowInfoConstantBuffer.Reset();
     SpotShadowConstantsBuffer.Reset();
     SpotShadowConstantsSRV.Reset();

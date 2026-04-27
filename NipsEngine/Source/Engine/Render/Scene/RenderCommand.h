@@ -225,17 +225,6 @@ struct FDirectionalShadowConstants
 
 static_assert(sizeof(FDirectionalShadowConstants) % 16 == 0, "FDirectionalShadowConstants must be 16-byte aligned");
 
-// TODO: 추후 필요없어질 경우 삭제
-struct FShadowConstants
-{
-    FMatrix LightViewProj[6]; // CSM: cascade별, Spot: [0]만, Point: 6면
-    FVector4 SplitDistances;     // CSM 전용 (4 cascade 가정), 그 외는 0
-    int32 ShadowMapIndex;        // ShadowMapArray2D 또는 ArrayCube에서의 시작 슬라이스
-    int32 NumSlices;             // CSM=NumCascades, Spot=1, Point=6
-    int32 AtlasType;             // 0 = 2DArray, 1 = CubeArray
-    float ShadowBias;
-};
-
 // Shadow Depth Pass용 Struct
 struct FSpotShadowConstants
 {

@@ -108,7 +108,6 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			FVector Direction = LightComponent->GetForwardVector() * -1.0f; // 빛 방향 벡터
 			Direction.Normalize();
 			RenderLight.Direction = Direction;
-			RenderBus.AddLight(RenderLight);
 
 			// 씬의 첫 번째 Directional Light만 그림자를 반영한다.
 			if (!RenderBus.HasDirectionalShadow() && LightComponent->IsCastShadows())
@@ -124,7 +123,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 					RenderLight.bCastShadows = 1; // uint32
 				}
 			}
-			
+
 			RenderBus.AddLight(RenderLight);
 
 			// TODO: PIE에서도 화살표를 보여주고 있음.. PIE 월드를 감지할 필요가 있다.
@@ -1068,12 +1067,13 @@ namespace
 				Radius = std::max(Radius, FVector::Dist(Center, Corner));
 			}
 
-			// Depth 값을 여유롭게 잡아 Shadow Culling 개선 (필요시 수정)
-			const float DepthRange = 50000.0f;
-			const FVector LightPosition = Center - LightDirection * (DepthRange * 0.5f);
+			const FVector LightPosition = Center - LightDirection * Radius;
+
+			const float ZNear = 0.0f;
+			const float ZFar = Radius * 2.0f;
 
 			const FMatrix LightView = FMatrix::MakeViewLookAtLH(LightPosition, Center, MakeStableUpVector(LightDirection));
-			const FMatrix LightProjection = FMatrix::MakeOrthographicLH(Radius * 2.0f, Radius * 2.0f, 0.0f, DepthRange);
+			const FMatrix LightProjection = FMatrix::MakeOrthographicLH(Radius * 2.0f, Radius * 2.0f, ZNear, ZFar);
 			ShadowConstants.LightViewProj[i] = LightView * LightProjection;
 		}
 	}

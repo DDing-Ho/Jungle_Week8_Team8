@@ -1,0 +1,83 @@
+{
+  "ClassName" : "UWorld",
+  "Name" : "Scene_03_DirectionalShadow",
+  "NextUUID" : 143,
+  "PerspectiveCamera" : {
+    "FOV" : 90.000000,
+    "FarClip" : 2000.000000,
+    "Location" : [1.439663, -0.355291, -2.328603],
+    "NearClip" : 0.100000,
+    "Rotation" : [6.005489, -30.023041, -168.126175]
+  },
+  "Primitives" : {
+    "135" : {
+      "EditorOnly" : false,
+      "Enable Cull" : true,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "Location" : [0.000000, 0.000000, -3.682054],
+      "Materials" : ["DicePaper"],
+      "NormalizeOnImport" : false,
+      "ObjStaticMeshAsset" : "Asset\\Mesh\\Dice\\Dice.obj",
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 3.890884],
+      "Scroll U" : 0.000000,
+      "Scroll V" : 0.000000,
+      "Type" : "UStaticMeshComponent",
+      "Visible" : true
+    },
+    "138" : {
+      "CascadeSplitWeight" : 0.700000,
+      "CastShadows" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "Intensity" : 1.000000,
+      "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
+      "LightType" : 0,
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "Rotation" : [-0.000183, 35.934391, 0.000823],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "ShadowBias" : 0.001500,
+      "ShadowDistance" : 3000.000000,
+      "ShadowResolutionScale" : 1.000000,
+      "ShadowSharpen" : 0.000000,
+      "ShadowSlopeBias" : 0.500000,
+      "Type" : "UDirectionalLightComponent",
+      "Visible" : true
+    },
+    "139" : {
+      "EditorOnly" : true,
+      "Enable Cull" : true,
+      "EnableTick" : true,
+      "Height" : 1.000000,
+      "HiddenInEditor" : true,
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "ParentUUID" : 138,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Texture Path" : "Asset/Texture/Icons/S_LightDirectional.PNG",
+      "Type" : "UBillboardComponent",
+      "Visible" : true,
+      "Width" : 1.000000
+    },
+    "142" : {
+      "EditorOnly" : false,
+      "Enable Cull" : true,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "Location" : [0.000000, 0.000000, -5.282619],
+      "Materials" : ["DicePaper"],
+      "NormalizeOnImport" : false,
+      "ObjStaticMeshAsset" : "Asset\\Mesh\\Dice\\Dice.obj",
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [155.000000, 155.000000, 1.000000],
+      "Scroll U" : 0.000000,
+      "Scroll V" : 0.000000,
+      "Type" : "UStaticMeshComponent",
+      "Visible" : true
+    }
+  },
+  "Version" : 4,
+  "WorldType" : "Editor"
+}

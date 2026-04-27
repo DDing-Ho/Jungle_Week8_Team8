@@ -247,7 +247,13 @@ namespace SceneLightBinding
 		FDirectionalShadowInfoConstants InfoConstants = {};
 		if (DirShadow != nullptr)
 		{
-			std::memcpy(&InfoConstants, DirShadow, sizeof(InfoConstants));
+			for(int i = 0; i < MAX_CASCADE_COUNT; ++i)
+			{
+				InfoConstants.LightViewProj[i] = DirShadow->LightViewProj[i];
+			}
+
+			InfoConstants.SplitDistances = DirShadow->SplitDistances;
+			InfoConstants.ShadowBias = DirShadow->ShadowBias;
 		}
 
 		D3D11_MAPPED_SUBRESOURCE Mapped = {};
@@ -262,6 +268,7 @@ namespace SceneLightBinding
 		Context->DeviceContext->VSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &InfoCBuffer);
 
 		Context->DeviceContext->PSSetShaderResources(DirectionalShadowMapRegister, 1, &ShadowMapSRV);
+		Context->DeviceContext->VSSetShaderResources(DirectionalShadowMapRegister, 1, &ShadowMapSRV);
 	}
 
 	inline void BindResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
@@ -309,18 +316,15 @@ namespace SceneLightBinding
 	inline void BindResources(
 		const FRenderPassContext* Context,
 		TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer,
+		TComPtr<ID3D11Buffer>& DirectionalShadowConstantBuffer,
 		TComPtr<ID3D11Buffer>& SpotShadowInfoConstantBuffer,
 		TComPtr<ID3D11Buffer>& SpotShadowConstantsBuffer,
 		TComPtr<ID3D11ShaderResourceView>& SpotShadowConstantsSRV,
 		uint32& SpotShadowConstantsCapacity)
 	{
 		BindResources(Context, VisibleLightConstantBuffer);
-		BindSpotShadowResources(
-			Context,
-			SpotShadowInfoConstantBuffer,
-			SpotShadowConstantsBuffer,
-			SpotShadowConstantsSRV,
-			SpotShadowConstantsCapacity);
+		BindDirectionalShadowResources(Context, DirectionalShadowConstantBuffer);
+		BindSpotShadowResources(Context, SpotShadowInfoConstantBuffer, SpotShadowConstantsBuffer, SpotShadowConstantsSRV, SpotShadowConstantsCapacity);
 	}
 
 	inline void UnbindResources(ID3D11DeviceContext* DeviceContext)
