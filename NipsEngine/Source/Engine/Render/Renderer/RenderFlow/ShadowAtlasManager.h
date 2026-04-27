@@ -7,6 +7,7 @@
 struct FSpotAtlasSlotDesc
 {
     uint32 TileIndex = 0;
+    int32 DebugLightId = -1;
     uint32 X = 0;
     uint32 Y = 0;
     uint32 Width = 0;
@@ -68,6 +69,7 @@ public:
     
     // Debug overlay가 현재 프레임의 실제 할당 결과를 볼 수 있도록 함
     static const TArray<FSpotAtlasSlotDesc>& GetActiveSpotSlots();
+    static void UpdateSpotSlotDebugLightId(uint32 TileIndex, int32 DebugLightId);
     
     ID3D11DepthStencilView* GetSpotAtlasDSV() const { return SpotAtlasDSV.Get(); }
     ID3D11ShaderResourceView* GetSpotAtlasSRV() const { return SpotAtlasSRV.Get(); }

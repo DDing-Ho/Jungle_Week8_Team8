@@ -756,7 +756,15 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
             DrawList->AddRect(ImVec2(X0, Y0), ImVec2(X1, Y1), IM_COL32(0, 255, 120, 220), 0.0f, 0, 2.0f);
 
             char Label[32];
-            snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
+            if (Slot.DebugLightId >= 0)
+            {
+                snprintf(Label, sizeof(Label), "%d (%u)", Slot.DebugLightId, Slot.Width);
+            }
+            else
+            {
+                // actor 번호를 아직 얻지 못한 경우에만 기존 tile index를 fallback으로 보여줍니다.
+                snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
+            }
             DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(0, 255, 120, 255), Label);
         }
     }
