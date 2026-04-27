@@ -1,5 +1,11 @@
 ﻿#include "ShadowAtlasManager.h"
 
+#include <algorithm>
+#include <cmath>
+
+TArray<uint8> FShadowAtlasManager::SpotCellOccupancy;
+TArray<FSpotAtlasSlotDesc> FShadowAtlasManager::ActiveSpotSlots;
+
 bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
 {
     if (Device == nullptr)
@@ -31,7 +37,6 @@ bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
     }
     
     D3D11_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-    // R32_TYPELESS <-> D32_FLOAT 조합이어야 atlas 생성이 성공합니다.
     DSVDesc.Format = DXGI_FORMAT_D32_FLOAT;
     DSVDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     DSVDesc.Flags = 0;
@@ -63,27 +68,160 @@ void FShadowAtlasManager::Release()
     SpotAtlasTexture.Reset();
 }
 
-bool FShadowAtlasManager::BuildFixedSpotSlot(uint32 TileIndex, FSpotAtlasSlotDesc& OutSlot)
+void FShadowAtlasManager::BeginSpotFrame()
 {
-    if (TileIndex >= MaxSpotShadowCount)
+    const uint32 CellCount = SpotAtlasCellsPerRow * SpotAtlasCellsPerRow;
+    
+    if (SpotCellOccupancy.size() != CellCount)
+    {
+        SpotCellOccupancy.resize(CellCount, 0u);
+    }
+    
+    std::fill(SpotCellOccupancy.begin(), SpotCellOccupancy.end(), 0u);
+    ActiveSpotSlots.clear();
+}
+
+uint32 FShadowAtlasManager::SnapSpotTileSize(float RequestedResolution)
+{
+    /*float Clamped = RequestedResolution;
+    if (Clamped < static_cast<float>(MinSpotTileResolution))
+    {
+        Clamped = static_cast<float>(MinSpotTileResolution);
+    }
+    if (Clamped > static_cast<float>(MaxSpotTileResolution))
+    {
+        Clamped = static_cast<float>(MaxSpotTileResolution);
+    }*/
+    
+    float Clamped = std::clamp(
+        RequestedResolution,
+        static_cast<float>(MinSpotTileResolution),
+        static_cast<float>(MaxSpotTileResolution));
+    
+    uint32 Lower = MinSpotTileResolution;
+    while ((Lower << 1u) <= MaxSpotTileResolution && static_cast<float>(Lower << 1u) <= Clamped)
+    {
+        Lower <<= 1u;
+    }
+    
+    uint32 Upper = Lower;
+    if (Upper < MaxSpotTileResolution)
+    {
+        Upper <<= 1u;
+    }
+
+    const float LowerDelta = std::fabs(Clamped - static_cast<float>(Lower));
+    const float UpperDelta = std::fabs(static_cast<float>(Upper) - Clamped);
+
+    // tie면 품질을 위해 큰 쪽을 선택합니다.
+    return (UpperDelta <= LowerDelta) ? Upper : Lower;
+}
+
+bool FShadowAtlasManager::RequestSpotSlot(uint32 DesiredResolution, FSpotAtlasSlotDesc& OutSlot)
+{
+    const uint32 TileResolution = SanitizeSpotTileSize(DesiredResolution);
+    return TryAllocateSpotSlot(TileResolution, OutSlot);
+}
+
+const TArray<FSpotAtlasSlotDesc>& FShadowAtlasManager::GetActiveSpotSlots()
+{
+    return ActiveSpotSlots;
+}
+
+uint32 FShadowAtlasManager::SanitizeSpotTileSize(uint32 DesiredResolution)
+{
+    if (DesiredResolution < MinSpotTileResolution || DesiredResolution > MaxSpotTileResolution)
+    {
+        return SnapSpotTileSize(static_cast<float>(DesiredResolution));
+    }
+
+    // 허용 크기 집합이 아닌 값이 들어오면 가장 가까운 허용 PoT로 보정
+    switch (DesiredResolution)
+    {
+    case 256:
+    case 512:
+    case 1024:
+    case 2048:
+        return DesiredResolution;
+    default:
+        return SnapSpotTileSize(static_cast<float>(DesiredResolution));
+    }
+}
+
+bool FShadowAtlasManager::TryAllocateSpotSlot(uint32 TileResolution, FSpotAtlasSlotDesc& OutSlot)
+{
+    const uint32 CellSpan = TileResolution / SpotCellResolution;
+    if (CellSpan == 0 || CellSpan > SpotAtlasCellsPerRow)
     {
         return false;
     }
     
-    const uint32 TileX = TileIndex % SpotTilesPerRow;
-    const uint32 TileY = TileIndex / SpotTilesPerRow;
-    
-    // 한 칸은 atlas 전체가 아니라 1024x1024 tile 하나입니다.
+    // 단순: first-fit allocator
+    for (uint32 CellY=0; CellY + CellSpan <= SpotAtlasCellsPerRow; ++CellY)
+    {
+        for (uint32 CellX = 0; CellX + CellSpan <= SpotAtlasCellsPerRow; ++CellX)
+        {
+            // 해당 영역 사용 가능한지 파악
+            if (!IsSpotRegionFree(CellX, CellY, CellSpan))
+            {
+                continue;
+            }
+            // 해당 영역 표시
+            MarkSpotRegion(CellX, CellY, CellSpan, true);
+            
+            const uint32 TileIndex = static_cast<uint32>(ActiveSpotSlots.size());
+            BuildSpotSlotDesc(CellX, CellY, TileResolution, TileIndex, OutSlot);
+            ActiveSpotSlots.push_back(OutSlot);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FShadowAtlasManager::IsSpotRegionFree(uint32 CellX, uint32 CellY, uint32 CellSpan)
+{
+    for (uint32 Y = CellY; Y < CellY + CellSpan; ++Y)
+    {
+        for (uint32 X = CellX; X < CellX + CellSpan; ++X)
+        {
+            const uint32 Index = Y * SpotAtlasCellsPerRow + X;
+            if (Index >= SpotCellOccupancy.size() || SpotCellOccupancy[Index] != 0u)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+void FShadowAtlasManager::MarkSpotRegion(uint32 CellX, uint32 CellY, uint32 CellSpan, bool bOccupied)
+{
+    const uint8 OccupiedValue = bOccupied ? 1u : 0u;
+
+    for (uint32 Y = CellY; Y < CellY + CellSpan; ++Y)
+    {
+        for (uint32 X = CellX; X < CellX + CellSpan; ++X)
+        {
+            const uint32 Index = Y * SpotAtlasCellsPerRow + X;
+            if (Index < SpotCellOccupancy.size())
+            {
+                SpotCellOccupancy[Index] = OccupiedValue;
+            }
+        }
+    }
+}
+
+void FShadowAtlasManager::BuildSpotSlotDesc(uint32 CellX, uint32 CellY, uint32 TileResolution, uint32 TileIndex, FSpotAtlasSlotDesc& OutSlot)
+{
     OutSlot.TileIndex = TileIndex;
-    OutSlot.X = TileX * SpotTileResolution;
-    OutSlot.Y = TileY * SpotTileResolution;
-    OutSlot.Width = SpotTileResolution;
-    OutSlot.Height = SpotTileResolution;
+    OutSlot.X = CellX * SpotCellResolution;
+    OutSlot.Y = CellY * SpotCellResolution;
+    OutSlot.Width = TileResolution;
+    OutSlot.Height = TileResolution;
     OutSlot.AtlasRect = FVector4(
         static_cast<float>(OutSlot.X) / static_cast<float>(SpotAtlasResolution),
         static_cast<float>(OutSlot.Y) / static_cast<float>(SpotAtlasResolution),
         static_cast<float>(OutSlot.Width) / static_cast<float>(SpotAtlasResolution),
         static_cast<float>(OutSlot.Height) / static_cast<float>(SpotAtlasResolution));
-
-    return true;
 }

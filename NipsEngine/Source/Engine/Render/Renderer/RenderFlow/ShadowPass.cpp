@@ -87,6 +87,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     ID3D11ShaderResourceView* NullShadowSRV = nullptr;
     Context->DeviceContext->PSSetShaderResources(12, 1, &NullShadowSRV);
     
+    // spot shadow atlas를 depth 타겟으로 바라보는 핸들
     ID3D11DepthStencilView* AtlasDSV = ShadowAtlasManager.GetSpotAtlasDSV();
     if (AtlasDSV == nullptr)
     {
@@ -102,14 +103,11 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     // 매 프레임 atlas 전체를 초기화하고, 이번 프레임의 visible spot shadow들을 다시 채우기
     Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-    // 이 프레임에 실제로 atlas에 그린 spot shadow 개수를 기록합니다.
-    // 라이팅 셰이더는 이 값을 보고 유효한 shadow data 범위를 판단합니다.
+    // 실제로 atlas에 그린 spot shadow 개수를 기록
     uint32 RenderedSpotShadowCount = 0;
 
     for (const FSpotShadowConstants& SpotShadow : SpotShadows)
     {
-        // shadow를 "루프 순서"로 배치하지 말고, RenderCollector가 미리 넣어준 AtlasRect를 그대로 사용합니다.
-        // 그래야 shadow pass와 lighting shader가 같은 타일을 바라봅니다.
         const D3D11_VIEWPORT ShadowViewport =
             MakeViewportFromAtlasRect(SpotShadow.AtlasRect, static_cast<float>(FShadowAtlasManager::SpotAtlasResolution));
         Context->DeviceContext->RSSetViewports(1, &ShadowViewport);
@@ -161,7 +159,6 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             }
         }
 
-        // 실제로 하나의 타일을 채웠으므로 count를 증가시킵니다.
         ++RenderedSpotShadowCount;
     }
     

@@ -14,6 +14,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
+#include "Component/Light/LightComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
 #include "Editor/Utility/EditorUIUtils.h"
 
@@ -94,6 +95,11 @@ void FEditorPropertyWidget::UpdateSelectionState(AActor* PrimaryActor)
 
         USceneComponent* RootComp = PrimaryActor->GetRootComponent();
         if (RootComp && RootComp->IsA<UStaticMeshComponent>())
+        {
+            SelectedComponent = RootComp;
+            bActorSelected = false;
+        }
+        else if (RootComp && RootComp->IsA<ULightComponent>())
         {
             SelectedComponent = RootComp;
             bActorSelected = false;

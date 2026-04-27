@@ -64,6 +64,7 @@ namespace
 
 	float MakeSpotShadowResolution(const ULightComponent* LightComponent)
 	{
+	    // %%% max 1.0f 수정하셈. ㅎㅎ
 		return std::max(1.0f, SpotShadowBaseResolution * LightComponent->GetShadowResolutionScale());
 	}
 
@@ -421,6 +422,9 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 	int32 Next2DShadowSlice = 0;
 	int32 NextSpotShadowIndex = 0;
 
+    // Spot atlas allocation 상태는 프레임마다 다시 시작함.
+    FShadowAtlasManager::BeginSpotFrame();
+    
 	for (const FLightSlot& Slot : LightSlots)
 	{
         if (!Slot.bAlive || !Slot.LightData)
@@ -562,30 +566,40 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngle));
 			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngle));
 
-			if (LightComponent->IsCastShadows())
-			{
-				const int32 ShadowMapIndex = NextSpotShadowIndex;
-			    FSpotAtlasSlotDesc SpotSlot = {};
-			    if (FShadowAtlasManager::BuildFixedSpotSlot(static_cast<uint32>(ShadowMapIndex), SpotSlot))
-			    {
-			        ++NextSpotShadowIndex;
-			        
-			        const float NearPlane = SpotShadowNearPlane;
-			        const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
-			        const float ShadowBias = LightComponent->GetShadowBias();
+		    if (LightComponent->IsCastShadows())
+		    {
+		        // 1) 라이트가 원하는 shadow 해상도 계산
+		        const float RequestedResolution = MakeSpotShadowResolution(LightComponent);
 
-			        RenderLight.bCastShadows = 1;
-			        RenderLight.ShadowMapIndex = ShadowMapIndex;
-			        RenderLight.ShadowBias = ShadowBias;
+		        // 2) allocator가 산정한 PoT 타일 크기로 정규화
+		        const uint32 DesiredTileSize = FShadowAtlasManager::SnapSpotTileSize(RequestedResolution);
 
-			        FSpotShadowConstants ShadowData{};
-			        ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
-			        ShadowData.AtlasRect = SpotSlot.AtlasRect;
-			        ShadowData.ShadowResolution = static_cast<float>(FShadowAtlasManager::SpotTileResolution);
-			        ShadowData.ShadowBias = ShadowBias;
-			        RenderBus.AddCastShadowSpotLight(ShadowData);
-			    }
-			}
+		        // 3) atlas 빈 영역에 할당
+		        FSpotAtlasSlotDesc SpotSlot = {};
+		        if (FShadowAtlasManager::RequestSpotSlot(DesiredTileSize, SpotSlot))
+		        {
+		            // ShadowMapIndex는 "SpotShadowData 배열에서 몇 번째 shadow metadata인가"를 뜻합니다.
+		            // atlas 내부 위치는 SpotSlot.AtlasRect가 담당하므로 둘은 역할이 다릅니다.
+		            const int32 ShadowMapIndex = NextSpotShadowIndex++;
+		            const float NearPlane = SpotShadowNearPlane;
+		            const float FarPlane = MakeSpotShadowFarPlane(SpotLight);
+		            const float ShadowBias = LightComponent->GetShadowBias();
+
+		            RenderLight.bCastShadows = 1;
+		            RenderLight.ShadowMapIndex = ShadowMapIndex;
+		            RenderLight.ShadowBias = ShadowBias;
+
+		            FSpotShadowConstants ShadowData{};
+		            ShadowData.LightViewProj = MakeSpotShadowViewProjection(SpotLight, LightDirection, NearPlane, FarPlane);
+		            ShadowData.AtlasRect = SpotSlot.AtlasRect;
+
+		            // 실제 할당된 타일 크기를 넘겨줌
+		            ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
+		            ShadowData.ShadowBias = ShadowBias;
+
+		            RenderBus.AddCastShadowSpotLight(ShadowData);
+		        }
+		    }
 
 			RenderBus.AddLight(RenderLight);
 			break;

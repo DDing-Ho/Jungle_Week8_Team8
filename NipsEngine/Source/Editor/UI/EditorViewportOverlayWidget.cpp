@@ -645,7 +645,7 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
     }
 
     constexpr float PreviewSize = 256.0f;
-    constexpr float WindowWidth = 300.0f;
+    constexpr float WindowWidth = 320.0f;
 
     ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.3f);
@@ -657,49 +657,44 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
     {
         ImGui::TextColored(ColorOrange, "Spot Shadow Atlas");
         ImGui::Separator();
-        ImGui::TextColored(ColorPaleBlue, "- Active Tiles: %u", RenderTargets->SpotShadowCount);
+        ImGui::TextColored(ColorPaleBlue, "- Active Shadows: %u", RenderTargets->SpotShadowCount);
         ImGui::TextColored(ColorPaleBlue, "- Atlas: %ux%u",
             FShadowAtlasManager::SpotAtlasResolution,
             FShadowAtlasManager::SpotAtlasResolution);
 
-        // 실제 depth atlas를 그대로 보여줍니다.
         ImGui::Image(reinterpret_cast<ImTextureID>(RenderTargets->SpotShadowSRV), ImVec2(PreviewSize, PreviewSize));
 
-        // 타일 경계선을 눈으로 확인할 수 있게 4x4 그리드를 얹습니다.
         ImDrawList* DrawList = ImGui::GetWindowDrawList();
         const ImVec2 Min = ImGui::GetItemRectMin();
         const ImVec2 Max = ImGui::GetItemRectMax();
-        const float Cell = PreviewSize / static_cast<float>(FShadowAtlasManager::SpotTilesPerRow);
 
         DrawList->AddRect(Min, Max, IM_COL32(255, 255, 255, 180));
 
-        for (uint32 Line = 1; Line < FShadowAtlasManager::SpotTilesPerRow; ++Line)
+        // allocator의 최소 단위(256) 기준 셀 격자를 희미하게 깔아줌
+        const float BaseCell = PreviewSize / static_cast<float>(FShadowAtlasManager::SpotAtlasCellsPerRow);
+        for (uint32 Line = 1; Line < FShadowAtlasManager::SpotAtlasCellsPerRow; ++Line)
         {
-            const float X = Min.x + Cell * static_cast<float>(Line);
-            const float Y = Min.y + Cell * static_cast<float>(Line);
+            const float X = Min.x + BaseCell * static_cast<float>(Line);
+            const float Y = Min.y + BaseCell * static_cast<float>(Line);
 
-            DrawList->AddLine(ImVec2(X, Min.y), ImVec2(X, Max.y), IM_COL32(255, 255, 255, 90));
-            DrawList->AddLine(ImVec2(Min.x, Y), ImVec2(Max.x, Y), IM_COL32(255, 255, 255, 90));
+            DrawList->AddLine(ImVec2(X, Min.y), ImVec2(X, Max.y), IM_COL32(255, 255, 255, 35));
+            DrawList->AddLine(ImVec2(Min.x, Y), ImVec2(Max.x, Y), IM_COL32(255, 255, 255, 35));
         }
 
-        // 각 타일 번호를 찍어두면 "몇 번째 light가 어느 칸을 쓰는지" 보기 쉽습니다.
-        for (uint32 TileIndex = 0; TileIndex < FShadowAtlasManager::MaxSpotShadowCount; ++TileIndex)
+        // 실제 allocator가 이번 프레임에 잡은 slot들을 그대로 표시
+        const TArray<FSpotAtlasSlotDesc>& ActiveSlots = FShadowAtlasManager::GetActiveSpotSlots();
+        for (const FSpotAtlasSlotDesc& Slot : ActiveSlots)
         {
-            FSpotAtlasSlotDesc Slot = {};
-            if (!FShadowAtlasManager::BuildFixedSpotSlot(TileIndex, Slot))
-            {
-                continue;
-            }
+            const float X0 = Min.x + (static_cast<float>(Slot.X) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+            const float Y0 = Min.y + (static_cast<float>(Slot.Y) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+            const float X1 = Min.x + (static_cast<float>(Slot.X + Slot.Width) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+            const float Y1 = Min.y + (static_cast<float>(Slot.Y + Slot.Height) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
 
-            const float TileX = Min.x + (static_cast<float>(Slot.X) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
-            const float TileY = Min.y + (static_cast<float>(Slot.Y) / FShadowAtlasManager::SpotAtlasResolution) * PreviewSize;
+            DrawList->AddRect(ImVec2(X0, Y0), ImVec2(X1, Y1), IM_COL32(0, 255, 120, 220), 0.0f, 0, 2.0f);
 
-            const ImU32 LabelColor =
-                (TileIndex < RenderTargets->SpotShadowCount) ? IM_COL32(0, 255, 120, 255) : IM_COL32(180, 180, 180, 180);
-
-            char Label[8];
-            snprintf(Label, sizeof(Label), "%u", TileIndex);
-            DrawList->AddText(ImVec2(TileX + 4.0f, TileY + 4.0f), LabelColor, Label);
+            char Label[32];
+            snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
+            DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(0, 255, 120, 255), Label);
         }
     }
     ImGui::End();
