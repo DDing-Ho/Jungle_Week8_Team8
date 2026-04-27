@@ -67,7 +67,7 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2DArra
     return Shadow / 16.0f;
 }
 
-// VSM (아직 완전한 이식X -> 동작X)
+// VSM
 float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2DArray<float2> ShadowMapsVSM, uint ShadowSlice, int Resolution)
 {
     float2 TexelSize = 1.0f / float2(Resolution, Resolution);  
