@@ -90,5 +90,10 @@ bool FPostProcessOutlineRenderPass::End(const FRenderPassContext* Context)
 {
     ID3D11ShaderResourceView* nullSRV = nullptr;
     Context->DeviceContext->PSSetShaderResources(7, 1, &nullSRV);
+
+	ID3D11BlendState* OpaqueBlend = FResourceManager::Get().GetOrCreateBlendState(EBlendType::Opaque);
+    float BlendFactor[4] = { 1.f, 1.f, 1.f, 1.f };
+    Context->DeviceContext->OMSetBlendState(OpaqueBlend, BlendFactor, 0xFFFFFFFF);
+
     return true;
 }

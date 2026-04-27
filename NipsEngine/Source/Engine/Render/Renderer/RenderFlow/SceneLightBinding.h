@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "LightCullingPass.h"
 #include "Render/Device/D3DDevice.h"
@@ -14,6 +14,7 @@ namespace SceneLightBinding
 	constexpr uint32 SpotShadowConstantsRegister = 11;
 	constexpr uint32 SpotShadowMapRegister = 12;
 	constexpr uint32 DirectionalShadowMapRegister = 13;
+    constexpr uint32 SpotShadowVSMMapRegister = 13;
 
 	struct FVisibleLightConstants
 	{
@@ -153,10 +154,12 @@ namespace SceneLightBinding
 
 		uint32 SpotShadowCount = 0;
 		ID3D11ShaderResourceView* SpotShadowMapSRV = nullptr;
+        ID3D11ShaderResourceView* SpotShadowMapVSMSRV = nullptr;
 		if (Context->RenderTargets != nullptr)
 		{
 			SpotShadowCount = Context->RenderTargets->SpotShadowCount;
 			SpotShadowMapSRV = Context->RenderTargets->SpotShadowSRV;
+            SpotShadowMapVSMSRV = Context->RenderTargets->ShadowVSMSRV;
 		}
 
 		const TArray<FSpotShadowConstants>* SpotShadows = nullptr;
@@ -218,6 +221,9 @@ namespace SceneLightBinding
 
 		ID3D11ShaderResourceView* ShadowMapSRV = SpotShadowCount > 0 ? SpotShadowMapSRV : nullptr;
 		Context->DeviceContext->PSSetShaderResources(SpotShadowMapRegister, 1, &ShadowMapSRV);
+
+		ID3D11ShaderResourceView* ShadowMapVSMSRV = SpotShadowCount > 0 ? SpotShadowMapVSMSRV : nullptr;
+        Context->DeviceContext->PSSetShaderResources(SpotShadowVSMMapRegister, 1, &ShadowMapVSMSRV);
 	}
 
 	inline void BindDirectionalShadowResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& DirectionalShadowInfoCB)

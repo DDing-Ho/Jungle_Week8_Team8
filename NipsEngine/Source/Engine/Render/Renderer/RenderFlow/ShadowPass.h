@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "RenderPass.h"
 #include "ShadowAtlasManager.h"
@@ -36,6 +36,11 @@ private:
     TComPtr<ID3D11Texture2D> SpotShadowTexture;
     TArray<TComPtr<ID3D11DepthStencilView>> SpotShadowDSVs;
     TComPtr<ID3D11ShaderResourceView> SpotShadowSRV;
+
+	TComPtr<ID3D11Texture2D> SpotShadowVSMTexture;
+    TArray<TComPtr<ID3D11RenderTargetView>> SpotShadowVSMRTVs;
+    TComPtr<ID3D11ShaderResourceView> SpotShadowVSMSRV;
+
 	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
 	
 	// ── Shadow Atlas Manager ────────────────────────────────────

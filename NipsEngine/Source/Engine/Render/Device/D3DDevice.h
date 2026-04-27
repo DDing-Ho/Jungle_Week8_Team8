@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /*
     Direct3D Device, Context, Swapchain을 관리하는 Class 입니다.
@@ -35,7 +35,9 @@ struct FRenderTargetSet
     ID3D11ShaderResourceView* SpotShadowSRV = nullptr;
     uint32 SpotShadowCount = 0;
 
-    ID3D11RenderTargetView* FinalRTV = nullptr;
+    ID3D11ShaderResourceView* ShadowVSMSRV = nullptr;
+
+	ID3D11RenderTargetView* FinalRTV = nullptr;
     ID3D11ShaderResourceView* FinalSRV = nullptr;
 
     float Width = 0.0f;
