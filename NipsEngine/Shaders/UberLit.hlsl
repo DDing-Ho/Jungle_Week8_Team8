@@ -90,6 +90,20 @@ cbuffer SpotShadowInfo : register(b6)
     float2 _SpotShadowInfoPad0;
 }
 
+struct FPointShadowConstants
+{
+    row_major float4x4 LightViewProj[6];
+    float3 LightPosition;
+    float FarPlane;
+
+    float4 FaceAtlasRects[6];
+    
+    float ShadowBias;
+    float ShadowResolution;
+    uint AtlasIndex;
+    uint bHasShadowMap;
+};
+
 #define MAX_CASCADE_COUNT 4
 static const uint SHADOW_MODE_CSM = 0u;
 static const uint SHADOW_MODE_PSM = 1u;
@@ -112,17 +126,25 @@ cbuffer DirectionalShadowInfo : register(b7)
     float Padding0;
 }
 
+cbuffer PointShadowInfo : register(b8)
+{
+    uint PointShadowCount;
+    float3 _PointShadowPad;
+};
+
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
 Texture2D<float> SpotShadowMap : register(t12);
 Texture2D<float> DirectionalShadowMap : register(t13);
-// TODO: Point(t14)
 
 Texture2D<float2> SpotShadowVSMMap : register(t15);
 Texture2D<float2> DirectionalShadowVSMMap : register(t16);
-//Texture2D<float2> PointShadowVSMMap : register(t17);
+
+StructuredBuffer<FPointShadowConstants> PointShadowData  : register(t14);
+Texture2D<float> PointShadowMap : register(t17);
 
 static const int kCascadeShadowResoultion = 2048; // ShadowPass::CascadeShadowResolution과 일치
 static const int kDirectionalAtlasResolution = 4096;
+static const int kPointAtlasResolution = 4096; // ShadowAtlasManager::PointAtlasResolution과 일치
 
 // ─────────────────── Lights ───────────────────
 
@@ -182,7 +204,9 @@ float SampleDirectionalShadowAtIndex(float3 WorldPos, float3 N, float3 L, int Sh
     {
         return 1.0f;
     }
-        
+
+    int CascadeIndex = GetCascadeIndex(WorldPos);
+    
     float2 LocalUV = float2(ShadowNDC.x * 0.5f + 0.5f, ShadowNDC.y * -0.5f + 0.5f);
     float4 AtlasRect = GetDirectionalCascadeAtlasRect(ShadowIndex);
     float2 AtlasUV = AtlasRect.xy + LocalUV * AtlasRect.zw;
@@ -206,6 +230,79 @@ float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
     return SampleDirectionalShadowAtIndex(WorldPos, N, L, ShadowIndex);
 }
 
+float ComputePointShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapIndex, float LightShadowBias)
+{
+    if (bCastShadows == 0u || ShadowMapIndex < 0)
+        return 1.0f;
+
+    const uint Slice = (uint)ShadowMapIndex;
+    if (Slice >= PointShadowCount)
+        return 1.0f;
+
+    const FPointShadowConstants Shadow = PointShadowData[Slice];
+    if (Shadow.bHasShadowMap == 0u)
+        return 1.0f;
+
+    const float3 ToFromLight = WorldPos - Shadow.LightPosition;
+    const float Dist = length(ToFromLight);
+
+    if (Dist <= 1.0e-5f || Dist >= Shadow.FarPlane)
+        return 1.0f;
+
+    const float CurrentDepth = Dist / Shadow.FarPlane;
+    const float Bias = max(LightShadowBias, Shadow.ShadowBias);
+
+    const float3 AbsDir = abs(ToFromLight);
+    uint FaceIndex = 0u;
+
+    if (AbsDir.x >= AbsDir.y && AbsDir.x >= AbsDir.z)
+    {
+        FaceIndex = (ToFromLight.x >= 0.0f) ? 0u : 1u;
+    }
+    else if (AbsDir.y >= AbsDir.x && AbsDir.y >= AbsDir.z)
+    {
+        FaceIndex = (ToFromLight.y >= 0.0f) ? 2u : 3u;
+    }
+    else
+    {
+        FaceIndex = (ToFromLight.z >= 0.0f) ? 4u : 5u;
+    }
+
+    const float4 ShadowClip = mul(float4(WorldPos, 1.0f), Shadow.LightViewProj[FaceIndex]);
+    if (ShadowClip.w <= 1.0e-5f)
+        return 1.0f;
+
+    const float3 ShadowNDC = ShadowClip.xyz / ShadowClip.w;
+    if (ShadowNDC.x < -1.0f || ShadowNDC.x > 1.0f ||
+        ShadowNDC.y < -1.0f || ShadowNDC.y > 1.0f ||
+        ShadowNDC.z < 0.0f || ShadowNDC.z > 1.0f)
+    {
+        return 1.0f;
+    }
+
+    const float2 LocalUV = float2(
+        ShadowNDC.x * 0.5f + 0.5f,
+        0.5f - ShadowNDC.y * 0.5f);
+
+    const float4 AtlasRect = Shadow.FaceAtlasRects[FaceIndex];
+
+    // SampleLevel은 인접 face 타일과 bilinear blend가 일어남 → cube 경계에 누설.
+    // 명시적으로 타일 픽셀 범위에 clamp한 뒤 Load(point fetch)로 읽어와 누설 차단.
+    const int AtlasSize = kPointAtlasResolution;
+    const int2 TileBase  = (int2)(AtlasRect.xy * (float)AtlasSize);
+    const int2 TileSpan  = (int2)(AtlasRect.zw * (float)AtlasSize);
+    const int2 TileMax   = TileBase + TileSpan - int2(1, 1);
+
+    const float2 AtlasUV   = AtlasRect.xy + LocalUV * AtlasRect.zw;
+    const int2   RawTexel  = (int2)floor(AtlasUV * (float)AtlasSize);
+    const int2   ShadowTexel = clamp(RawTexel, TileBase, TileMax);
+
+    const float StoredDepth = PointShadowMap.Load(int3(ShadowTexel, 0));
+
+    return (CurrentDepth - Bias) > StoredDepth ? 0.0f : 1.0f;
+}
+
+// ─────────────────── Lights ───────────────────
 struct FLightingResult
 {
     float3 Diffuse;
@@ -358,6 +455,14 @@ void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 Sc
             }
 
             Att *= ComputeSpotShadowFactor(WorldPos, Light.bCastShadows, Light.ShadowMapIndex, Light.ShadowBias);
+            if (Att <= 0.0f)
+            {
+                continue;
+            }
+        }
+        else if (Light.Type == LIGHT_TYPE_POINT)
+        {
+            Att *= ComputePointShadowFactor(WorldPos, Light.bCastShadows, Light.ShadowMapIndex, Light.ShadowBias);
             if (Att <= 0.0f)
             {
                 continue;
@@ -518,6 +623,11 @@ FLightingResult EvaluateLightingFromWorldVertex(float3 WorldPos, float3 WorldNor
             Att *= saturate((CosAngle - Light.SpotOuterCos) / ConeRange);
             if (Att <= 0.0f)
                 continue;
+        }
+        else if (Light.Type == LIGHT_TYPE_POINT)
+        {
+            Att *= ComputePointShadowFactor(WorldPos, Light.bCastShadows, Light.ShadowMapIndex, Light.ShadowBias);
+            if (Att <= 0.0f) continue;
         }
 
         AccumulateDirectLight(WorldPos, N, V, L, Light.Color * Light.Intensity * Att, Result);

@@ -6,6 +6,8 @@
 TArray<uint8> FShadowAtlasManager::SpotCellOccupancy;
 TArray<FSpotAtlasSlotDesc> FShadowAtlasManager::ActiveSpotSlots;
 TArray<FDirectionalAtlasSlotDesc> FShadowAtlasManager::DirectionalCascadeSlots;
+TArray<uint8> FShadowAtlasManager::PointAtlasCellOccupancy;
+TArray<FPointAtlasSlotDesc> FShadowAtlasManager::ActivePointSlots;
 
 bool FShadowAtlasManager::Initialize(ID3D11Device* Device)
 {
@@ -213,12 +215,16 @@ void FShadowAtlasManager::Release()
     SpotVSMAtlasTexture.Reset();
 
     DirectionalAtlasTexture.Reset();
-    DirectionalAtlasDSV.Reset();
+    DirectionalAtlasDSV.Reset();        
     DirectionalAtlasSRV.Reset();
 
     DirectionalVSMAtlasSRV.Reset();
     DirectionalVSMAtlasRTV.Reset();
     DirectionalVSMAtlasTexture.Reset();
+    
+    PointAtlasSRV.Reset();
+    PointAtlasDSV.Reset();
+    PointAtlasTexture.Reset();
 }
 
 void FShadowAtlasManager::BeginSpotFrame()
@@ -409,4 +415,167 @@ const TArray<FDirectionalAtlasSlotDesc>& FShadowAtlasManager::GetDirectionalCasc
     }
     
     return DirectionalCascadeSlots;
+}
+
+// ----------------------------------------
+// - Point Atlas --------------------------
+// ----------------------------------------
+void FShadowAtlasManager::BeginPointFrame()
+{
+    const uint32 CellCount = PointAtlasCellsPerRow * PointAtlasCellsPerRow;
+    
+    if (PointAtlasCellOccupancy.size() != CellCount)
+    {
+        PointAtlasCellOccupancy.resize(CellCount, 0u);
+    }
+
+    std::fill(PointAtlasCellOccupancy.begin(), PointAtlasCellOccupancy.end(), 0u);
+    ActivePointSlots.clear();
+}
+
+bool FShadowAtlasManager::RequestPointAtlasSlot(FPointAtlasSlotDesc& OutSlot)
+{
+    if (ActivePointSlots.size() >= MaxPointShadowCount)
+    {
+        return false;
+    }
+    
+    for (uint32 CellY = 0; CellY + PointAtlasBlockHeightInCells <= PointAtlasCellsPerRow; ++CellY)
+    {
+        for (uint32 CellX = 0; CellX + PointAtlasBlockWidthInCells <= PointAtlasCellsPerRow; ++CellX)
+        {
+            if (!IsPointRegionFree(CellX, CellY))
+            {
+                continue;
+            }
+            MarkPointRegion(CellX, CellY, true);
+            
+            const uint32 CubeIndex = static_cast<uint32>(ActivePointSlots.size());
+            BuildPointSlotDesc(CellX, CellY, CubeIndex, OutSlot);
+            ActivePointSlots.push_back(OutSlot);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FShadowAtlasManager::IsPointRegionFree(uint32 CellX, uint32 CellY)
+{
+    for (uint32 Y = CellY; Y < CellY + PointAtlasBlockHeightInCells; ++Y)
+    {
+        for (uint32 X = CellX; X < CellX + PointAtlasBlockWidthInCells; ++X)
+        {
+            const uint32 Index = Y * PointAtlasCellsPerRow + X;
+            if (Index >= PointAtlasCellOccupancy.size() || PointAtlasCellOccupancy[Index] != 0u)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void FShadowAtlasManager::MarkPointRegion(uint32 CellX, uint32 CellY, bool bOccupied)
+{
+    const uint8 OccupiedValue = bOccupied ? 1u : 0u;
+    for (uint32 Y = CellY; Y < CellY + PointAtlasBlockHeightInCells; ++Y)
+    {
+        for (uint32 X = CellX; X < CellX + PointAtlasBlockWidthInCells; ++X)
+        {
+            const uint32 Index = Y * PointAtlasCellsPerRow + X;
+            if (Index < PointAtlasCellOccupancy.size())
+            {
+                PointAtlasCellOccupancy[Index] = OccupiedValue;
+            }
+        }
+    }
+}
+
+void FShadowAtlasManager::BuildPointSlotDesc(uint32 CellX, uint32 CellY, uint32 CubeIndex, FPointAtlasSlotDesc& OutSlot)
+{
+    OutSlot = {};
+    OutSlot.CubeIndex = CubeIndex;
+    OutSlot.BaseCellX = CellX;
+    OutSlot.BaseCellY = CellY;
+    OutSlot.TileResolution = PointAtlasTileResolution;
+    
+    static const uint32 FaceOffsets[6][2] = 
+    {
+        { 0, 0 }, // +X
+        { 1, 0 }, // -X
+        { 2, 0 }, // +Y
+        { 0, 1 }, // -Y
+        { 1, 1 }, // +Z
+        { 2, 1 }  // -Z   
+    };
+    
+    for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
+    {
+        const uint32 FaceCellX = CellX + FaceOffsets[FaceIndex][0];
+        const uint32 FaceCellY = CellY + FaceOffsets[FaceIndex][1];
+        
+        const float X = static_cast<float>(FaceCellX * PointAtlasTileResolution);
+        const float Y = static_cast<float>(FaceCellY * PointAtlasTileResolution);
+        const float Size = static_cast<float>(PointAtlasTileResolution);
+        const float AtlasSize = static_cast<float>(PointAtlasResolution);
+        
+        OutSlot.FaceAtlasRects[FaceIndex] = FVector4(
+            X / AtlasSize,
+            Y / AtlasSize,
+            Size / AtlasSize,
+            Size / AtlasSize);
+    }
+}
+
+bool FShadowAtlasManager::InitializePointAtlas(ID3D11Device* Device)
+{
+    if (Device == nullptr)
+    {
+        return false;
+    }
+
+    if (PointAtlasTexture && PointAtlasDSV && PointAtlasSRV)
+    {
+        return true;
+    }
+    
+    D3D11_TEXTURE2D_DESC TextureDesc = {};
+    TextureDesc.Width = PointAtlasResolution;
+    TextureDesc.Height = PointAtlasResolution;
+    TextureDesc.MipLevels = 1;
+    TextureDesc.ArraySize = 1;
+    TextureDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+    TextureDesc.SampleDesc.Count = 1;
+    TextureDesc.SampleDesc.Quality = 0;
+    TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+    
+    if (FAILED(Device->CreateTexture2D(&TextureDesc, nullptr, PointAtlasTexture.GetAddressOf())))
+    {
+        return false;
+    }
+    
+    D3D11_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc = {};
+    DepthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    DepthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+    DepthStencilViewDesc.Texture2D.MipSlice = 0;
+    
+    if (FAILED(Device->CreateDepthStencilView(PointAtlasTexture.Get(), &DepthStencilViewDesc, PointAtlasDSV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+        
+    D3D11_SHADER_RESOURCE_VIEW_DESC ShaderResourceViewDesc = {};
+    ShaderResourceViewDesc.Format = DXGI_FORMAT_R32_FLOAT;
+    ShaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    ShaderResourceViewDesc.Texture2D.MipLevels = 1;
+    
+    if (FAILED(Device->CreateShaderResourceView(PointAtlasTexture.Get(), &ShaderResourceViewDesc, PointAtlasSRV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    return true;
 }

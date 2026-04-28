@@ -494,6 +494,20 @@ void DrawAtlasGrid(ImDrawList* DrawList, const ImVec2& Min, const ImVec2& Max, u
     }
 }
 
+const char* GetPointFaceLabel(uint32 FaceIndex)
+{
+    switch (FaceIndex)
+    {
+    case 0: return "+X";
+    case 1: return "-X";
+    case 2: return "+Y";
+    case 3: return "-Y";
+    case 4: return "+Z";
+    case 5: return "-Z";
+    default: return "?";
+    }
+}
+
 
 // 특정 뷰포트의 일반적인 렌더링 통계(FPS, Culling, Decal, Memory) 정보를 출력하는 창을 그립니다.
 float FEditorViewportOverlayWidget::RenderGeneralStatsWindow(int32 ViewportIndex, const FEditorViewportState& VS, const ImVec2& Pos, float DeltaTime)
@@ -857,6 +871,87 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
                         snprintf(Label, sizeof(Label), "%u (%u)", Slot.TileIndex, Slot.Width);
                     }
                     DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(0, 255, 120, 255), Label);
+                }
+            }
+        }
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        ImGui::Spacing();
+        ImGui::SameLine();
+
+        // ──────────── Point ────────────
+        ImGui::BeginGroup();
+        {
+            ImGui::TextColored(ColorMint, "Point Shadow Atlas");
+            ImGui::TextColored(ColorPaleBlue, "- Active Shadows: %u", RenderTargets ? RenderTargets->PointShadowCount : 0);
+            ImGui::TextColored(ColorPaleBlue, "- Atlas: %ux%u",
+                FShadowAtlasManager::PointAtlasResolution,
+                FShadowAtlasManager::PointAtlasResolution);
+
+            const bool bHasPointShadow = (RenderTargets != nullptr && RenderTargets->PointShadowSRV != nullptr);
+            if (bHasPointShadow)
+            {
+                ImGui::Image(reinterpret_cast<ImTextureID>(RenderTargets->PointShadowSRV), ImVec2(PreviewSize, PreviewSize));
+            }
+            else
+            {
+                ImGui::Dummy(ImVec2(PreviewSize, PreviewSize));
+            }
+
+            ImDrawList* DrawList = ImGui::GetWindowDrawList();
+            const ImVec2 Min = ImGui::GetItemRectMin();
+            const ImVec2 Max = ImGui::GetItemRectMax();
+
+            if (!bHasPointShadow)
+            {
+                DrawList->AddRectFilled(Min, Max, IM_COL32(0, 0, 0, 150));
+            }
+            DrawList->AddRect(Min, Max, IM_COL32(255, 255, 255, 100));
+
+            const float BaseCell = PreviewSize / static_cast<float>(FShadowAtlasManager::PointAtlasCellsPerRow);
+            for (uint32 Line = 1; Line < FShadowAtlasManager::PointAtlasCellsPerRow; ++Line)
+            {
+                const float X = Min.x + BaseCell * static_cast<float>(Line);
+                const float Y = Min.y + BaseCell * static_cast<float>(Line);
+                DrawList->AddLine(ImVec2(X, Min.y), ImVec2(X, Max.y), IM_COL32(255, 255, 255, 35));
+                DrawList->AddLine(ImVec2(Min.x, Y), ImVec2(Max.x, Y), IM_COL32(255, 255, 255, 35));
+            }
+
+            if (bHasPointShadow)
+            {
+                const TArray<FPointAtlasSlotDesc>& ActivePointSlots = FShadowAtlasManager::GetActivePointSlots();
+                for (const FPointAtlasSlotDesc& Slot : ActivePointSlots)
+                {
+                    const FVector4& FirstRect = Slot.FaceAtlasRects[0];
+                    float BlockMinX = Min.x + FirstRect.X * PreviewSize;
+                    float BlockMinY = Min.y + FirstRect.Y * PreviewSize;
+                    float BlockMaxX = Min.x + (FirstRect.X + FirstRect.Z) * PreviewSize;
+                    float BlockMaxY = Min.y + (FirstRect.Y + FirstRect.W) * PreviewSize;
+
+                    for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
+                    {
+                        const FVector4& Rect = Slot.FaceAtlasRects[FaceIndex];
+
+                        const float X0 = Min.x + Rect.X * PreviewSize;
+                        const float Y0 = Min.y + Rect.Y * PreviewSize;
+                        const float X1 = Min.x + (Rect.X + Rect.Z) * PreviewSize;
+                        const float Y1 = Min.y + (Rect.Y + Rect.W) * PreviewSize;
+
+                        BlockMinX = std::min(BlockMinX, X0);
+                        BlockMinY = std::min(BlockMinY, Y0);
+                        BlockMaxX = std::max(BlockMaxX, X1);
+                        BlockMaxY = std::max(BlockMaxY, Y1);
+
+                        DrawList->AddRect(ImVec2(X0, Y0), ImVec2(X1, Y1), IM_COL32(80, 190, 255, 220), 0.0f, 0, 1.5f);
+                        DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(80, 190, 255, 255), GetPointFaceLabel(FaceIndex));
+                    }
+
+                    DrawList->AddRect(ImVec2(BlockMinX, BlockMinY), ImVec2(BlockMaxX, BlockMaxY), IM_COL32(0, 255, 255, 255), 0.0f, 0, 2.0f);
+
+                    char Label[32];
+                    snprintf(Label, sizeof(Label), "P%u", Slot.CubeIndex);
+                    DrawList->AddText(ImVec2(BlockMinX + 4.0f, BlockMinY - 18.0f), IM_COL32(0, 255, 255, 255), Label);
                 }
             }
         }

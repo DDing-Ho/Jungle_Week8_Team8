@@ -253,6 +253,22 @@ struct FSpotShadowConstants
 
 static_assert(sizeof(FSpotShadowConstants) == 96, "FSpotShadowConstants layout must match the shadow pass GPU layout.");
 
+struct FPointShadowConstants
+{
+    FMatrix LightViewProj[6]; // 384
+    FVector LightPosition;
+    float FarPlane;
+
+    FVector4 FaceAtlasRects[6];
+    
+    float ShadowBias = 0.0f;
+    float ShadowResolution = 0.0f;
+    uint32 AtlasIndex = 0;
+    uint32 bHasShadowMap = 0;
+};
+
+static_assert(sizeof(FPointShadowConstants) == 512 , "FPointShadowConstants layout must match the shadow pass GPU layout.");
+
 struct FRenderCommand
 {
 	FPerObjectConstants PerObjectConstants = {};

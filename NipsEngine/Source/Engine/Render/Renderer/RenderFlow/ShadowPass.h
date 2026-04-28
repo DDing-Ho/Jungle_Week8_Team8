@@ -24,6 +24,7 @@ public:
 private:
 	bool EnsureDirectionalShadowResources(ID3D11Device* Device, uint32 CascadeCount);
     bool EnsureSpotShadowResources(ID3D11Device* Device);
+    bool EnsurePointShadowResources(ID3D11Device* Device);
 	ID3D11RasterizerState* GetOrCreateShadowRasterizerState(ID3D11Device* Device, bool bNoCull);
 
 private:
@@ -40,6 +41,13 @@ private:
     TComPtr<ID3D11ShaderResourceView> SpotShadowSRV;
 
 	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
+    
+    // ── Point Shadow Map ────────────────────
+    TComPtr<ID3D11Texture2D> PointhadowTexture;
+    TArray<TComPtr<ID3D11DepthStencilView>> PointShadowDSVs;
+    TComPtr<ID3D11ShaderResourceView> PointShadowSRV;
+
+    std::shared_ptr<FShaderBindingInstance> PointShaderBinding;
 
 	TComPtr<ID3D11RasterizerState> ShadowBackCullRasterizerState;
 	TComPtr<ID3D11RasterizerState> ShadowNoCullRasterizerState;

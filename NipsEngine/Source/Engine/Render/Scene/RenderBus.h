@@ -18,10 +18,11 @@ public:
 	void AddCommand(ERenderPass Pass, FRenderCommand&& InCommand);
 	void AddLight(const FRenderLight& InLight) { Lights.push_back(InLight); }
     void AddCastShadowSpotLight(const FSpotShadowConstants& InCastShadowLight) { CastShadowSpotLights.push_back(InCastShadowLight); }
-    void AddCastPointShadowLight(const FSpotShadowConstants& InCastShadowLight) { AddCastShadowSpotLight(InCastShadowLight); }
+    void AddCastPointShadowLight(const FPointShadowConstants& InCastShadowLight) { CastShadowPointLights.push_back(InCastShadowLight); }
     const TArray<FRenderCommand>& GetCommands(ERenderPass Pass) const;
 	const TArray<FRenderLight>& GetLights() const { return Lights; }
     const TArray<FSpotShadowConstants>& GetCastShadowSpotLights() const { return CastShadowSpotLights; }
+    const TArray<FPointShadowConstants>& GetCastShadowPointLights() const { return CastShadowPointLights; }
 
 	// Getter, Setter
 	void SetViewProjection(const FMatrix& InView, const FMatrix& InProj);
@@ -64,6 +65,7 @@ private:
 	TArray<FRenderLight> Lights;
 	std::optional<FDirectionalShadowConstants> DirectionalShadow;
     TArray<FSpotShadowConstants> CastShadowSpotLights;
+    TArray<FPointShadowConstants> CastShadowPointLights;
 
 	EShadowFilterType ShadowFilterType = EShadowFilterType::PCF;
 

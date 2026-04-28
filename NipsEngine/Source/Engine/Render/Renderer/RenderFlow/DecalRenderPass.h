@@ -21,4 +21,8 @@ private:
     TComPtr<ID3D11Buffer> SpotShadowConstantsBuffer;
     TComPtr<ID3D11ShaderResourceView> SpotShadowConstantsSRV;
     uint32 SpotShadowConstantsCapacity = 0;
+    TComPtr<ID3D11Buffer> PointShadowInfoConstantBuffer;
+    TComPtr<ID3D11Buffer> PointShadowConstantsBuffer;
+    TComPtr<ID3D11ShaderResourceView> PointShadowConstantsSRV;
+    uint32 PointShadowConstantsCapacity = 0;
 };

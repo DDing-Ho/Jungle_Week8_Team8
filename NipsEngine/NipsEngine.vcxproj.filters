@@ -1378,4 +1378,9 @@
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.h" />
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Multipass\PointShadowDepth.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </None>
+  </ItemGroup>
 </Project>

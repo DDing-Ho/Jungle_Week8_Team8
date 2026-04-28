@@ -11,6 +11,7 @@ void FRenderBus::Clear()
 	Lights.clear();
 	DirectionalShadow.reset();
 	CastShadowSpotLights.clear();
+	CastShadowPointLights.clear();
 }
 
 void FRenderBus::AddCommand(ERenderPass Pass, const FRenderCommand& InCommand)

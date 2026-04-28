@@ -11,12 +11,15 @@ namespace SceneLightBinding
 {
 	constexpr uint32 SpotShadowInfoRegister = 6;
 	constexpr uint32 DirectionalShadowInfoRegister = 7;
-	constexpr uint32 SpotShadowConstantsRegister = 11;
+    constexpr uint32 PointShadowInfoRegister = 8;	
+    constexpr uint32 SpotShadowConstantsRegister = 11;
 	constexpr uint32 SpotShadowMapRegister = 12;
 	constexpr uint32 DirectionalShadowMapRegister = 13;
+    constexpr uint32 PointShadowConstantsRegister = 14;
 
     constexpr uint32 SpotShadowVSMMapRegister = 15;
     constexpr uint32 DirectionalShadowVSMMapRegister = 16;
+    constexpr uint32 PointShadowMapRegister = 17;
 
 	struct FVisibleLightConstants
 	{
@@ -52,6 +55,12 @@ namespace SceneLightBinding
 		float Padding = 0.0f;
 	};
 
+    struct FPointShadowInfoConstants
+    {
+        uint32 PointShadowCount = 0;
+        float Padding[3] = { 0.0f, 0.0f, 0.0f };
+    };
+
 	inline bool EnsureVisibleLightConstantBuffer(ID3D11Device* Device, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
 	{
 		if (VisibleLightConstantBuffer)
@@ -82,6 +91,22 @@ namespace SceneLightBinding
 		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, SpotShadowInfoConstantBuffer.GetAddressOf()));
+	}
+
+    inline bool EnsurePointShadowInfoConstantBuffer(ID3D11Device* Device, TComPtr<ID3D11Buffer>& PointShadowInfoConstantBuffer)
+	{
+	    if (PointShadowInfoConstantBuffer)
+	    {
+	        return true;
+	    }
+
+	    D3D11_BUFFER_DESC Desc = {};
+	    Desc.ByteWidth = sizeof(FPointShadowInfoConstants);
+	    Desc.Usage = D3D11_USAGE_DYNAMIC;
+	    Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	    Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	    return SUCCEEDED(Device->CreateBuffer(&Desc, nullptr, PointShadowInfoConstantBuffer.GetAddressOf()));
 	}
 
 	inline bool EnsureDirectionalShadowInfoCB(ID3D11Device* Device, TComPtr<ID3D11Buffer>& DirectionalShadowInfoCB)
@@ -147,6 +172,55 @@ namespace SceneLightBinding
 		SpotShadowConstantsSRV = std::move(NewSRV);
 		SpotShadowConstantsCapacity = RequiredCount;
 		return true;
+	}
+
+    inline bool EnsurePointShadowConstantsBuffer(
+        ID3D11Device* Device,
+        uint32 RequiredCount,
+        TComPtr<ID3D11Buffer>& PointShadowConstantsBuffer,
+        TComPtr<ID3D11ShaderResourceView>& PointShadowConstantsSRV,
+        uint32& PointShadowConstantsCapacity)
+	{
+	    if (RequiredCount == 0)
+	    {
+	        return true;
+	    }
+
+	    if (RequiredCount <= PointShadowConstantsCapacity && PointShadowConstantsBuffer && PointShadowConstantsSRV)
+	    {
+	        return true;
+	    }
+
+	    D3D11_BUFFER_DESC BufferDesc = {};
+	    BufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	    BufferDesc.ByteWidth = sizeof(FPointShadowConstants) * RequiredCount;
+	    BufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	    BufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	    BufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	    BufferDesc.StructureByteStride = sizeof(FPointShadowConstants);
+
+	    TComPtr<ID3D11Buffer> NewBuffer;
+	    if (FAILED(Device->CreateBuffer(&BufferDesc, nullptr, NewBuffer.GetAddressOf())))
+	    {
+	        return false;
+	    }
+
+	    D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+	    SRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	    SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	    SRVDesc.Buffer.FirstElement = 0;
+	    SRVDesc.Buffer.NumElements = RequiredCount;
+
+	    TComPtr<ID3D11ShaderResourceView> NewSRV;
+	    if (FAILED(Device->CreateShaderResourceView(NewBuffer.Get(), &SRVDesc, NewSRV.GetAddressOf())))
+	    {
+	        return false;
+	    }
+
+	    PointShadowConstantsBuffer = std::move(NewBuffer);
+	    PointShadowConstantsSRV = std::move(NewSRV);
+	    PointShadowConstantsCapacity = RequiredCount;
+	    return true;
 	}
 
 	inline void BindSpotShadowResources(
@@ -302,6 +376,87 @@ namespace SceneLightBinding
 		Context->DeviceContext->PSSetShaderResources(DirectionalShadowVSMMapRegister, 1, &ShadowMapVSMSRV);
 	}
 
+    inline void BindPointShadowResources(
+		const FRenderPassContext* Context,
+		TComPtr<ID3D11Buffer>& PointShadowInfoConstantBuffer,
+		TComPtr<ID3D11Buffer>& PointShadowConstantsBuffer,
+		TComPtr<ID3D11ShaderResourceView>& PointShadowConstantsSRV,
+		uint32& PointShadowConstantsCapacity)
+	{
+		if (Context == nullptr || Context->Device == nullptr || Context->DeviceContext == nullptr)
+		{
+			return;
+		}
+
+		uint32 PointShadowCount = 0;
+		ID3D11ShaderResourceView* PointShadowMapSRV = nullptr;
+		if (Context->RenderTargets != nullptr)
+		{
+			PointShadowCount = Context->RenderTargets->PointShadowCount;
+			PointShadowMapSRV = Context->RenderTargets->PointShadowSRV;
+		}
+
+		const TArray<FPointShadowConstants>* PointShadows = nullptr;
+		if (Context->RenderBus != nullptr)
+		{
+			PointShadows = &Context->RenderBus->GetCastShadowPointLights();
+			if (PointShadowCount > PointShadows->size())
+			{
+				PointShadowCount = static_cast<uint32>(PointShadows->size());
+			}
+		}
+		else
+		{
+			PointShadowCount = 0;
+		}
+
+		if (!EnsurePointShadowInfoConstantBuffer(Context->Device, PointShadowInfoConstantBuffer))
+		{
+			return;
+		}
+
+		if (!EnsurePointShadowConstantsBuffer(
+			Context->Device,
+			PointShadowCount,
+			PointShadowConstantsBuffer,
+			PointShadowConstantsSRV,
+			PointShadowConstantsCapacity))
+		{
+			PointShadowCount = 0;
+		}
+
+		FPointShadowInfoConstants InfoConstants = {};
+		InfoConstants.PointShadowCount = PointShadowCount;
+
+		D3D11_MAPPED_SUBRESOURCE MappedInfo = {};
+		if (SUCCEEDED(Context->DeviceContext->Map(PointShadowInfoConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedInfo)))
+		{
+			std::memcpy(MappedInfo.pData, &InfoConstants, sizeof(InfoConstants));
+			Context->DeviceContext->Unmap(PointShadowInfoConstantBuffer.Get(), 0);
+		}
+
+		if (PointShadowCount > 0 && PointShadows != nullptr && PointShadowConstantsBuffer)
+		{
+			D3D11_MAPPED_SUBRESOURCE MappedShadows = {};
+			if (SUCCEEDED(Context->DeviceContext->Map(PointShadowConstantsBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedShadows)))
+			{
+				std::memcpy(MappedShadows.pData, PointShadows->data(), sizeof(FPointShadowConstants) * PointShadowCount);
+				Context->DeviceContext->Unmap(PointShadowConstantsBuffer.Get(), 0);
+			}
+		}
+
+		ID3D11Buffer* InfoCBuffer = PointShadowInfoConstantBuffer.Get();
+		Context->DeviceContext->PSSetConstantBuffers(PointShadowInfoRegister, 1, &InfoCBuffer);
+		Context->DeviceContext->VSSetConstantBuffers(PointShadowInfoRegister, 1, &InfoCBuffer);
+
+		ID3D11ShaderResourceView* ShadowConstantsSRV = PointShadowCount > 0 ? PointShadowConstantsSRV.Get() : nullptr;
+		Context->DeviceContext->PSSetShaderResources(PointShadowConstantsRegister, 1, &ShadowConstantsSRV);
+		Context->DeviceContext->VSSetShaderResources(PointShadowConstantsRegister, 1, &ShadowConstantsSRV);
+
+		ID3D11ShaderResourceView* ShadowMapSRV = PointShadowCount > 0 ? PointShadowMapSRV : nullptr;
+		Context->DeviceContext->PSSetShaderResources(PointShadowMapRegister, 1, &ShadowMapSRV);
+	}
+
 	inline void BindResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
 	{
 		if (Context == nullptr || Context->Device == nullptr || Context->DeviceContext == nullptr)
@@ -351,11 +506,16 @@ namespace SceneLightBinding
 		TComPtr<ID3D11Buffer>& SpotShadowInfoConstantBuffer,
 		TComPtr<ID3D11Buffer>& SpotShadowConstantsBuffer,
 		TComPtr<ID3D11ShaderResourceView>& SpotShadowConstantsSRV,
-		uint32& SpotShadowConstantsCapacity)
+		uint32& SpotShadowConstantsCapacity,
+		TComPtr<ID3D11Buffer>& PointShadowInfoConstantBuffer,
+        TComPtr<ID3D11Buffer>& PointShadowConstantsBuffer,
+        TComPtr<ID3D11ShaderResourceView>& PointShadowConstantsSRV,
+        uint32& PointShadowConstantsCapacity)
 	{
 		BindResources(Context, VisibleLightConstantBuffer);
 		BindDirectionalShadowResources(Context, DirectionalShadowConstantBuffer);
 		BindSpotShadowResources(Context, SpotShadowInfoConstantBuffer, SpotShadowConstantsBuffer, SpotShadowConstantsSRV, SpotShadowConstantsCapacity);
+		BindPointShadowResources(Context, PointShadowInfoConstantBuffer, PointShadowConstantsBuffer, PointShadowConstantsSRV, PointShadowConstantsCapacity);
 	}
 
 	inline void UnbindResources(ID3D11DeviceContext* DeviceContext)
@@ -374,6 +534,8 @@ namespace SceneLightBinding
 		DeviceContext->VSSetConstantBuffers(4, 1, &NullCB);
 		DeviceContext->PSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
 		DeviceContext->VSSetConstantBuffers(SpotShadowInfoRegister, 1, &NullCB);
+	    DeviceContext->PSSetConstantBuffers(PointShadowInfoRegister, 1, &NullCB);
+	    DeviceContext->VSSetConstantBuffers(PointShadowInfoRegister, 1, &NullCB);
 		DeviceContext->PSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &NullCB);
 		DeviceContext->VSSetConstantBuffers(DirectionalShadowInfoRegister, 1, &NullCB);
 	}

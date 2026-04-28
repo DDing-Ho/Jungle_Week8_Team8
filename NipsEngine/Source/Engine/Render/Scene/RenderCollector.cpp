@@ -39,6 +39,10 @@ namespace
 	constexpr size_t ShadowDepthBytesPerPixel = 4;
 	constexpr size_t ShadowVSMBytesPerPixel = 8;
 	constexpr size_t ShadowBytesPerPixel = ShadowDepthBytesPerPixel + ShadowVSMBytesPerPixel;
+    
+    constexpr float PointShadowNearPlane = 0.1f;
+    constexpr uint32 PointShadowResolution = 512;
+    constexpr int32 MaxPointShadowCount = 8;
 
 	// ─────────────────── Vector ───────────────────
 	FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
@@ -46,40 +50,42 @@ namespace
 	FVector4 TransformVector4ByMatrix(const FVector4& Vector, const FMatrix& Matrix);
 
 	// ─────────────────── Shadow ───────────────────
-	struct FDirectionalCSMBuildResult
-	{
-		FMatrix LightViewProj[MAX_CASCADE_COUNT];
-		FVector4 SplitDistances;
-		FVector4 CascadeRadius;
-	};
+    struct FDirectionalCSMBuildResult
+    {
+        FMatrix LightViewProj[MAX_CASCADE_COUNT];
+        FVector4 SplitDistances;
+        FVector4 CascadeRadius;
+    };
 
-	struct FDirectionalPSMBuildResult
-	{
-		FMatrix LightViewProj;
-	};
+    struct FDirectionalPSMBuildResult
+    {
+        FMatrix LightViewProj;
+    };    
 
-	static_assert(static_cast<uint32>(EShadowMode::CSM) == DirectionalShadowModeValue::CSM);
-	static_assert(static_cast<uint32>(EShadowMode::PSM) == DirectionalShadowModeValue::PSM);
+    static_assert(static_cast<uint32>(EShadowMode::CSM) == DirectionalShadowModeValue::CSM);
+    static_assert(static_cast<uint32>(EShadowMode::PSM) == DirectionalShadowModeValue::PSM);
 
-	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
-	float MakeSpotShadowResolution(const ULightComponent* LightComponent);
-	size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);
-	FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
-	float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
-	int32 ExtractActorNumericSuffix(const AActor* Actor);
-	FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
-	void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
-	void BuildPSMCameraViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, FMatrix& OutView, FMatrix& OutProj);
-	bool BuildOrthographicPostProjectiveViewProjection(const FVector& LightDirectionPP, const FVector& CubeCenterPP, float CubeRadiusPP, float MinPlaneGap, FMatrix& OutViewPP, FMatrix& OutProjPP);
-	bool BuildDirectionalCSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalCSMBuildResult& OutResult);
-	bool BuildDirectionalPSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalPSMBuildResult& OutResult);
-	void PackDirectionalCSMShadowConstants(const FDirectionalCSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
-	void PackDirectionalPSMShadowConstants(const FDirectionalPSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
-	struct FSpotShadowCandidate
-	{
-		FRenderLight RenderLight = {};
-		const ULightComponent* LightComponent = nullptr;
-		const USpotLightComponent* SpotLight = nullptr;
+    float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
+    float MakeSpotShadowResolution(const ULightComponent* LightComponent);
+    size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);    
+    FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
+    void MakePointShadowViewProjections(const FVector& LightPosition, float NearPlane, float FarPlane, FMatrix OutViewProj[6]);    
+    float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
+    int32 ExtractActorNumericSuffix(const AActor* Actor);
+    FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
+    void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
+    void BuildPSMCameraViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, FMatrix& OutView, FMatrix& OutProj);
+    bool BuildOrthographicPostProjectiveViewProjection(const FVector& LightDirectionPP, const FVector& CubeCenterPP, float CubeRadiusPP, float MinPlaneGap, FMatrix& OutViewPP, FMatrix& OutProjPP);
+    bool BuildDirectionalCSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalCSMBuildResult& OutResult);
+    bool BuildDirectionalPSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalPSMBuildResult& OutResult);
+    void PackDirectionalCSMShadowConstants(const FDirectionalCSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
+    void PackDirectionalPSMShadowConstants(const FDirectionalPSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
+    
+struct FSpotShadowCandidate
+    {
+        FRenderLight RenderLight = {};
+        const ULightComponent* LightComponent = nullptr;
+        const USpotLightComponent* SpotLight = nullptr;
 
 		FVector LightDirection = FVector::ZeroVector;
 
@@ -124,6 +130,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 	const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
 	int32 Next2DShadowSlice = 0;
 	int32 NextSpotShadowIndex = 0;
+    int32 NextPointShadowIndex = 0;
 
 	// shadow-casting Spot Light 후보를 잠시 모아두는 배열입니다.
 	// Spot shadow는 "보이는 순서"가 아니라 "중요한 라이트 순서"로 atlas에 넣어야 하므로,
@@ -133,6 +140,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 	// Spot atlas allocation 상태는 프레임마다 다시 시작함.
 	FShadowAtlasManager::BeginSpotFrame();
 	
+    FShadowAtlasManager::BeginPointFrame();    
+    
 	for (const FLightSlot& Slot : LightSlots)
 	{
 		if (!Slot.bAlive || !Slot.LightData)
@@ -237,25 +246,65 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 				continue;
 			}
 			
+		    const FVector LightLocation = PointLight->GetWorldLocation();
+		    const float Attenuation = PointLight->GetAttenuationRadius();
+		    
 			// View Frustum에 대한 Bounding Sphere 교차 검사
-			if (ViewFrustum)
+			if (ViewFrustum && !ViewFrustum->IntersectsBoundingSphere(LightLocation, Attenuation))
 			{
-				FVector Center = PointLight->GetWorldLocation();
-				float Radius = PointLight->GetAttenuationRadius();
-				
-				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
-					continue;
+				continue;
 			}
 
-			++LastShadowStats.PointLightCount;
-
-			RenderLight.Position = PointLight->GetWorldLocation();
-			RenderLight.Radius = PointLight->GetAttenuationRadius();
+			RenderLight.Position = LightLocation;
+			RenderLight.Radius = Attenuation;
 			RenderLight.FalloffExponent = PointLight->GetLightFalloffExponent();
-			RenderBus.AddLight(RenderLight);
+		    
+		    if (!LightComponent->IsCastShadows())
+		    {
+		        RenderBus.AddLight(RenderLight);
+		        break;
+		    }
+		    
+		    if (NextPointShadowIndex >= MaxPointShadowCount)
+		    {
+		        RenderBus.AddLight(RenderLight);
+		        break;
+		    }
+		    
+		    FPointAtlasSlotDesc PointAtlasSlot = {};
+		    if (!FShadowAtlasManager::RequestPointAtlasSlot(PointAtlasSlot))
+		    {
+		        RenderBus.AddLight(RenderLight);
+		        break;
+		    }
+		    
+		    const int32 PointShadowIndex = NextPointShadowIndex++;
+		    const float NearPlane = PointShadowNearPlane;
+		    const float FarPlane = std::max(Attenuation, NearPlane + 1.0f);
+		    const float ShadowBias = LightComponent->GetShadowBias();
 
-			// TODO : RenderBus.AddShadowCastLight
-			break;
+		    RenderLight.bCastShadows = 1;
+		    RenderLight.ShadowMapIndex = PointShadowIndex;
+		    RenderLight.ShadowBias = ShadowBias;
+
+		    FPointShadowConstants ShadowData = {};
+		    MakePointShadowViewProjections(LightLocation, NearPlane, FarPlane, ShadowData.LightViewProj);
+		    ShadowData.LightPosition = LightLocation;
+		    ShadowData.FarPlane = FarPlane;
+
+		    for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
+		    {
+		        ShadowData.FaceAtlasRects[FaceIndex] = PointAtlasSlot.FaceAtlasRects[FaceIndex];
+		    }
+
+		    ShadowData.ShadowBias = ShadowBias;
+		    ShadowData.ShadowResolution = static_cast<float>(FShadowAtlasManager::PointAtlasTileResolution);
+		    ShadowData.AtlasIndex = PointAtlasSlot.CubeIndex;
+		    ShadowData.bHasShadowMap = 1;
+
+		    RenderBus.AddCastPointShadowLight(ShadowData);
+		    RenderBus.AddLight(RenderLight);
+		    break;
 		}
 
 		case ELightType::LightType_Spot:
@@ -1274,7 +1323,48 @@ namespace
 		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
 		return LightView * LightProjection;
 	}
-	
+
+    void MakePointShadowViewProjections(
+        const FVector& LightPosition,
+        float NearPlane,
+        float FarPlane,
+        FMatrix OutViewProj[6])
+	{
+	    static constexpr FVector FaceDirections[6] =
+	    {
+	        FVector(1.0f, 0.0f, 0.0f),
+            FVector(-1.0f, 0.0f, 0.0f),
+            FVector(0.0f, 1.0f, 0.0f),
+            FVector(0.0f, -1.0f, 0.0f),
+            FVector(0.0f, 0.0f, 1.0f),
+            FVector(0.0f, 0.0f, -1.0f)
+        };
+	    static constexpr FVector FaceUps[6] =
+	    {
+	        FVector(0.0f, 0.0f, 1.0f),   // +X
+            FVector(0.0f, 0.0f, 1.0f),   // -X
+            FVector(0.0f, 0.0f, 1.0f),   // +Y
+            FVector(0.0f, 0.0f, 1.0f),   // -Y
+            FVector(-1.0f, 0.0f, 0.0f),  // +Z
+            FVector(1.0f, 0.0f, 0.0f)    // -Z
+        };
+
+	    // Cube face seam을 줄이기 위해 90도보다 아주 살짝 넓게 잡습니다.
+	    const FMatrix LightProjection =
+            FMatrix::MakePerspectiveFovLH(MathUtil::DegreesToRadians(90.5f), 1.0f, NearPlane, FarPlane);
+
+	    for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
+	    {
+	        const FVector FaceDirection = FaceDirections[FaceIndex];
+	        const FMatrix LightView = FMatrix::MakeViewLookAtLH(
+                LightPosition,
+                LightPosition + FaceDirection,
+                FaceUps[FaceIndex]);
+
+	        OutViewProj[FaceIndex] = LightView * LightProjection;
+	    }
+	}
+
 	/* 밝을수록/반경이 클수록/카메라에 가까울수록 점수를 크게 주도록 합니다. */
 	float ComputeSpotShadowPriority(
 		const ULightComponent* LightComponent,
