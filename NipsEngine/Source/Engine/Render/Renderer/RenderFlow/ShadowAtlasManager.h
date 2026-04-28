@@ -60,7 +60,7 @@ public:
     static void BeginSpotFrame();
     
     // LightComponent의 ShadowResolutionScale 결과를
-    // 2048 / 1024 / 512 / 2556 중 하나로 정규화
+    // 2048 / 1024 / 512 / 256 중 하나로 정규화
     static uint32 SnapSpotTileSize(float RequestedResolution);
     
     // 원하는 크기의 spot shadow tule을 atlas 안에서 찾음

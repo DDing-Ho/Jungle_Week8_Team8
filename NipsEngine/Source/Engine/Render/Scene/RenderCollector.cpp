@@ -1183,7 +1183,7 @@ namespace
 			float Fraction = static_cast<float>(i) / CascadeCount; // 전체 Cascade 구간 중 경계선
 			float LogarithmSplit = std::pow(ShadowDistance / NearPlane, Fraction);
 			float UniformSplit = NearPlane + (ShadowDistance - NearPlane) * Fraction;
-			OutSplits[i] = (0.9f + Lambda) * LogarithmSplit + (0.1f - Lambda) * UniformSplit;
+			OutSplits[i] =  Lambda * LogarithmSplit + (1.0f - Lambda) * UniformSplit;
 		}
 		OutSplits[CascadeCount] = ShadowDistance;
 	}
@@ -1199,7 +1199,7 @@ namespace
 	{
 		constexpr int32 CascadeCount = MAX_CASCADE_COUNT;
 		const float NearPlane = std::max(RenderBus.GetNear(), 1.0f);
-		const float Lambda = Light->GetCascadeSplitWeight() * 0.1f;
+		const float Lambda = Light->GetCascadeSplitWeight();
 		const float ShadowDistance = Light->GetShadowDistance();
 
 		float Splits[MAX_CASCADE_COUNT + 1]; // CascadeCount + 1
@@ -1247,6 +1247,18 @@ namespace
 			for (const FVector& Corner : CascadeCorners)
 			{
 				Radius = std::max(Radius, FVector::Dist(Center, Corner));
+			}
+			
+			if (Light->IsShadowTexelSnapped())
+			{
+				const float TexelSize = (Radius * 2.0f) / static_cast<float>(FShadowAtlasManager::DirectionalCascadeResolution);
+				const FVector RefLightPosition = Center - LightDirection * Radius;
+				const FMatrix RefLightView = FMatrix::MakeViewLookAtLH(RefLightPosition, Center, MakeStableUpVector(LightDirection));
+
+				FVector SnappedCenter = RefLightView.TransformPosition(Center);
+				SnappedCenter.X = std::round(SnappedCenter.X / TexelSize) * TexelSize;
+				SnappedCenter.Y = std::round(SnappedCenter.Y / TexelSize) * TexelSize;
+				Center = RefLightView.GetInverse().TransformPosition(SnappedCenter);
 			}
 
 			const FVector LightPosition = Center - LightDirection * Radius;

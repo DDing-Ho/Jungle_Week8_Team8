@@ -461,11 +461,15 @@ void FEditorPropertyWidget::RenderDetails(AActor* PrimaryActor, const TArray<AAc
 {
 	if (bActorSelected)
 	{
+		ImGui::PushID(PrimaryActor);
 		RenderActorProperties(PrimaryActor, SelectedActors);
+		ImGui::PopID();
 	}
 	else if (SelectedComponent)
 	{
+		ImGui::PushID(SelectedComponent);
 		RenderComponentProperties();
+		ImGui::PopID();
 	}
 	else
 	{

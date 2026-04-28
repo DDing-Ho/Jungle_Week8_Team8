@@ -15,6 +15,7 @@ void USpotLightComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Out
 	
     OutProps.push_back({ "Inner Cone Angle", EPropertyType::Float, &InnerConeAngle, 0.0f, 80.0f, 0.1f });
     OutProps.push_back({ "Outer Cone Angle", EPropertyType::Float, &OuterConeAngle, 0.0f, 80.0f, 0.1f });
+	OutProps.push_back({ "Shadow Texel Snapped", EPropertyType::Bool, &bShadowTexelSnapped });
 }
 
 void USpotLightComponent::PostEditProperty(const char* PropertyName)
@@ -40,9 +41,10 @@ void USpotLightComponent::PostEditProperty(const char* PropertyName)
 void USpotLightComponent::Serialize(FArchive& Ar)
 {
     UPointLightComponent::Serialize(Ar);
-
+	
     Ar << "InnerConeAngle" << InnerConeAngle;
     Ar << "OuterConeAngle" << OuterConeAngle;
+	Ar << "bShadowTexelSnapped" << bShadowTexelSnapped;
 }
 
 void USpotLightComponent::PostDuplicate(UObject* Original)
