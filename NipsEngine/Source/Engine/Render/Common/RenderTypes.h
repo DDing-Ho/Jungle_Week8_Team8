@@ -74,4 +74,5 @@ enum class EShadowFilterType
 {
     PCF = 0,
     VSM = 1,
+    ESM = 2,
 };

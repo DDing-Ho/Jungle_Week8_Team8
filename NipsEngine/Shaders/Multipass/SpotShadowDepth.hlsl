@@ -4,8 +4,14 @@ cbuffer SpotShadowBuffer : register(b0)
     float ShadowResolution;
     float ShadowBias;
     float ShadowFarPlane;
-    float SpotShadowPadding;
+    uint ShadowFilterType;
+    float3 SpotShadowPadding;
 };
+
+static const uint SHADOW_FILTER_TYPE_PCF = 0u;
+static const uint SHADOW_FILTER_TYPE_VSM = 1u;
+static const uint SHADOW_FILTER_TYPE_ESM = 2u;
+static const float SHADOW_ESM_EXPONENT = 40.0f;
 
 cbuffer PerObjectBuffer : register(b1)
 {
@@ -42,5 +48,11 @@ FSpotShadowVSOutput mainVS(FSpotShadowVSInput Input)
 float2 mainPS(FSpotShadowVSOutput Input) : SV_Target0
 {
     float d = saturate(Input.ClipPosW.w / max(ShadowFarPlane, 1.0e-4f));
+    if (ShadowFilterType == SHADOW_FILTER_TYPE_ESM)
+    {
+        const float e = exp(SHADOW_ESM_EXPONENT * d);
+        return float2(e, e);
+    }
+
     return float2(d, d * d);
 }

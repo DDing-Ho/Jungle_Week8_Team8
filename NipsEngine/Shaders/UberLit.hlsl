@@ -156,6 +156,7 @@ static const float3 DEFAULT_AMBIENT_COLOR = float3(0.02f, 0.02f, 0.02f);
 
 static const uint SHADOW_FILTER_TYPE_PCF = 0u;
 static const uint SHADOW_FILTER_TYPE_VSM = 1u;
+static const uint SHADOW_FILTER_TYPE_ESM = 2u;
 
 float4 GetDirectionalCascadeAtlasRect(int CascadeIndex)
 {
@@ -178,7 +179,7 @@ int GetCascadeIndex(float3 WorldPos)
 // 뷰 공간 깊이로 Cascade Index를 결정한다.
 float SampleDirectionalShadowAtIndex(float3 WorldPos, float3 N, float3 L, int ShadowIndex)
 {
-    const float BiasScale = (ShadowMode == SHADOW_MODE_PSM) ? PSM_SHADOW_BIAS_SCALE : max(SplitDistances.w, 1.0e-4f);
+    const float BiasScale = (ShadowMode == SHADOW_MODE_PSM) ? PSM_SHADOW_BIAS_SCALE : max(CascadeRadius[ShadowIndex] * 2.0f, 1.0e-4f);
     const float NormalizedBias = ShadowBias / BiasScale;
     const float NormalizedSlopeBias = ShadowSlopeBias / BiasScale;
     
@@ -213,10 +214,20 @@ float SampleDirectionalShadowAtIndex(float3 WorldPos, float3 N, float3 L, int Sh
     
     int2 AtlasSize = int2(kDirectionalAtlasResolution, kDirectionalAtlasResolution);
     
+    const float CurrentDepth = ShadowNDC.z;
+    
     if (ShadowFilterType == SHADOW_FILTER_TYPE_PCF)
-        return SampleShadowPoissonDisk(AtlasUV, ShadowNDC.z - Bias, DirectionalShadowMap, AtlasSize, ShadowSharpen);
+    {
+        return SampleShadowPoissonDisk(AtlasUV, CurrentDepth - Bias, DirectionalShadowMap, AtlasSize, ShadowSharpen);
+    }
+    else if (ShadowFilterType == SHADOW_FILTER_TYPE_ESM)
+    {
+        return SampleShadowESM(AtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
+    }
     else
-        return SampleShadowVSM(AtlasUV, ShadowNDC.z - Bias, DirectionalShadowVSMMap, AtlasSize);
+    {
+        return SampleShadowVSM(AtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
+    }
 }
 
 float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
@@ -401,9 +412,17 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
     
     if (SpotShadowFilterType == SHADOW_FILTER_TYPE_PCF)
+    {
         return SampleShadowPoissonDisk(AtlasUV, CurrentDepth - Bias, SpotShadowMap, AtlasSize, Shadow.SpotShadowSharpen);
+    }
+    else if (SpotShadowFilterType == SHADOW_FILTER_TYPE_ESM)
+    {
+        return SampleShadowESM(AtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
+    }
     else
+    {
         return SampleShadowVSM(AtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
+    }
 }
 
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)

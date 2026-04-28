@@ -66,7 +66,6 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<flo
 }
 
 // VSM
-// TODO: ESM
 float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapVSM, int2 AtlasSize)
 {
     float2 TexelSize = 1.0f / (float2) AtlasSize;
@@ -91,6 +90,16 @@ float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> Sha
     float shadow = probability;
 
     return shadow;
+}
+
+float SampleShadowESM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapESM, int2 AtlasSize)
+{
+    static const float ShadowESMExponent = 40.0f;
+
+    float Stored = ShadowMapESM.Load(int3(ShadowUV * AtlasSize, 0)).x;
+    float Shadow = Stored * exp(-ShadowESMExponent * CurrentDepth);
+    
+    return saturate(Shadow);
 }
 
 // PCSS
