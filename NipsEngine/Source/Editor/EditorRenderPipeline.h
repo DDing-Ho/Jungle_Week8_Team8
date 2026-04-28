@@ -4,6 +4,8 @@
 #include "Render/Scene/RenderBus.h"
 
 class UEditorEngine;
+class FEditorViewportClient;
+struct FSceneView;
 
 class FEditorRenderPipeline : public IRenderPipeline
 {
@@ -23,6 +25,7 @@ private:
 	 * Execute 루프에서 4번 호출됩니다.
 	 */
 	void RenderViewport(FRenderer& Renderer, int32 ViewportIndex);
+	bool PrepareViewport(FRenderer& Renderer, int32 ViewportIndex, FSceneView& OutSceneView, FEditorViewportClient*& OutViewportClient);
 
 	UEditorEngine* Editor = nullptr;
 	FRenderCollector Collector;
