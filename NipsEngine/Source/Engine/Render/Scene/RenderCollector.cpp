@@ -36,6 +36,9 @@ namespace
 	// ─────────────────── Constants ───────────────────
     constexpr float SpotShadowNearPlane = 0.1f;
     constexpr float SpotShadowBaseResolution = 1024.0f;
+	constexpr size_t ShadowDepthBytesPerPixel = 4;
+	constexpr size_t ShadowVSMBytesPerPixel = 8;
+	constexpr size_t ShadowBytesPerPixel = ShadowDepthBytesPerPixel + ShadowVSMBytesPerPixel;
 
     // ─────────────────── Vector ───────────────────
     FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
@@ -44,6 +47,7 @@ namespace
 	// ─────────────────── Shadow ───────────────────
     float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
     float MakeSpotShadowResolution(const ULightComponent* LightComponent);
+	size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);
     FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
     float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
     int32 ExtractActorNumericSuffix(const AActor* Actor);
@@ -87,6 +91,11 @@ void FRenderCollector::ResetDecalStats()
 	LastDecalStats = {};
 }
 
+void FRenderCollector::ResetShadowStats()
+{
+	LastShadowStats = {};
+}
+
 // 조명을 Frustum Culling을 통해 수집한다.
 // Light Collect와 Shadow Collect를 동시에 수행해줍니다.
 void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const FFrustum* ViewFrustum)
@@ -123,12 +132,15 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 		{
 		case ELightType::LightType_AmbientLight:
 		{
+			++LastShadowStats.AmbientLightCount;
 			RenderBus.AddLight(RenderLight);
 			break;
 		}
 
 		case ELightType::LightType_Directional:
 		{
+			++LastShadowStats.DirectionalLightCount;
+
 			FVector Direction = LightComponent->GetForwardVector() * -1.0f; // 빛 방향 벡터
 			Direction.Normalize();
 			RenderLight.Direction = Direction;
@@ -146,6 +158,11 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 
 					RenderBus.SetDirectionalShadow(ShadowConstants);
 					RenderLight.bCastShadows = 1; // uint32
+					LastShadowStats.DirectionalShadowConstants = ShadowConstants;
+					LastShadowStats.DirectionalShadowCount = 1;
+					LastShadowStats.DirectionalShadowMemoryBytes = CalculateShadowTileMemory(
+						FShadowAtlasManager::DirectionalCascadeResolution,
+						FShadowAtlasManager::DirectionalCascadeResolution) * FShadowAtlasManager::DirectionalCascadeCount;
 				}
 			}
 
@@ -178,6 +195,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 				if (!ViewFrustum->IntersectsBoundingSphere(Center, Radius))
 					continue;
 			}
+
+			++LastShadowStats.PointLightCount;
 
 			RenderLight.Position = PointLight->GetWorldLocation();
 			RenderLight.Radius = PointLight->GetAttenuationRadius();
@@ -231,6 +250,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 					continue;
 				}
 			}
+
+			++LastShadowStats.SpotLightCount;
 
 			RenderLight.Position = LightLocation;
 			RenderLight.Direction = LightDirection;
@@ -342,6 +363,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
             ShadowData.ShadowBias = ShadowBias;
             
             RenderBus.AddCastShadowSpotLight(ShadowData);
+			++LastShadowStats.SpotShadowCount;
+			LastShadowStats.SpotShadowMemoryBytes += CalculateShadowTileMemory(SpotSlot.Width, SpotSlot.Height);
         }
 
         // 끝까지 atlas에 못 들어간 경우에는 shadow만 빠지고 light만 살아있음.
@@ -959,6 +982,7 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 {
 	ResetCullingStats();
 	ResetDecalStats();
+	ResetShadowStats();
 
 	if (!World) return;
 	
@@ -1059,6 +1083,11 @@ namespace
 	float MakeSpotShadowResolution(const ULightComponent* LightComponent)
 	{
 		return std::max(1.0f, SpotShadowBaseResolution * LightComponent->GetShadowResolutionScale());
+	}
+
+	size_t CalculateShadowTileMemory(uint32 Width, uint32 Height)
+	{
+		return static_cast<size_t>(Width) * static_cast<size_t>(Height) * ShadowBytesPerPixel;
 	}
 
 	FMatrix MakeSpotShadowViewProjection(

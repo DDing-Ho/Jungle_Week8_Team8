@@ -669,7 +669,8 @@ float FEditorViewportOverlayWidget::RenderShadowWindow(int32 ViewportIndex, cons
     const FEditorRenderPipeline* RenderPipeline = EditorEngine->GetEditorRenderPipeline();
     if (!RenderPipeline) return 0.f;
 
-    const FDirectionalShadowConstants& SC = RenderPipeline->GetViewportShadowConstants(ViewportIndex);
+    const FRenderCollector::FShadowStats& ShadowStats = RenderPipeline->GetViewportShadowStats(ViewportIndex);
+    const FDirectionalShadowConstants& SC = ShadowStats.DirectionalShadowConstants;
 
     ImGui::SetNextWindowPos(Pos, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.3f);
@@ -683,11 +684,21 @@ float FEditorViewportOverlayWidget::RenderShadowWindow(int32 ViewportIndex, cons
         ImGui::TextColored(ColorPink, "Shadow Stat");
         ImGui::Separator();
 
-        const uint32 Res = FShadowPass::DirectionalShadowResolution;
-        const size_t MemoryBytes = (size_t)Res * Res * MAX_CASCADE_COUNT * 4;
-        ImGui::TextColored(ColorPaleBlue, "- CSM Memory: %.2f MB", MemoryBytes / (1024.f * 1024.f));
+        ImGui::TextColored(ColorOrange, "Light Counts");
+        ImGui::TextColored(ColorPaleBlue, "- Directional: %u", ShadowStats.DirectionalLightCount);
+        ImGui::TextColored(ColorPaleBlue, "- Point: %u", ShadowStats.PointLightCount);
+        ImGui::TextColored(ColorPaleBlue, "- Spot: %u", ShadowStats.SpotLightCount);
+        ImGui::TextColored(ColorPaleBlue, "- Ambient: %u", ShadowStats.AmbientLightCount);
         ImGui::Separator();
 
+        ImGui::TextColored(ColorYellow, "Shadow Memory");
+        ImGui::TextColored(ColorPaleBlue, "- Directional: %u shadow, %.2f MB", ShadowStats.DirectionalShadowCount, ShadowStats.DirectionalShadowMemoryBytes / (1024.f * 1024.f));
+        ImGui::TextColored(ColorPaleBlue, "- Point: %u shadow, %.2f MB", ShadowStats.PointShadowCount, ShadowStats.PointShadowMemoryBytes / (1024.f * 1024.f));
+        ImGui::TextColored(ColorPaleBlue, "- Spot: %u shadow, %.2f MB", ShadowStats.SpotShadowCount, ShadowStats.SpotShadowMemoryBytes / (1024.f * 1024.f));
+        ImGui::TextColored(ColorPaleBlue, "- Total: %.2f MB", ShadowStats.GetTotalShadowMemoryBytes() / (1024.f * 1024.f));
+        ImGui::Separator();
+
+        const uint32 Res = FShadowPass::DirectionalShadowResolution;
         ImGui::TextColored(ColorOrange, "Cascades (Res: %u)", Res);
         for (int32 i = 0; i < MAX_CASCADE_COUNT; ++i)
         {

@@ -32,6 +32,29 @@ public:
 		int32 CollectTimeMS = 0;
 	};
 
+	struct FShadowStats
+	{
+		uint32 DirectionalLightCount = 0;
+		uint32 PointLightCount = 0;
+		uint32 SpotLightCount = 0;
+		uint32 AmbientLightCount = 0;
+
+		uint32 DirectionalShadowCount = 0;
+		uint32 PointShadowCount = 0;
+		uint32 SpotShadowCount = 0;
+
+		size_t DirectionalShadowMemoryBytes = 0;
+		size_t PointShadowMemoryBytes = 0;
+		size_t SpotShadowMemoryBytes = 0;
+
+		FDirectionalShadowConstants DirectionalShadowConstants = {};
+
+		size_t GetTotalShadowMemoryBytes() const
+		{
+			return DirectionalShadowMemoryBytes + PointShadowMemoryBytes + SpotShadowMemoryBytes;
+		}
+	};
+
 private:
 	FMeshBufferManager MeshBufferManager;
 	FWorldSpatialIndex::FPrimitiveFrustumQueryScratch FrustumQueryScratch;
@@ -40,6 +63,7 @@ private:
 	FLineBatcher* LineBatcher = nullptr;
 	FCullingStats LastCullingStats;
 	FDecalStats LastDecalStats;
+	FShadowStats LastShadowStats;
 
 public:
 	void Initialize(ID3D11Device* InDevice) { MeshBufferManager.Create(InDevice); }
@@ -54,10 +78,12 @@ public:
 	void CollectGrid(float GridSpacing, int32 GridHalfLineCount, FRenderBus& RenderBus, bool bOrthographic = false);
 	const FCullingStats& GetLastCullingStats() const { return LastCullingStats; }
 	const FDecalStats& GetLastDecalStats() const { return LastDecalStats; }
+	const FShadowStats& GetLastShadowStats() const { return LastShadowStats; }
 
 private:
 	void ResetCullingStats();
 	void ResetDecalStats();
+	void ResetShadowStats();
 
 	void CollectLight(UWorld* World, FRenderBus& RenderBus, const FFrustum* ViewFrustum = nullptr);
 	void CollectFromActor(AActor* Actor, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus, EWorldType WorldType);

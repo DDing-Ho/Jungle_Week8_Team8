@@ -14,7 +14,7 @@ public:
 	void Execute(float DeltaTime, FRenderer& Renderer) override;
 	const FRenderCollector::FCullingStats& GetViewportCullingStats(int32 ViewportIndex) const;
 	const FRenderCollector::FDecalStats& GetViewportDecalStats(int32 ViewportIndex) const;
-	const FDirectionalShadowConstants& GetViewportShadowConstants(int32 ViewportIndex) const;
+	const FRenderCollector::FShadowStats& GetViewportShadowStats(int32 ViewportIndex) const;
 
 private:
 	/*
@@ -29,5 +29,5 @@ private:
 	FRenderBus Bus;
 	TArray<FRenderCollector::FCullingStats> ViewportCullingStats;
 	TArray<FRenderCollector::FDecalStats> ViewportDecalStats;
-	TArray<FDirectionalShadowConstants> ViewportShadowConstants;
+	TArray<FRenderCollector::FShadowStats> ViewportShadowStats;
 };

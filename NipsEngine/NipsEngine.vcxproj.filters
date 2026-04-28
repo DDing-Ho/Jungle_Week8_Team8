@@ -727,6 +727,7 @@
     </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1375,5 +1376,6 @@
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.h" />
+    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.h" />
   </ItemGroup>
 </Project>
