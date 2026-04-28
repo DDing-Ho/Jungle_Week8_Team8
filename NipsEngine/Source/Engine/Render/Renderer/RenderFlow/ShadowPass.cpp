@@ -1,4 +1,4 @@
-﻿#include "ShadowPass.h"
+#include "ShadowPass.h"
 
 #include "Core/ResourceManager.h"
 #include "UI/EditorConsoleWidget.h"
@@ -241,16 +241,17 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             MakeViewportFromAtlasRect(SpotShadow.AtlasRect, static_cast<float>(FShadowAtlasManager::SpotAtlasResolution));
         Context->DeviceContext->RSSetViewports(1, &ShadowViewport);
 
-        ShaderBinding->SetMatrix4("LightViewProj", SpotShadow.LightViewProj);
-        ShaderBinding->SetFloat("ShadowResolution", SpotShadow.ShadowResolution);
-        ShaderBinding->SetFloat("ShadowBias", SpotShadow.ShadowBias);
-        
-        for (const FRenderCommand& Cmd : Commands)
-        {
-            if (Cmd.Type == ERenderCommandType::PostProcessOutline)
-            {
-                continue;
-            }
+		ShaderBinding->SetMatrix4("LightViewProj", SpotShadow.LightViewProj);
+		ShaderBinding->SetFloat("ShadowResolution", SpotShadow.ShadowResolution);
+		ShaderBinding->SetFloat("ShadowBias", SpotShadow.ShadowBias);
+		ShaderBinding->SetFloat("ShadowFarPlane", SpotShadow.ShadowFarPlane);
+		
+		for (const FRenderCommand& Cmd : Commands)
+		{
+			if (Cmd.Type == ERenderCommandType::PostProcessOutline)
+			{
+				continue;
+			}
 
             if (Cmd.MeshBuffer == nullptr || !Cmd.MeshBuffer->IsValid())
             {

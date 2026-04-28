@@ -1,4 +1,4 @@
-﻿#include "RenderCollector.h"
+#include "RenderCollector.h"
 
 #include "Render/LineBatcher.h"
 #include "Render/Renderer/RenderFlow/ShadowAtlasManager.h"
@@ -462,7 +462,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			// 실제 할당된 타일 크기를 넘겨줌
 			ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
 			ShadowData.ShadowBias = ShadowBias;
-			ShadowData.ShadowSharpen = ShadowSharpen;
+            ShadowData.ShadowSharpen = ShadowSharpen;
+            ShadowData.ShadowFarPlane = FarPlane;
 			
 			RenderBus.AddCastShadowSpotLight(ShadowData);
 			++LastShadowStats.SpotShadowCount;

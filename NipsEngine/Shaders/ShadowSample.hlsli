@@ -84,8 +84,9 @@ float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> Sha
     variance = max(variance, epsilon);
     
     float probability = variance / (variance + (CurrentDepth - d) * (CurrentDepth - d));
-    float lerpFactor = 0.98f;
+    float lerpFactor = 0.2f;
     probability = smoothstep(lerpFactor, 1.0f, probability);
+    probability = pow(probability, 0.75f);
     
     float shadow = probability;
 

@@ -3,7 +3,8 @@ cbuffer SpotShadowBuffer : register(b0)
     row_major float4x4 LightViewProj;
     float ShadowResolution;
     float ShadowBias;
-    float2 SpotShadowPadding;
+    float ShadowFarPlane;
+    float SpotShadowPadding;
 };
 
 cbuffer PerObjectBuffer : register(b1)
@@ -40,6 +41,6 @@ FSpotShadowVSOutput mainVS(FSpotShadowVSInput Input)
 
 float2 mainPS(FSpotShadowVSOutput Input) : SV_Target0
 {
-    float d = Input.ClipPosW.z / Input.ClipPosW.w;
+    float d = saturate(Input.ClipPosW.w / max(ShadowFarPlane, 1.0e-4f));
     return float2(d, d * d);
 }

@@ -80,7 +80,7 @@ struct FSpotShadowConstants
     float ShadowResolution;
     float ShadowBias;
     float SpotShadowSharpen;
-    float Padding;
+    float ShadowFarPlane;
 };
 
 cbuffer SpotShadowInfo : register(b6)
@@ -397,12 +397,13 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
     const int2 AtlasSize = int2(4096, 4096);
     
     const float CurrentDepth = ShadowNDC.z;
+    const float LinearDepth = saturate(ShadowClip.w / max(Shadow.ShadowFarPlane, 1.0e-4f));
     const float Bias = max(LightShadowBias, Shadow.ShadowBias);
     
     if (SpotShadowFilterType == SHADOW_FILTER_TYPE_PCF)
         return SampleShadowPoissonDisk(AtlasUV, CurrentDepth - Bias, SpotShadowMap, AtlasSize, Shadow.SpotShadowSharpen);
     else
-        return SampleShadowVSM(AtlasUV, CurrentDepth - Bias, SpotShadowVSMMap, AtlasSize);
+        return SampleShadowVSM(AtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
 }
 
 void AccumulateVisiblePointLights(float3 WorldPos, float3 N, float3 V, float2 ScreenPos, inout FLightingResult Result)
