@@ -249,7 +249,6 @@ struct FRenderCommand
 	UMaterialInterface* Material = nullptr;
 	uint32 SectionIndexStart = 0;
 	uint32 SectionIndexCount = 0;
-	FDecalConstants DecalConstants = {};
 
 	union
 	{
@@ -257,6 +256,7 @@ struct FRenderCommand
 		FFontConstants Font;
 		FSubUVConstants SubUV;
 		FBillboardConstants Billboard;
+		FDecalConstants Decal;
         FSkyConstants Sky;
         FFogConstants Fog;
         FFXAAConstants FXAA;

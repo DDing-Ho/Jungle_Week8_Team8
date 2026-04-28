@@ -841,7 +841,7 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 				Cmd.SectionIndexCount = Section.IndexCount;
 
 				Cmd.Material = Material;
-				Cmd.DecalConstants.InvDecalWorld = DecalComp->GetDecalMatrix().GetInverse();
+				Cmd.Constants.Decal.InvDecalWorld = DecalComp->GetDecalMatrix().GetInverse();
 
 				RenderBus.AddCommand(ERenderPass::Decal, Cmd);
 			}
