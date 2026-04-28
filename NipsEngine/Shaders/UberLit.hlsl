@@ -169,7 +169,7 @@ float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
     
     int CascadeIndex = GetCascadeIndex(WorldPos);
     
-    float NormalOffsetScale = 0.2f; // Noraml Offset Bias
+    float NormalOffsetScale = 0.3f; // Noraml Offset Bias
     float3 OffsetWorldPos = WorldPos + N * NormalOffsetScale * (1.0f - CosTheta);
     float4 ShadowClip = mul(float4(OffsetWorldPos, 1.0f), LightViewProj[CascadeIndex]);
     
