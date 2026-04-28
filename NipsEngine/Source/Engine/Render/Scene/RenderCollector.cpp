@@ -34,49 +34,49 @@
 namespace
 {
 	// ─────────────────── Constants ───────────────────
-    constexpr float SpotShadowNearPlane = 0.1f;
-    constexpr float SpotShadowBaseResolution = 1024.0f;
+	constexpr float SpotShadowNearPlane = 0.1f;
+	constexpr float SpotShadowBaseResolution = 1024.0f;
 	constexpr size_t ShadowDepthBytesPerPixel = 4;
 	constexpr size_t ShadowVSMBytesPerPixel = 8;
 	constexpr size_t ShadowBytesPerPixel = ShadowDepthBytesPerPixel + ShadowVSMBytesPerPixel;
 
-    // ─────────────────── Vector ───────────────────
-    FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
-    FVector MakeStableUpVector(const FVector& Direction);
+	// ─────────────────── Vector ───────────────────
+	FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
+	FVector MakeStableUpVector(const FVector& Direction);
 
 	// ─────────────────── Shadow ───────────────────
-    float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
-    float MakeSpotShadowResolution(const ULightComponent* LightComponent);
+	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
+	float MakeSpotShadowResolution(const ULightComponent* LightComponent);
 	size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);
-    FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
-    float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
-    int32 ExtractActorNumericSuffix(const AActor* Actor);
-    FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
-    void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
-    void BuildDirectionalShadowViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalShadowConstants& ShadowConstants);
-    struct FSpotShadowCandidate
-    {
-        FRenderLight RenderLight = {};
-        const ULightComponent* LightComponent = nullptr;
-        const USpotLightComponent* SpotLight = nullptr;
+	FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
+	float ComputeSpotShadowPriority(const ULightComponent* LightComponent, const FVector& LightLocation, float AttenuationRadius, const FVector& CameraPosition);
+	int32 ExtractActorNumericSuffix(const AActor* Actor);
+	FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
+	void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
+	void BuildDirectionalShadowViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalShadowConstants& ShadowConstants);
+	struct FSpotShadowCandidate
+	{
+		FRenderLight RenderLight = {};
+		const ULightComponent* LightComponent = nullptr;
+		const USpotLightComponent* SpotLight = nullptr;
 
-        FVector LightDirection = FVector::ZeroVector;
+		FVector LightDirection = FVector::ZeroVector;
 
-        float RequestedResolution = 0.0f;
-        uint32 RequestedTileSize = 0;
-        float PriorityScore = 0.0f;
-    };    
+		float RequestedResolution = 0.0f;
+		uint32 RequestedTileSize = 0;
+		float PriorityScore = 0.0f;
+	};    
 
 	// ─────────────────── Billboard, SubUV ───────────────────
-    FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus);
-    FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus);
+	FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus);
+	FMatrix MakeViewSubUVSelectionMatrix(const USubUVComponent* SubUVComp, const FRenderBus& RenderBus);
 	
-    // ─────────────────── AABB, BVH ───────────────────
+	// ─────────────────── AABB, BVH ───────────────────
 	FColor MakeBVHInternalNodeColor(int32 PathIndexFromLeaf, int32 PathLength);
-    bool UsesCameraDependentRenderBounds(const UPrimitiveComponent* PrimitiveComponent);
-    FAABB BuildQuadAABB(const FMatrix& WorldMatrix);
-    FAABB BuildRenderAABB(const UPrimitiveComponent* PrimitiveComponent, const FRenderBus& RenderBus);
-    
+	bool UsesCameraDependentRenderBounds(const UPrimitiveComponent* PrimitiveComponent);
+	FAABB BuildQuadAABB(const FMatrix& WorldMatrix);
+	FAABB BuildRenderAABB(const UPrimitiveComponent* PrimitiveComponent, const FRenderBus& RenderBus);
+	
 	// ─────────────────── LOD ───────────────────
 	int32 SelectLODLevel(const FVector& CameraPos, const FAABB& Bounds, const FMatrix& ProjMatrix, int32 ValidLODCount);
 }
@@ -100,22 +100,22 @@ void FRenderCollector::ResetShadowStats()
 // Light Collect와 Shadow Collect를 동시에 수행해줍니다.
 void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const FFrustum* ViewFrustum)
 {
-    const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
+	const TArray<FLightSlot>& LightSlots = World->GetWorldLightSlots();
 	int32 Next2DShadowSlice = 0;
 	int32 NextSpotShadowIndex = 0;
 
-    // shadow-casting Spot Light 후보를 잠시 모아두는 배열입니다.
-    // Spot shadow는 "보이는 순서"가 아니라 "중요한 라이트 순서"로 atlas에 넣어야 하므로,
-    // Spot Light를 발견하자마자 바로 할당하지 않고 먼저 후보를 수집합니다.
-    TArray<FSpotShadowCandidate> SpotShadowCandidates;
-    
-    // Spot atlas allocation 상태는 프레임마다 다시 시작함.
-    FShadowAtlasManager::BeginSpotFrame();
-    
+	// shadow-casting Spot Light 후보를 잠시 모아두는 배열입니다.
+	// Spot shadow는 "보이는 순서"가 아니라 "중요한 라이트 순서"로 atlas에 넣어야 하므로,
+	// Spot Light를 발견하자마자 바로 할당하지 않고 먼저 후보를 수집합니다.
+	TArray<FSpotShadowCandidate> SpotShadowCandidates;
+	
+	// Spot atlas allocation 상태는 프레임마다 다시 시작함.
+	FShadowAtlasManager::BeginSpotFrame();
+	
 	for (const FLightSlot& Slot : LightSlots)
 	{
-        if (!Slot.bAlive || !Slot.LightData)
-            continue;
+		if (!Slot.bAlive || !Slot.LightData)
+			continue;
 
 		const ULightComponent* LightComponent = Cast<ULightComponent>(Slot.LightData);
 		if (LightComponent == nullptr || !LightComponent->IsVisible())
@@ -153,8 +153,8 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 				{
 					FDirectionalShadowConstants ShadowConstants;
 					ShadowConstants.ShadowBias = LightComponent->GetShadowBias();
-				    ShadowConstants.bCascadeDebug = RenderBus.GetShowFlags().bCascadeDebug ? 1 : 0;
-				    BuildDirectionalShadowViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, ShadowConstants);
+					ShadowConstants.bCascadeDebug = RenderBus.GetShowFlags().bCascadeDebug ? 1 : 0;
+					BuildDirectionalShadowViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, ShadowConstants);
 
 					RenderBus.SetDirectionalShadow(ShadowConstants);
 					RenderLight.bCastShadows = 1; // uint32
@@ -169,13 +169,13 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderBus.AddLight(RenderLight);
 
 			// TODO: PIE에서도 화살표를 보여주고 있음.. PIE 월드를 감지할 필요가 있다.
-            LineBatcher->AddDirectionalLight(
-                LightComponent->GetWorldLocation(),
-                RenderLight.Direction * -1.0f,
-                LightComponent->GetRightVector(),
+			LineBatcher->AddDirectionalLight(
+				LightComponent->GetWorldLocation(),
+				RenderLight.Direction * -1.0f,
+				LightComponent->GetRightVector(),
 				LightComponent->GetLightColor().ToVector4()
 			);
-            break;
+			break;
 		}
 
 		case ELightType::LightType_Point:
@@ -203,7 +203,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.FalloffExponent = PointLight->GetLightFalloffExponent();
 			RenderBus.AddLight(RenderLight);
 
-		    // TODO : RenderBus.AddShadowCastLight
+			// TODO : RenderBus.AddShadowCastLight
 			break;
 		}
 
@@ -236,9 +236,9 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 				{
 					const float SpotRadian = MathUtil::DegreesToRadians(SpotAngle);
 					const float Offset = Attenuation * 0.5f;
-            
+			
 					Center = LightLocation + (LightDirection * Offset);
-            
+			
 					const float TanAngle = std::tan(SpotRadian);
 					const float BaseRadius = Attenuation * TanAngle;
 
@@ -259,117 +259,117 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			RenderLight.FalloffExponent = SpotLight->GetLightFalloffExponent();
 			RenderLight.SpotInnerCos = std::cos(MathUtil::DegreesToRadians(InnerAngle));
 			RenderLight.SpotOuterCos = std::cos(MathUtil::DegreesToRadians(OuterAngle));
-		    
-		    if (!LightComponent->IsCastShadows())
-		    {
-		        RenderBus.AddLight(RenderLight);
-		        break;
-		    }
-		    
-		    FSpotShadowCandidate Candidate = {};
-		    Candidate.RenderLight = RenderLight;
-		    Candidate.LightComponent = LightComponent;
-		    Candidate.SpotLight = SpotLight;
-		    Candidate.LightDirection = LightDirection;
+			
+			if (!LightComponent->IsCastShadows())
+			{
+				RenderBus.AddLight(RenderLight);
+				break;
+			}
+			
+			FSpotShadowCandidate Candidate = {};
+			Candidate.RenderLight = RenderLight;
+			Candidate.LightComponent = LightComponent;
+			Candidate.SpotLight = SpotLight;
+			Candidate.LightDirection = LightDirection;
 
-		    // 1) 라이트가 원하는 shadow 해상도 계산
-		    Candidate.RequestedResolution = MakeSpotShadowResolution(LightComponent);
+			// 1) 라이트가 원하는 shadow 해상도 계산
+			Candidate.RequestedResolution = MakeSpotShadowResolution(LightComponent);
 
-		    // 2) allocator가 산정한 PoT 타일 크기로 정규화
-		    Candidate.RequestedTileSize = FShadowAtlasManager::SnapSpotTileSize(Candidate.RequestedResolution);
+			// 2) allocator가 산정한 PoT 타일 크기로 정규화
+			Candidate.RequestedTileSize = FShadowAtlasManager::SnapSpotTileSize(Candidate.RequestedResolution);
 
-		    // 3) 후보들에 대해서 priority score 산출
-		    Candidate.PriorityScore = ComputeSpotShadowPriority(
-                LightComponent, LightLocation,
-                Attenuation, RenderBus.GetCameraPosition());
-		    
-		    SpotShadowCandidates.push_back(Candidate);
+			// 3) 후보들에 대해서 priority score 산출
+			Candidate.PriorityScore = ComputeSpotShadowPriority(
+				LightComponent, LightLocation,
+				Attenuation, RenderBus.GetCameraPosition());
+			
+			SpotShadowCandidates.push_back(Candidate);
 			break;
 		}
 		default:
 			break;
 		}
 	}
-    // ----------------------------------------------
-    // A) Priority에 따른 atlas 영역 할당 및 downgrade
-    // ----------------------------------------------
-    // Priority가 높은 라이트부터 atlas에 넣고, 같은 priority라면 큰 타일부터 먼저 넣음.
-    std::sort(SpotShadowCandidates.begin(), SpotShadowCandidates.end(),
-        [](const FSpotShadowCandidate& A, const FSpotShadowCandidate& B)
-        {
-            if (std::fabs(A.PriorityScore - B.PriorityScore) > 1.0e-4f)
-            {
-                return A.PriorityScore > B.PriorityScore;
-            }
-            if (A.RequestedTileSize != B.RequestedTileSize)
-            {
-                return A.RequestedTileSize > B.RequestedTileSize;
-            }
-            return A.RenderLight.Intensity > B.RenderLight.Intensity;
-        });
-    
-    // 정렬된 순서대로 atlas 영역을 배정.
-    for (FSpotShadowCandidate& Candidate : SpotShadowCandidates)
-    {
-        FSpotAtlasSlotDesc SpotSlot = {};
-        bool bAllocated = false;
-        
-        // 1차 시도: 라이트가 원한 타일 크기로 먼저 배정
-        uint32 AttemptTileSize = Candidate.RequestedTileSize;
-        while (true)
-        {
-            if (FShadowAtlasManager::RequestSpotSlot(AttemptTileSize, SpotSlot))
-            {
-                bAllocated = true;
-                break;
-            }
-            
-            // 실패하면 절반 크기로 낮춰서 다시 시도
-            if (AttemptTileSize <= FShadowAtlasManager::MinSpotTileResolution)
-            {
-                break;
-            }
-            
-            AttemptTileSize >>= 1u;
-            if (AttemptTileSize < FShadowAtlasManager::MinSpotTileResolution)
-            {
-                AttemptTileSize = FShadowAtlasManager::MinSpotTileResolution;
-            }
-        }
-        
-        FRenderLight FinalLight = Candidate.RenderLight;
-        
-        if (bAllocated)
-        {
-            const int32 ShadowMapIndex = NextSpotShadowIndex++;
-            const float NearPlane = SpotShadowNearPlane;
-            const float FarPlane = MakeSpotShadowFarPlane(Candidate.SpotLight);
-            const float ShadowBias = Candidate.LightComponent->GetShadowBias();
-            const int32 DebugLightId = ExtractActorNumericSuffix(Candidate.LightComponent->GetOwner());
-            
-            FinalLight.bCastShadows = 1;
-            FinalLight.ShadowMapIndex = ShadowMapIndex;
-            FinalLight.ShadowBias = ShadowBias;
+	// ----------------------------------------------
+	// A) Priority에 따른 atlas 영역 할당 및 downgrade
+	// ----------------------------------------------
+	// Priority가 높은 라이트부터 atlas에 넣고, 같은 priority라면 큰 타일부터 먼저 넣음.
+	std::sort(SpotShadowCandidates.begin(), SpotShadowCandidates.end(),
+		[](const FSpotShadowCandidate& A, const FSpotShadowCandidate& B)
+		{
+			if (std::fabs(A.PriorityScore - B.PriorityScore) > 1.0e-4f)
+			{
+				return A.PriorityScore > B.PriorityScore;
+			}
+			if (A.RequestedTileSize != B.RequestedTileSize)
+			{
+				return A.RequestedTileSize > B.RequestedTileSize;
+			}
+			return A.RenderLight.Intensity > B.RenderLight.Intensity;
+		});
+	
+	// 정렬된 순서대로 atlas 영역을 배정.
+	for (FSpotShadowCandidate& Candidate : SpotShadowCandidates)
+	{
+		FSpotAtlasSlotDesc SpotSlot = {};
+		bool bAllocated = false;
+		
+		// 1차 시도: 라이트가 원한 타일 크기로 먼저 배정
+		uint32 AttemptTileSize = Candidate.RequestedTileSize;
+		while (true)
+		{
+			if (FShadowAtlasManager::RequestSpotSlot(AttemptTileSize, SpotSlot))
+			{
+				bAllocated = true;
+				break;
+			}
+			
+			// 실패하면 절반 크기로 낮춰서 다시 시도
+			if (AttemptTileSize <= FShadowAtlasManager::MinSpotTileResolution)
+			{
+				break;
+			}
+			
+			AttemptTileSize >>= 1u;
+			if (AttemptTileSize < FShadowAtlasManager::MinSpotTileResolution)
+			{
+				AttemptTileSize = FShadowAtlasManager::MinSpotTileResolution;
+			}
+		}
+		
+		FRenderLight FinalLight = Candidate.RenderLight;
+		
+		if (bAllocated)
+		{
+			const int32 ShadowMapIndex = NextSpotShadowIndex++;
+			const float NearPlane = SpotShadowNearPlane;
+			const float FarPlane = MakeSpotShadowFarPlane(Candidate.SpotLight);
+			const float ShadowBias = Candidate.LightComponent->GetShadowBias();
+			const int32 DebugLightId = ExtractActorNumericSuffix(Candidate.LightComponent->GetOwner());
+			
+			FinalLight.bCastShadows = 1;
+			FinalLight.ShadowMapIndex = ShadowMapIndex;
+			FinalLight.ShadowBias = ShadowBias;
 
-            SpotSlot.DebugLightId = DebugLightId;
-            FShadowAtlasManager::UpdateSpotSlotDebugLightId(SpotSlot.TileIndex, DebugLightId);
-            
-            FSpotShadowConstants ShadowData = {};
-            ShadowData.LightViewProj = MakeSpotShadowViewProjection(Candidate.SpotLight, Candidate.LightDirection, NearPlane, FarPlane);
-            ShadowData.AtlasRect = SpotSlot.AtlasRect;
-            
-            // 실제 할당된 타일 크기를 넘겨줌
-            ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
-            ShadowData.ShadowBias = ShadowBias;
-            
-            RenderBus.AddCastShadowSpotLight(ShadowData);
+			SpotSlot.DebugLightId = DebugLightId;
+			FShadowAtlasManager::UpdateSpotSlotDebugLightId(SpotSlot.TileIndex, DebugLightId);
+			
+			FSpotShadowConstants ShadowData = {};
+			ShadowData.LightViewProj = MakeSpotShadowViewProjection(Candidate.SpotLight, Candidate.LightDirection, NearPlane, FarPlane);
+			ShadowData.AtlasRect = SpotSlot.AtlasRect;
+			
+			// 실제 할당된 타일 크기를 넘겨줌
+			ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
+			ShadowData.ShadowBias = ShadowBias;
+			
+			RenderBus.AddCastShadowSpotLight(ShadowData);
 			++LastShadowStats.SpotShadowCount;
 			LastShadowStats.SpotShadowMemoryBytes += CalculateShadowTileMemory(SpotSlot.Width, SpotSlot.Height);
-        }
+		}
 
-        // 끝까지 atlas에 못 들어간 경우에는 shadow만 빠지고 light만 살아있음.
-        RenderBus.AddLight(FinalLight);
-    }
+		// 끝까지 atlas에 못 들어간 경우에는 shadow만 빠지고 light만 살아있음.
+		RenderBus.AddLight(FinalLight);
+	}
 }
 
 void FRenderCollector::CollectSelection(const TArray<AActor*>& SelectedActors, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus)
@@ -388,7 +388,7 @@ void FRenderCollector::CollectSelection(const TArray<AActor*>& SelectedActors, c
 
 		UMaterial* Material = Cast<UMaterial>(PostProcessCmd.Material);
 		Material->SetVector2("OutlineViewportSize", RenderBus.GetViewportSize());
-        Material->SetVector2("OutlineViewportOrigin", RenderBus.GetViewportOrigin());
+		Material->SetVector2("OutlineViewportOrigin", RenderBus.GetViewportOrigin());
 		Material->DepthStencilType = EDepthStencilType::Default;
 		Material->RasterizerType = ERasterizerType::SolidBackCull;
 		Material->BlendType = EBlendType::AlphaBlend;
@@ -568,48 +568,48 @@ bool FRenderCollector::CollectFromSelectedActor(AActor* Actor, const FShowFlags&
 		CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, SeenBVHNodeIndices);
 	}
 
-    // 선택된 Light Components의 Bounding 시각화
-    for (UActorComponent* Component : Actor->GetComponents())
-    {
-        const ULightComponent* LightComponent = Cast<ULightComponent>(Component);
-        if (LightComponent == nullptr || !LightComponent->IsVisible())
-        {
-            continue;
-        }
+	// 선택된 Light Components의 Bounding 시각화
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		const ULightComponent* LightComponent = Cast<ULightComponent>(Component);
+		if (LightComponent == nullptr || !LightComponent->IsVisible())
+		{
+			continue;
+		}
 
-        switch (LightComponent->GetLightType())
-        {
-        case ELightType::LightType_Directional:
-        case ELightType::LightType_AmbientLight:
-        {
-            break;
-        }
+		switch (LightComponent->GetLightType())
+		{
+		case ELightType::LightType_Directional:
+		case ELightType::LightType_AmbientLight:
+		{
+			break;
+		}
 
-        case ELightType::LightType_Point:
-        {
-            const UPointLightComponent* PointLightComponent = Cast<UPointLightComponent>(LightComponent);
-            LineBatcher->AddPointLight(
-                PointLightComponent->GetWorldLocation(),
-                PointLightComponent->GetAttenuationRadius(),
-                PointLightComponent->GetRightVector(),
-                PointLightComponent->GetUpVector());
-            break;
-        }
+		case ELightType::LightType_Point:
+		{
+			const UPointLightComponent* PointLightComponent = Cast<UPointLightComponent>(LightComponent);
+			LineBatcher->AddPointLight(
+				PointLightComponent->GetWorldLocation(),
+				PointLightComponent->GetAttenuationRadius(),
+				PointLightComponent->GetRightVector(),
+				PointLightComponent->GetUpVector());
+			break;
+		}
 
-        case ELightType::LightType_Spot:
-        {
-            const USpotLightComponent* SpotLightComponent = Cast<USpotLightComponent>(LightComponent);
-            LineBatcher->AddSpotLight(
-                SpotLightComponent->GetWorldLocation(),
-                SpotLightComponent->GetUpVector() * -1.0f,
-                SpotLightComponent->GetRightVector() * -1.0f,
-                SpotLightComponent->GetAttenuationRadius(),
-                SpotLightComponent->GetInnerConeAngle(),
-                SpotLightComponent->GetOuterConeAngle());
-            break;
-        }
-        }
-    }
+		case ELightType::LightType_Spot:
+		{
+			const USpotLightComponent* SpotLightComponent = Cast<USpotLightComponent>(LightComponent);
+			LineBatcher->AddSpotLight(
+				SpotLightComponent->GetWorldLocation(),
+				SpotLightComponent->GetUpVector() * -1.0f,
+				SpotLightComponent->GetRightVector() * -1.0f,
+				SpotLightComponent->GetAttenuationRadius(),
+				SpotLightComponent->GetInnerConeAngle(),
+				SpotLightComponent->GetOuterConeAngle());
+			break;
+		}
+		}
+	}
 
 	return bHasSelectionMask;
 }
@@ -641,23 +641,23 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 		if (!StaticMesh || !StaticMesh->HasValidMeshData()) return;
 
 		// 1. 카메라 정보 및 AABB 가져오기
-        FVector CameraPos = RenderBus.GetCameraPosition();
-        FMatrix ProjMatrix = RenderBus.GetProj();
-        FAABB Bounds = StaticMeshComp->GetWorldAABB();
-        const int32 ValidLODCount = StaticMesh->GetValidLODCount();
+		FVector CameraPos = RenderBus.GetCameraPosition();
+		FMatrix ProjMatrix = RenderBus.GetProj();
+		FAABB Bounds = StaticMeshComp->GetWorldAABB();
+		const int32 ValidLODCount = StaticMesh->GetValidLODCount();
 
-        // 2. LOD 레벨 계산
+		// 2. LOD 레벨 계산
 		int32 SelectedLOD = 0; // 기본값은 항상 원본(최고 화질)
-        if (ShowFlags.bEnableLOD)
-        {
-            SelectedLOD = SelectLODLevel(CameraPos, Bounds, ProjMatrix, ValidLODCount);
-        }
+		if (ShowFlags.bEnableLOD)
+		{
+			SelectedLOD = SelectLODLevel(CameraPos, Bounds, ProjMatrix, ValidLODCount);
+		}
 
 		FMeshBuffer* MeshBuffer = MeshBufferManager.GetStaticMeshBuffer(StaticMesh, SelectedLOD);
-        if (!MeshBuffer) return;
+		if (!MeshBuffer) return;
 
-        const FStaticMesh* MeshData = StaticMesh->GetMeshData(SelectedLOD);
-        const TArray<FStaticMeshSection>& Sections = MeshData->Sections;
+		const FStaticMesh* MeshData = StaticMesh->GetMeshData(SelectedLOD);
+		const TArray<FStaticMeshSection>& Sections = MeshData->Sections;
 
 		for (int32 SectionIdx = 0; SectionIdx < static_cast<int32>(Sections.size()); ++SectionIdx)
 		{
@@ -690,17 +690,17 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 
 			if (Material->GetEffectiveLightingModel() == ELightingModel::Toon)
 			{
-                FRenderCommand OutlineCmd = {};
-                OutlineCmd.Type = ERenderCommandType::ToonOutline;
-                OutlineCmd.MeshBuffer = MeshBuffer;
-                OutlineCmd.PerObjectConstants = FPerObjectConstants{
-                    Primitive->GetWorldMatrix()
-                };
-                OutlineCmd.SectionIndexStart = Section.StartIndex;
-                OutlineCmd.SectionIndexCount = Section.IndexCount;
-                OutlineCmd.Material = Material;
+				FRenderCommand OutlineCmd = {};
+				OutlineCmd.Type = ERenderCommandType::ToonOutline;
+				OutlineCmd.MeshBuffer = MeshBuffer;
+				OutlineCmd.PerObjectConstants = FPerObjectConstants{
+					Primitive->GetWorldMatrix()
+				};
+				OutlineCmd.SectionIndexStart = Section.StartIndex;
+				OutlineCmd.SectionIndexCount = Section.IndexCount;
+				OutlineCmd.Material = Material;
 
-                RenderBus.AddCommand(ERenderPass::ToonOutline, OutlineCmd);
+				RenderBus.AddCommand(ERenderPass::ToonOutline, OutlineCmd);
 			}
 		}
 
@@ -857,27 +857,27 @@ void FRenderCollector::CollectFromComponent(UPrimitiveComponent* Primitive, cons
 		break;
 	}
 
-    case EPrimitiveType::EPT_FOG:
-    {
-        if (!ShowFlags.bFog)
-            return;
-        UHeightFogComponent* HeightFogComp = static_cast<UHeightFogComponent*>(Primitive);
+	case EPrimitiveType::EPT_FOG:
+	{
+		if (!ShowFlags.bFog)
+			return;
+		UHeightFogComponent* HeightFogComp = static_cast<UHeightFogComponent*>(Primitive);
 
-        FRenderCommand Cmd = {};
-        Cmd.Type = ERenderCommandType::Primitive;
-        Cmd.Constants.Fog.FogDensity = HeightFogComp->GetFogDensity();
-        Cmd.Constants.Fog.FogColor = HeightFogComp->GetFogInscatteringColor();
-        Cmd.Constants.Fog.HeightFalloff = HeightFogComp->GetHeightFalloff();
-        Cmd.Constants.Fog.FogHeight = HeightFogComp->GetFogHeight();
-        Cmd.Constants.Fog.FogStartDistance = HeightFogComp->GetFogStartDistance();
-        Cmd.Constants.Fog.FogMaxOpacity = HeightFogComp->GetFogMaxOpacity();
-        Cmd.Constants.Fog.FogCutoffDistance = HeightFogComp->GetFogCutoffDistance();
-        //Cmd.BlendState = EBlendState::AlphaBlend;
-        //Cmd.DepthStencilState = EDepthStencilState::Default;
+		FRenderCommand Cmd = {};
+		Cmd.Type = ERenderCommandType::Primitive;
+		Cmd.Constants.Fog.FogDensity = HeightFogComp->GetFogDensity();
+		Cmd.Constants.Fog.FogColor = HeightFogComp->GetFogInscatteringColor();
+		Cmd.Constants.Fog.HeightFalloff = HeightFogComp->GetHeightFalloff();
+		Cmd.Constants.Fog.FogHeight = HeightFogComp->GetFogHeight();
+		Cmd.Constants.Fog.FogStartDistance = HeightFogComp->GetFogStartDistance();
+		Cmd.Constants.Fog.FogMaxOpacity = HeightFogComp->GetFogMaxOpacity();
+		Cmd.Constants.Fog.FogCutoffDistance = HeightFogComp->GetFogCutoffDistance();
+		//Cmd.BlendState = EBlendState::AlphaBlend;
+		//Cmd.DepthStencilState = EDepthStencilState::Default;
 
-        RenderBus.AddCommand(ERenderPass::Fog, Cmd);
-        break;
-    }
+		RenderBus.AddCommand(ERenderPass::Fog, Cmd);
+		break;
+	}
 	case EPrimitiveType::EPT_SKY:
 	{
 		if (!RenderBus.GetCommands(ERenderPass::Sky).empty())
@@ -1044,7 +1044,7 @@ void FRenderCollector::CollectWorld(UWorld* World, const FShowFlags& ShowFlags, 
 			}
 
 			++LastCullingStats.FallbackPassedPrimitiveCount;
-            CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
+			CollectFromComponent(Primitive, ShowFlags, ViewMode, RenderBus, World->GetWorldType());
 		}
 	}
 }
@@ -1108,52 +1108,52 @@ namespace
 		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
 		return LightView * LightProjection;
 	}
-    
-    /* 밝을수록/반경이 클수록/카메라에 가까울수록 점수를 크게 주도록 합니다. */
-    float ComputeSpotShadowPriority(
-        const ULightComponent* LightComponent,
-        const FVector& LightLocation,
-        float AttenuationRadius,
-        const FVector& CameraPosition)
-	{
-	    const FVector ToCamera = LightLocation - CameraPosition;
-	    const float DistanceSq = std::max(FVector::DotProduct(ToCamera, ToCamera), 1.0f);
-	    
-	    const float ScreenCoverage = std::clamp((AttenuationRadius * AttenuationRadius) / DistanceSq, 0.05f, 8.0f);
 	
-	    return std::max(LightComponent->GetIntensity(), 0.0f) * ScreenCoverage;
+	/* 밝을수록/반경이 클수록/카메라에 가까울수록 점수를 크게 주도록 합니다. */
+	float ComputeSpotShadowPriority(
+		const ULightComponent* LightComponent,
+		const FVector& LightLocation,
+		float AttenuationRadius,
+		const FVector& CameraPosition)
+	{
+		const FVector ToCamera = LightLocation - CameraPosition;
+		const float DistanceSq = std::max(FVector::DotProduct(ToCamera, ToCamera), 1.0f);
+		
+		const float ScreenCoverage = std::clamp((AttenuationRadius * AttenuationRadius) / DistanceSq, 0.05f, 8.0f);
+	
+		return std::max(LightComponent->GetIntensity(), 0.0f) * ScreenCoverage;
 	}
 
-    int32 ExtractActorNumericSuffix(const AActor* Actor)
-    {
-        if (Actor == nullptr)
-        {
-            return -1;
-        }
+	int32 ExtractActorNumericSuffix(const AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return -1;
+		}
 
-        const FString ActorName = Actor->GetFName().ToString();
-        const size_t UnderscorePos = ActorName.find_last_of('_');
-        if (UnderscorePos == FString::npos || UnderscorePos + 1 >= ActorName.size())
-        {
-            return -1;
-        }
+		const FString ActorName = Actor->GetFName().ToString();
+		const size_t UnderscorePos = ActorName.find_last_of('_');
+		if (UnderscorePos == FString::npos || UnderscorePos + 1 >= ActorName.size())
+		{
+			return -1;
+		}
 
-        int32 Value = 0;
-        bool bHasDigit = false;
-        for (size_t Index = UnderscorePos + 1; Index < ActorName.size(); ++Index)
-        {
-            const unsigned char Ch = static_cast<unsigned char>(ActorName[Index]);
-            if (!std::isdigit(Ch))
-            {
-                return -1;
-            }
+		int32 Value = 0;
+		bool bHasDigit = false;
+		for (size_t Index = UnderscorePos + 1; Index < ActorName.size(); ++Index)
+		{
+			const unsigned char Ch = static_cast<unsigned char>(ActorName[Index]);
+			if (!std::isdigit(Ch))
+			{
+				return -1;
+			}
 
-            bHasDigit = true;
-            Value = (Value * 10) + static_cast<int32>(Ch - '0');
-        }
+			bHasDigit = true;
+			Value = (Value * 10) + static_cast<int32>(Ch - '0');
+		}
 
-        return bHasDigit ? Value : -1;
-    }
+		return bHasDigit ? Value : -1;
+	}
 
 	/* Frustum 근평면, 원평면 꼭짓점 기준으로 비례식을 세워서 TargetDepth 깊이의 절단면의 꼭짓점을 찾습니다. */
 	FVector InterpolateFrustumCorner(
@@ -1343,15 +1343,15 @@ namespace
 		switch (PrimitiveComponent->GetPrimitiveType())
 		{
 		case EPrimitiveType::EPT_Billboard:
-        {
-            const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
-            return BuildQuadAABB(UBillboardComponent::MakeBillboardWorldMatrix(
-                BillboardComponent->GetWorldLocation(),
-                FVector(0.00f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
-                RenderBus.GetCameraForward(),
-                RenderBus.GetCameraRight(),
-                RenderBus.GetCameraUp()));
-        }
+		{
+			const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
+			return BuildQuadAABB(UBillboardComponent::MakeBillboardWorldMatrix(
+				BillboardComponent->GetWorldLocation(),
+				FVector(0.00f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
+				RenderBus.GetCameraForward(),
+				RenderBus.GetCameraRight(),
+				RenderBus.GetCameraUp()));
+		}
 		case EPrimitiveType::EPT_Text:
 		{
 			const UTextRenderComponent* TextComp = static_cast<const UTextRenderComponent*>(PrimitiveComponent);
