@@ -41,7 +41,7 @@ namespace
 	constexpr size_t ShadowBytesPerPixel = ShadowDepthBytesPerPixel + ShadowVSMBytesPerPixel;
     
     constexpr float PointShadowNearPlane = 0.1f;
-    constexpr uint32 PointShadowResolution = 512;
+    constexpr float PointShadowBaseResolution = 512.0f;
     constexpr int32 MaxPointShadowCount = 8;
 
 	// ─────────────────── Vector ───────────────────
@@ -67,6 +67,7 @@ namespace
 
     float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
     float MakeSpotShadowResolution(const ULightComponent* LightComponent);
+    float MakePointShadowResolution(const ULightComponent* LightComponent);
     size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);    
     FMatrix MakeSpotShadowViewProjection(const USpotLightComponent* SpotLight, const FVector& LightDirection, float NearPlane, float FarPlane);
     void MakePointShadowViewProjections(const FVector& LightPosition, float NearPlane, float FarPlane, FMatrix OutViewProj[6]);    
@@ -271,8 +272,11 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 		        break;
 		    }
 		    
+		    const float RequestedPointResolution = MakePointShadowResolution(LightComponent);
+		    const uint32 PointTileResolution = FShadowAtlasManager::SnapPointTileSize(RequestedPointResolution);
+
 		    FPointAtlasSlotDesc PointAtlasSlot = {};
-		    if (!FShadowAtlasManager::RequestPointAtlasSlot(PointAtlasSlot))
+		    if (!FShadowAtlasManager::RequestPointAtlasSlot(PointTileResolution, PointAtlasSlot))
 		    {
 		        RenderBus.AddLight(RenderLight);
 		        break;
@@ -298,10 +302,15 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 		    }
 
 		    ShadowData.ShadowBias = ShadowBias;
-		    ShadowData.ShadowResolution = static_cast<float>(FShadowAtlasManager::PointAtlasTileResolution);
+		    ShadowData.ShadowResolution = static_cast<float>(PointAtlasSlot.TileResolution);
 		    ShadowData.AtlasIndex = PointAtlasSlot.CubeIndex;
 		    ShadowData.bHasShadowMap = 1;
 
+		    ++LastShadowStats.PointShadowCount;
+		    LastShadowStats.PointShadowMemoryBytes += CalculateShadowTileMemory(
+                PointAtlasSlot.TileResolution,
+                PointAtlasSlot.TileResolution) * FShadowAtlasManager::PointCubeFaceCount;
+		    
 		    RenderBus.AddCastPointShadowLight(ShadowData);
 		    RenderBus.AddLight(RenderLight);
 		    break;
@@ -1323,6 +1332,11 @@ namespace
 			MakeStableUpVector(Direction));
 		const FMatrix LightProjection = FMatrix::MakePerspectiveFovLH(FovY, 1.0f, NearPlane, FarPlane);
 		return LightView * LightProjection;
+	}
+
+    float MakePointShadowResolution(const ULightComponent* LightComponent)
+	{
+	    return std::max(1.0f, PointShadowBaseResolution * LightComponent->GetShadowResolutionScale());
 	}
 
     void MakePointShadowViewProjections(

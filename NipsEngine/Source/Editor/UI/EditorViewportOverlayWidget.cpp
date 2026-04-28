@@ -888,12 +888,6 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
 				const TArray<FPointAtlasSlotDesc>& ActivePointSlots = FShadowAtlasManager::GetActivePointSlots();
 				for (const FPointAtlasSlotDesc& Slot : ActivePointSlots)
 				{
-					const FVector4& FirstRect = Slot.FaceAtlasRects[0];
-					float BlockMinX = Min.x + FirstRect.X * PreviewSize;
-					float BlockMinY = Min.y + FirstRect.Y * PreviewSize;
-					float BlockMaxX = Min.x + (FirstRect.X + FirstRect.Z) * PreviewSize;
-					float BlockMaxY = Min.y + (FirstRect.Y + FirstRect.W) * PreviewSize;
-
 					for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
 					{
 						const FVector4& Rect = Slot.FaceAtlasRects[FaceIndex];
@@ -903,20 +897,17 @@ float FEditorViewportOverlayWidget::RenderShadowAtlasWindow(int32 ViewportIndex,
 						const float X1 = Min.x + (Rect.X + Rect.Z) * PreviewSize;
 						const float Y1 = Min.y + (Rect.Y + Rect.W) * PreviewSize;
 
-						BlockMinX = std::min(BlockMinX, X0);
-						BlockMinY = std::min(BlockMinY, Y0);
-						BlockMaxX = std::max(BlockMaxX, X1);
-						BlockMaxY = std::max(BlockMaxY, Y1);
-
 						DrawList->AddRect(ImVec2(X0, Y0), ImVec2(X1, Y1), IM_COL32(80, 190, 255, 220), 0.0f, 0, 1.5f);
 						DrawList->AddText(ImVec2(X0 + 4.0f, Y0 + 4.0f), IM_COL32(80, 190, 255, 255), GetPointFaceLabel(FaceIndex));
 					}
+				    
+				    const FVector4& FirstRect = Slot.FaceAtlasRects[0];
+				    const float LabelX = Min.x + FirstRect.X * PreviewSize + 4.0f;
+				    const float LabelY = Min.y + FirstRect.Y * PreviewSize + 18.0f;
 
-					DrawList->AddRect(ImVec2(BlockMinX, BlockMinY), ImVec2(BlockMaxX, BlockMaxY), IM_COL32(0, 255, 255, 255), 0.0f, 0, 2.0f);
-
-					char Label[32];
-					snprintf(Label, sizeof(Label), "P%u", Slot.CubeIndex);
-					DrawList->AddText(ImVec2(BlockMinX + 4.0f, BlockMinY - 18.0f), IM_COL32(0, 255, 255, 255), Label);
+				    char Label[32];
+				    snprintf(Label, sizeof(Label), "P%u (%u)", Slot.CubeIndex, Slot.TileResolution);
+				    DrawList->AddText(ImVec2(LabelX, LabelY), IM_COL32(0, 255, 255, 255), Label);
 				}
 			}
 		}
