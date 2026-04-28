@@ -340,6 +340,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			const float NearPlane = SpotShadowNearPlane;
 			const float FarPlane = MakeSpotShadowFarPlane(Candidate.SpotLight);
 			const float ShadowBias = Candidate.LightComponent->GetShadowBias();
+            const float ShadowSharpen = Candidate.LightComponent->GetShadowSharpen();
 			const int32 DebugLightId = ExtractActorNumericSuffix(Candidate.LightComponent->GetOwner());
 			
 			FinalLight.bCastShadows = 1;
@@ -356,6 +357,7 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 			// 실제 할당된 타일 크기를 넘겨줌
 			ShadowData.ShadowResolution = static_cast<float>(SpotSlot.Width);
 			ShadowData.ShadowBias = ShadowBias;
+            ShadowData.ShadowSharpen = ShadowSharpen;
 			
 			RenderBus.AddCastShadowSpotLight(ShadowData);
 			++LastShadowStats.SpotShadowCount;

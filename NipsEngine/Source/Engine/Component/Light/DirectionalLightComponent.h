@@ -22,6 +22,6 @@ public:
 	float GetCascadeSplitWeight() const { return CascadeSplitWeight;  }
 
 private:
-	float ShadowDistance = 1000.0f; // 빛마다 Cascade Split을 다르게 조정할 수 있으므로 static constexpr로 선언하지 않는다.
+	float ShadowDistance = 500.0f; // 빛마다 Cascade Split을 다르게 조정할 수 있으므로 static constexpr로 선언하지 않는다.
 	float CascadeSplitWeight = 0.5f; // 0.0f면 선형 분할하며, 1.0f면 로그 분할(가까울수록 좁게, 멀수록 크게)한다.
 };

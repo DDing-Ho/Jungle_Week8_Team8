@@ -39,12 +39,12 @@ float SampleShadow(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowM
 }
 
 // PCF (Poisson Disk Sampling)
-float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowMap, int2 AtlasSize)
+float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<float> ShadowMap, int2 AtlasSize, float Sharpen)
 {
     float2 TexelSize = 1.0f / (float2) AtlasSize;
     
     float Shadow = 0.0f;
-    float Spread = 2.0f;
+    float Spread = (1.0f - Sharpen) * 2.0f;
     
     // Random Rotation: 각 픽셀마다 다른 패턴이 되도록 샘플링 데이터 회전
     // 화이트 노이즈 생성

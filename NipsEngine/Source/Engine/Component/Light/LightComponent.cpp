@@ -97,9 +97,9 @@ void ULightComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
     ULightComponentBase::GetEditableProperties(OutProps);
 
     OutProps.push_back({ "Shadow Resolution Scale", EPropertyType::Float, &ShadowResolutionScale, 0.125f, 4.0f, 0.125f });
-    OutProps.push_back({ "Shadow Bias", EPropertyType::Float, &ShadowBias, 0.0f, 0.5f, 0.001f });
-    OutProps.push_back({ "Shadow Slope Bias", EPropertyType::Float, &ShadowSlopeBias, 0.0f, 0.5f, 0.001f });
-    OutProps.push_back({ "Shadow Sharpen", EPropertyType::Float, &ShadowSharpen, 0.0f, 1.0f, 0.05f });
+    OutProps.push_back({ "Shadow Bias", EPropertyType::Float, &ShadowBias, 0.0f, 1.0f, 0.001f });
+    OutProps.push_back({ "Shadow Slope Bias", EPropertyType::Float, &ShadowSlopeBias, 0.0f, 3.0f, 0.01f });
+    OutProps.push_back({ "Shadow Sharpen", EPropertyType::Float, &ShadowSharpen, 0.0f, 1.0f, 0.01f });
     // 참고: LightType은 사용자가 수정하지 못하도록 UI 노출에서 제외합니다.
 	// 참고: bTexelSnapped는 Ambient Light Component에는 해당되지 않으므로 하위 클래스에서 기록합니다.
 }

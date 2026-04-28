@@ -41,6 +41,7 @@ enum class ERenderPass : uint32
 {
 	Sky,
 	// LightCullingPass는 특정 물체를 그리는 것이 아니므로 포함하지 않는다.
+	ShadowCasters,
     Shadow,
 	Opaque,
 	Decal,

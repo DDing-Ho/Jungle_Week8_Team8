@@ -240,7 +240,8 @@ struct FSpotShadowConstants
     FVector4 AtlasRect = FVector4(0.0f, 0.0f, 1.0f, 1.0f);
     float ShadowResolution = 0.0f;
     float ShadowBias = 0.0f;
-    float Padding[2] = { 0.0f, 0.0f };
+    float ShadowSharpen = 0.0f;
+    float Padding = 0.0f;
 };
 
 static_assert(sizeof(FSpotShadowConstants) == 96, "FSpotShadowConstants layout must match the shadow pass GPU layout.");
