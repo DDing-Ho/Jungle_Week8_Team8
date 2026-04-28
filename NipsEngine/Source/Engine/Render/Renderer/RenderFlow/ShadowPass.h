@@ -24,6 +24,7 @@ public:
 private:
 	bool EnsureDirectionalShadowResources(ID3D11Device* Device, uint32 CascadeCount);
     bool EnsureSpotShadowResources(ID3D11Device* Device);
+	ID3D11RasterizerState* GetOrCreateShadowRasterizerState(ID3D11Device* Device, bool bNoCull);
 
 private:
 	// ── Cascade Shadow Map (Directional Light) ─────────────────
@@ -39,6 +40,9 @@ private:
     TComPtr<ID3D11ShaderResourceView> SpotShadowSRV;
 
 	std::shared_ptr<FShaderBindingInstance> ShaderBinding;
+
+	TComPtr<ID3D11RasterizerState> ShadowBackCullRasterizerState;
+	TComPtr<ID3D11RasterizerState> ShadowNoCullRasterizerState;
 	
 	// ── Shadow Atlas Manager ────────────────────────────────────
     FShadowAtlasManager ShadowAtlasManager;

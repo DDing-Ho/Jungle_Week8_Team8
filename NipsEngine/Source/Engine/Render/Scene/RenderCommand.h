@@ -151,11 +151,11 @@ struct FFogConstants
 	FVector4 FogColor;
     float    FogDensity;
     float    HeightFalloff;
-    float        FogHeight;
-    float        FogStartDistance;
-    float        FogCutoffDistance;
-    float        FogMaxOpacity;
-    float        Padding[2];
+    float    FogHeight;
+    float    FogStartDistance;
+    float    FogCutoffDistance;
+    float    FogMaxOpacity;
+    float    Padding[2];
 };
 
 struct FFogPassConstants
@@ -215,6 +215,12 @@ static_assert(sizeof(FGPULight) == 80, "FGPULight layout must match the HLSL str
 
 #define MAX_CASCADE_COUNT 4 // 4개 고정
 
+namespace DirectionalShadowModeValue
+{
+    constexpr uint32 CSM = 0u;
+    constexpr uint32 PSM = 1u;
+}
+
 struct FDirectionalShadowConstants
 {
     FMatrix LightViewProj[MAX_CASCADE_COUNT]; // 4 cascades, 64 * 4 = 256B
@@ -227,8 +233,9 @@ struct FDirectionalShadowConstants
     uint32 bCascadeDebug = 0;                 // 4B
 
     uint32 bHasShadowMap = 0;                 // 4B
-    uint32 ShadowFilterType = 0;
-    float Padding[2] = { 0.0f, 0.0f };
+    uint32 ShadowFilterType = 0;              // 4B
+    uint32 ShadowMode = DirectionalShadowModeValue::CSM; // 4B
+    float Padding = 0.0f;                     // 4B
 };
 
 static_assert(sizeof(FDirectionalShadowConstants) % 16 == 0, "FDirectionalShadowConstants must be 16-byte aligned");

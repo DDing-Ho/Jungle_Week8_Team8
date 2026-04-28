@@ -43,8 +43,24 @@ namespace
 	// ─────────────────── Vector ───────────────────
 	FVector MakeLightColorVector(const ULightComponentBase* LightComponent);
 	FVector MakeStableUpVector(const FVector& Direction);
+	FVector4 TransformVector4ByMatrix(const FVector4& Vector, const FMatrix& Matrix);
 
 	// ─────────────────── Shadow ───────────────────
+	struct FDirectionalCSMBuildResult
+	{
+		FMatrix LightViewProj[MAX_CASCADE_COUNT];
+		FVector4 SplitDistances;
+		FVector4 CascadeRadius;
+	};
+
+	struct FDirectionalPSMBuildResult
+	{
+		FMatrix LightViewProj;
+	};
+
+	static_assert(static_cast<uint32>(EShadowMode::CSM) == DirectionalShadowModeValue::CSM);
+	static_assert(static_cast<uint32>(EShadowMode::PSM) == DirectionalShadowModeValue::PSM);
+
 	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight);
 	float MakeSpotShadowResolution(const ULightComponent* LightComponent);
 	size_t CalculateShadowTileMemory(uint32 Width, uint32 Height);
@@ -53,7 +69,12 @@ namespace
 	int32 ExtractActorNumericSuffix(const AActor* Actor);
 	FVector InterpolateFrustumCorner(const FVector& NearCorner, const FVector& FarCorner, float NearDepth, float FarDepth, float TargetDepth);
 	void CalculatePSSMSplits(int32 CascadeCount, float Lambda, float NearPlane, float ShadowDistance, float* OutSplits);
-	void BuildDirectionalShadowViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalShadowConstants& ShadowConstants);
+	void BuildPSMCameraViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, FMatrix& OutView, FMatrix& OutProj);
+	bool BuildOrthographicPostProjectiveViewProjection(const FVector& LightDirectionPP, const FVector& CubeCenterPP, float CubeRadiusPP, float MinPlaneGap, FMatrix& OutViewPP, FMatrix& OutProjPP);
+	bool BuildDirectionalCSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalCSMBuildResult& OutResult);
+	bool BuildDirectionalPSMViewProjection(const UDirectionalLightComponent* Light, const FRenderBus& RenderBus, const FVector& ToLight, FDirectionalPSMBuildResult& OutResult);
+	void PackDirectionalCSMShadowConstants(const FDirectionalCSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
+	void PackDirectionalPSMShadowConstants(const FDirectionalPSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants);
 	struct FSpotShadowCandidate
 	{
 		FRenderLight RenderLight = {};
@@ -65,7 +86,7 @@ namespace
 		float RequestedResolution = 0.0f;
 		uint32 RequestedTileSize = 0;
 		float PriorityScore = 0.0f;
-	};    
+	};
 
 	// ─────────────────── Billboard, SubUV ───────────────────
 	FMatrix MakeViewBillboardMatrix(const UPrimitiveComponent* Primitive, const FRenderBus& RenderBus);
@@ -156,15 +177,50 @@ void FRenderCollector::CollectLight(UWorld* World, FRenderBus& RenderBus, const 
 					ShadowConstants.ShadowSlopeBias = LightComponent->GetShadowSlopeBias();
 					ShadowConstants.ShadowSharpen = LightComponent->GetShadowSharpen();
 					ShadowConstants.bCascadeDebug = RenderBus.GetShowFlags().bCascadeDebug ? 1 : 0;
-					BuildDirectionalShadowViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, ShadowConstants);
 
-					RenderBus.SetDirectionalShadow(ShadowConstants);
-					RenderLight.bCastShadows = 1; // uint32
-					LastShadowStats.DirectionalShadowConstants = ShadowConstants;
-					LastShadowStats.DirectionalShadowCount = 1;
-					LastShadowStats.DirectionalShadowMemoryBytes = CalculateShadowTileMemory(
-						FShadowAtlasManager::DirectionalCascadeResolution,
-						FShadowAtlasManager::DirectionalCascadeResolution) * FShadowAtlasManager::DirectionalCascadeCount;
+
+					bool bBuiltDirectionalShadow = false;
+					switch (DirectionalLight->GetShadowMode())
+					{
+					case EShadowMode::CSM:
+					{
+						FDirectionalCSMBuildResult CSMResult = {};
+						if (BuildDirectionalCSMViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, CSMResult))
+						{
+							PackDirectionalCSMShadowConstants(CSMResult, ShadowConstants);
+							bBuiltDirectionalShadow = true;
+						}
+						break;
+					}
+					case EShadowMode::PSM:
+					{
+						FDirectionalPSMBuildResult PSMResult = {};
+						if (BuildDirectionalPSMViewProjection(DirectionalLight, RenderBus, RenderLight.Direction, PSMResult))
+						{
+							PackDirectionalPSMShadowConstants(PSMResult, ShadowConstants);
+							bBuiltDirectionalShadow = true;
+						}
+						break;
+					}
+					default:
+						break;
+					}
+
+					if (bBuiltDirectionalShadow)
+					{
+						ShadowConstants.ShadowFilterType = static_cast<uint32>(RenderBus.GetShadowFilterType());
+						RenderBus.SetDirectionalShadow(ShadowConstants);
+						RenderLight.bCastShadows = 1; // uint32
+						LastShadowStats.DirectionalShadowConstants = ShadowConstants;
+						LastShadowStats.DirectionalShadowCount = 1;
+
+						const uint32 DirectionalTileCount =
+							DirectionalLight->GetShadowMode() == EShadowMode::PSM ? 1u : FShadowAtlasManager::DirectionalCascadeCount;
+						LastShadowStats.DirectionalShadowMemoryBytes =
+							CalculateShadowTileMemory(
+								FShadowAtlasManager::DirectionalCascadeResolution,
+								FShadowAtlasManager::DirectionalCascadeResolution) * DirectionalTileCount;
+					}
 				}
 			}
 
@@ -420,7 +476,9 @@ void FRenderCollector::CollectShadowCasters(UWorld* World, FRenderBus& RenderBus
 
 	if (const FDirectionalShadowConstants* DirectionalShadow = RenderBus.GetDirectionalShadow())
 	{
-		for (int32 CascadeIndex = 0; CascadeIndex < MAX_CASCADE_COUNT; ++CascadeIndex)
+		const int32 DirectionalQueryCount =
+			(DirectionalShadow->ShadowMode == DirectionalShadowModeValue::PSM) ? 1 : MAX_CASCADE_COUNT;
+		for (int32 CascadeIndex = 0; CascadeIndex < DirectionalQueryCount; ++CascadeIndex)
 		{
 			FFrustum CascadeFrustum;
 			CascadeFrustum.UpdateFromCamera(DirectionalShadow->LightViewProj[CascadeIndex]);
@@ -1178,6 +1236,11 @@ namespace
 		return Up;
 	}
 
+	FVector4 TransformVector4ByMatrix(const FVector4& Vector, const FMatrix& Matrix)
+	{
+		return Matrix.TransformVector4(Vector, Matrix);
+	}
+
 	float MakeSpotShadowFarPlane(const USpotLightComponent* SpotLight)
 	{
 		return std::max(SpotLight->GetAttenuationRadius(), SpotShadowNearPlane + 1.0f);
@@ -1291,14 +1354,92 @@ namespace
 		OutSplits[CascadeCount] = ShadowDistance;
 	}
 
+	void BuildPSMCameraViewProjection(
+		const UDirectionalLightComponent* Light,
+		const FRenderBus& RenderBus,
+		FMatrix& OutView,
+		FMatrix& OutProj)
+	{
+		OutView = RenderBus.GetView();
+		OutProj = RenderBus.GetProj();
+
+		const float VirtualSlideBack = Light != nullptr ? Light->GetPSMVirtualSlideBack() : 0.0f;
+		if (VirtualSlideBack <= MathUtil::KindaSmallNumber || RenderBus.IsOrthographic())
+		{
+			return;
+		}
+
+		const FVector CameraForward = RenderBus.GetCameraForward().GetSafeNormal();
+		if (CameraForward.IsNearlyZero())
+		{
+			return;
+		}
+
+		FVector CameraUp = RenderBus.GetCameraUp().GetSafeNormal();
+		if (CameraUp.IsNearlyZero())
+		{
+			CameraUp = MakeStableUpVector(CameraForward);
+		}
+
+		const float XScale = OutProj.M[1][0];
+		const float YScale = OutProj.M[2][1];
+		if (std::fabs(XScale) <= MathUtil::KindaSmallNumber ||
+			std::fabs(YScale) <= MathUtil::KindaSmallNumber)
+		{
+			return;
+		}
+
+		const FVector VirtualCameraPosition = RenderBus.GetCameraPosition() - CameraForward * VirtualSlideBack;
+		const float FovY = 2.0f * std::atan(1.0f / std::fabs(YScale));
+		const float AspectRatio = std::fabs(YScale / XScale);
+		const float NearPlane = std::max(RenderBus.GetNear() + VirtualSlideBack, 0.001f);
+		const float FarPlane = std::max(RenderBus.GetFar(), NearPlane + 0.001f);
+
+		OutView = FMatrix::MakeViewLookAtLH(
+			VirtualCameraPosition,
+			VirtualCameraPosition + CameraForward,
+			CameraUp);
+		OutProj = FMatrix::MakePerspectiveFovLH(FovY, AspectRatio, NearPlane, FarPlane);
+	}
+
+	bool BuildOrthographicPostProjectiveViewProjection(
+		const FVector& LightDirectionPP,
+		const FVector& CubeCenterPP,
+		float CubeRadiusPP,
+		float MinPlaneGap,
+		FMatrix& OutViewPP,
+		FMatrix& OutProjPP)
+	{
+		FVector NormalizedLightDirectionPP = LightDirectionPP;
+		if (!NormalizedLightDirectionPP.Normalize())
+		{
+			return false;
+		}
+
+		const FVector LightPositionPP = CubeCenterPP + NormalizedLightDirectionPP * (2.0f * CubeRadiusPP);
+		const FVector ViewDirectionPP = (CubeCenterPP - LightPositionPP).GetSafeNormal();
+		if (ViewDirectionPP.IsNearlyZero())
+		{
+			return false;
+		}
+
+		const float DistToCenter = FVector::Dist(LightPositionPP, CubeCenterPP);
+		const float NearPP = std::max(MinPlaneGap, DistToCenter - CubeRadiusPP);
+		const float FarPP = std::max(NearPP + MinPlaneGap, DistToCenter + CubeRadiusPP);
+
+		OutViewPP = FMatrix::MakeViewLookAtLH(LightPositionPP, CubeCenterPP, MakeStableUpVector(ViewDirectionPP));
+		OutProjPP = FMatrix::MakeOrthographicLH(CubeRadiusPP * 2.0f, CubeRadiusPP * 2.0f, NearPP, FarPP);
+		return true;
+	}
+
 	/* View Frustum을 PSSM 공식에 따라 평행하게 잘라서 Cascade 구간으로 나눕니다.
 	 * 이후 각 구간을 포함하는 최소 크기의 Bounding Sphere를 구하고,
 	 * 빛의 시점에서 Bounding Sphere를 덮는 직교 투영 행렬과 뷰 행렬을 생성합니다. */
-	void BuildDirectionalShadowViewProjection(
+	bool BuildDirectionalCSMViewProjection(
 		const UDirectionalLightComponent* Light,
 		const FRenderBus& RenderBus, 
 		const FVector& ToLight,
-		FDirectionalShadowConstants& ShadowConstants)
+		FDirectionalCSMBuildResult& OutResult)
 	{
 		constexpr int32 CascadeCount = MAX_CASCADE_COUNT;
 		const float NearPlane = std::max(RenderBus.GetNear(), 1.0f);
@@ -1330,7 +1471,7 @@ namespace
 		{
 			const float CascadeNear = Splits[i];
 			const float CascadeFar = Splits[i + 1];
-			ShadowConstants.SplitDistances.XYZW[i] = CascadeFar;
+			OutResult.SplitDistances.XYZW[i] = CascadeFar;
 
 			FVector CascadeCorners[8];
 			for (int32 j = 0; j < 4; ++j) // j: Corner Index
@@ -1375,9 +1516,140 @@ namespace
 
 			const FMatrix LightView = FMatrix::MakeViewLookAtLH(LightPosition, Center, MakeStableUpVector(LightDirection));
 			const FMatrix LightProjection = FMatrix::MakeOrthographicLH(Radius * 2.0f, Radius * 2.0f, ZNear, ZFar);
-			ShadowConstants.LightViewProj[i] = LightView * LightProjection;
-			ShadowConstants.CascadeRadius.XYZW[i] = Radius;
+			OutResult.LightViewProj[i] = LightView * LightProjection;
+			OutResult.CascadeRadius.XYZW[i] = Radius;
 		}
+
+		return true;
+	}
+
+	bool BuildDirectionalPSMViewProjection(
+		const UDirectionalLightComponent* Light,
+		const FRenderBus& RenderBus,
+		const FVector& ToLight,
+		FDirectionalPSMBuildResult& OutResult)
+	{
+		const FVector ToLightDirection = ToLight.GetSafeNormal();
+		if (ToLightDirection.IsNearlyZero())
+		{
+			return false;
+		}
+
+		// Direct3D NDC: x/y=[-1, 1], z=[0, 1].
+		const FVector CubeCenterPP(0.0f, 0.0f, 0.5f);
+		constexpr float CubeRadiusPP = 1.5f;
+		constexpr float WThreshold = 0.001f;
+		constexpr float MinNearPlane = 0.1f;
+		constexpr float MinPlaneGap = 0.001f;
+		constexpr float MinFovPP = MathUtil::DegreesToRadians(1.0f);
+		constexpr float MaxFovPP = MathUtil::DegreesToRadians(175.0f);
+
+		FMatrix PSMCameraView = FMatrix::Identity;
+		FMatrix PSMCameraProj = FMatrix::Identity;
+		BuildPSMCameraViewProjection(Light, RenderBus, PSMCameraView, PSMCameraProj);
+
+		const FVector EyeLightDirection = PSMCameraView.TransformVector(ToLightDirection);
+		const FVector4 LightPP = TransformVector4ByMatrix(FVector4(EyeLightDirection, 0.0f), PSMCameraProj);
+		const bool bUseOrthoMatrix = std::fabs(LightPP.W) <= WThreshold;
+		const bool bLightIsBehindEye = LightPP.W < -WThreshold;
+
+		FMatrix ViewPP = FMatrix::Identity;
+		FMatrix ProjPP = FMatrix::Identity;
+
+		if (bUseOrthoMatrix)
+		{
+			if (!BuildOrthographicPostProjectiveViewProjection(
+				FVector(LightPP.X, LightPP.Y, LightPP.Z),
+				CubeCenterPP,
+				CubeRadiusPP,
+				MinPlaneGap,
+				ViewPP,
+				ProjPP))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			const float InvW = 1.0f / LightPP.W;
+			const FVector LightPositionPP(LightPP.X * InvW, LightPP.Y * InvW, LightPP.Z * InvW);
+
+			const FVector LookAtCubePP = CubeCenterPP - LightPositionPP;
+			const float DistToCube = LookAtCubePP.Size();
+			if (DistToCube <= MathUtil::KindaSmallNumber)
+			{
+				return false;
+			}
+
+			// The original OpenGL PSM uses a negative-near projection when the
+			// light is behind the eye. In our D3D LESS-depth path that reverses
+			// depth ordering, so keep this case on an orthographic PP fallback.
+			if (bLightIsBehindEye || DistToCube <= CubeRadiusPP + MinNearPlane)
+			{
+				FVector FallbackLightDirectionPP = bLightIsBehindEye
+					? FVector(LightPP.X, LightPP.Y, LightPP.Z)
+					: LightPositionPP - CubeCenterPP;
+				if (FallbackLightDirectionPP.IsNearlyZero())
+				{
+					FallbackLightDirectionPP = FVector(LightPP.X, LightPP.Y, LightPP.Z);
+				}
+
+				if (!BuildOrthographicPostProjectiveViewProjection(
+					FallbackLightDirectionPP,
+					CubeCenterPP,
+					CubeRadiusPP,
+					MinPlaneGap,
+					ViewPP,
+					ProjPP))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				const FVector ViewDirectionPP = LookAtCubePP * (1.0f / DistToCube);
+				const float SinHalfFovPP = MathUtil::Clamp(CubeRadiusPP / DistToCube, 0.0f, 1.0f);
+				// asin gives the tangent cone that contains the whole bounding sphere.
+				const float FovPP = MathUtil::Clamp(2.0f * std::asin(SinHalfFovPP), MinFovPP, MaxFovPP);
+				const float NearPP = std::max(MinNearPlane, DistToCube - CubeRadiusPP);
+				const float FarPP = std::max(NearPP + MinPlaneGap, DistToCube + CubeRadiusPP);
+
+				ViewPP = FMatrix::MakeViewLookAtLH(LightPositionPP, CubeCenterPP, MakeStableUpVector(ViewDirectionPP));
+				ProjPP = FMatrix::MakePerspectiveFovLH(FovPP, 1.0f, NearPP, FarPP);
+			}
+		}
+
+		OutResult.LightViewProj = PSMCameraView * PSMCameraProj * ViewPP * ProjPP;
+		return true;
+	}
+
+	void PackDirectionalCSMShadowConstants(const FDirectionalCSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants)
+	{
+		for (int32 i = 0; i < MAX_CASCADE_COUNT; ++i)
+		{
+			OutConstants.LightViewProj[i] = BuildResult.LightViewProj[i];
+		}
+
+		OutConstants.SplitDistances = BuildResult.SplitDistances;
+		OutConstants.CascadeRadius = BuildResult.CascadeRadius;
+		OutConstants.ShadowMode = DirectionalShadowModeValue::CSM;
+	}
+
+	void PackDirectionalPSMShadowConstants(const FDirectionalPSMBuildResult& BuildResult, FDirectionalShadowConstants& OutConstants)
+	{
+		for (int32 i = 0; i < MAX_CASCADE_COUNT; ++i)
+		{
+			OutConstants.LightViewProj[i] = BuildResult.LightViewProj;
+		}
+
+		constexpr float PSMCascadeSplitSentinel = 1.0e30f;
+		OutConstants.SplitDistances = FVector4(
+			PSMCascadeSplitSentinel,
+			PSMCascadeSplitSentinel,
+			PSMCascadeSplitSentinel,
+			PSMCascadeSplitSentinel);
+		OutConstants.CascadeRadius = FVector4::ZeroVector();
+		OutConstants.ShadowMode = DirectionalShadowModeValue::PSM;
 	}
 
 	FColor MakeBVHInternalNodeColor(int32 PathIndexFromLeaf, int32 PathLength)

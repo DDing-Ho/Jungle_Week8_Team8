@@ -91,6 +91,9 @@ cbuffer SpotShadowInfo : register(b6)
 }
 
 #define MAX_CASCADE_COUNT 4
+static const uint SHADOW_MODE_CSM = 0u;
+static const uint SHADOW_MODE_PSM = 1u;
+static const float PSM_SHADOW_BIAS_SCALE = 500.0f;
 
 cbuffer DirectionalShadowInfo : register(b7)
 {
@@ -105,8 +108,8 @@ cbuffer DirectionalShadowInfo : register(b7)
     
     uint bHasShadowMap;
     uint ShadowFilterType;
+    uint ShadowMode;
     float Padding0;
-    float Padding1;
 }
 
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
@@ -151,35 +154,37 @@ int GetCascadeIndex(float3 WorldPos)
 }
 
 // 뷰 공간 깊이로 Cascade Index를 결정한다.
-float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
+float SampleDirectionalShadowAtIndex(float3 WorldPos, float3 N, float3 L, int ShadowIndex)
 {
-    if (bHasShadowMap == 0u)
-    {
-        return 1.0f;
-    }
-
-    float NormalizedBias = ShadowBias / SplitDistances.w;
-    float NormalizedSlopeBias = ShadowSlopeBias / SplitDistances.w;
+    const float BiasScale = (ShadowMode == SHADOW_MODE_PSM) ? PSM_SHADOW_BIAS_SCALE : max(SplitDistances.w, 1.0e-4f);
+    const float NormalizedBias = ShadowBias / BiasScale;
+    const float NormalizedSlopeBias = ShadowSlopeBias / BiasScale;
     
     float CosTheta = saturate(dot(N, L));
     CosTheta = max(CosTheta, 1e-4f);
     float TanTheta = sqrt(1.0 - CosTheta * CosTheta) / CosTheta;
     TanTheta = min(TanTheta, 2.0f);
     
-    float Bias = NormalizedBias + (NormalizedSlopeBias * TanTheta);
+    const float Bias = NormalizedBias + (NormalizedSlopeBias * TanTheta);
+    const float NormalOffsetScale = 0.3f; // Noraml Offset Bias
+    const float3 OffsetWorldPos = WorldPos + N * NormalOffsetScale * (1.0f - CosTheta);
+    const float4 ShadowClip = mul(float4(OffsetWorldPos, 1.0f), LightViewProj[ShadowIndex]);
     
-    int CascadeIndex = GetCascadeIndex(WorldPos);
-    
-    float NormalOffsetScale = 0.3f; // Noraml Offset Bias
-    float3 OffsetWorldPos = WorldPos + N * NormalOffsetScale * (1.0f - CosTheta);
-    float4 ShadowClip = mul(float4(OffsetWorldPos, 1.0f), LightViewProj[CascadeIndex]);
-    
-    float W = (ShadowClip.w <= 1.0e-5f) ? 1.0f : ShadowClip.w;
-    float3 ShadowNDC = ShadowClip.xyz / W;
-    float InBounds = step(abs(ShadowNDC.x), 1.0f) * step(abs(ShadowNDC.y), 1.0f) * step(0.0f, ShadowNDC.z) * step(ShadowNDC.z, 1.0f) * step(1.0e-5f, ShadowClip.w);
+    const float W = (ShadowClip.w <= 1.0e-5f) ? 1.0f : ShadowClip.w;
+    const float3 ShadowNDC = ShadowClip.xyz / W;
+    const float InBounds =
+        step(abs(ShadowNDC.x), 1.0f) *
+        step(abs(ShadowNDC.y), 1.0f) *
+        step(0.0f, ShadowNDC.z) *
+        step(ShadowNDC.z, 1.0f) *
+        step(1.0e-5f, ShadowClip.w);
+    if (InBounds <= 0.0f)
+    {
+        return 1.0f;
+    }
         
     float2 LocalUV = float2(ShadowNDC.x * 0.5f + 0.5f, ShadowNDC.y * -0.5f + 0.5f);
-    float4 AtlasRect = GetDirectionalCascadeAtlasRect(CascadeIndex);
+    float4 AtlasRect = GetDirectionalCascadeAtlasRect(ShadowIndex);
     float2 AtlasUV = AtlasRect.xy + LocalUV * AtlasRect.zw;
     
     int2 AtlasSize = int2(kDirectionalAtlasResolution, kDirectionalAtlasResolution);
@@ -188,6 +193,17 @@ float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
         return SampleShadowPoissonDisk(AtlasUV, ShadowNDC.z - Bias, DirectionalShadowMap, AtlasSize, ShadowSharpen);
     else
         return SampleShadowVSM(AtlasUV, ShadowNDC.z - Bias, DirectionalShadowVSMMap, AtlasSize);
+}
+
+float ComputeDirectionalShadowFactor(float3 WorldPos, float3 N, float3 L)
+{
+    if (bHasShadowMap == 0u)
+    {
+        return 1.0f;
+    }
+
+    const int ShadowIndex = (ShadowMode == SHADOW_MODE_PSM) ? 0 : GetCascadeIndex(WorldPos);
+    return SampleDirectionalShadowAtIndex(WorldPos, N, L, ShadowIndex);
 }
 
 struct FLightingResult
@@ -392,7 +408,7 @@ FLightingResult EvaluateLightingFromWorld(float3 WorldPos, float3 WorldNormal, f
 
             AccumulateDirectLight(WorldPos, N, V, normalize(Light.Direction), LightColor * ShadowFactor, Result);
 
-            if (bCascadeDebug != 0u)
+            if (bCascadeDebug != 0u && ShadowMode == SHADOW_MODE_CSM)
             {
                 int CascadeIndex = GetCascadeIndex(WorldPos);
                 float3 DebugColors[4] = {
@@ -455,7 +471,7 @@ FLightingResult EvaluateLightingFromWorldVertex(float3 WorldPos, float3 WorldNor
             }
             AccumulateDirectLight(WorldPos, N, V, L, LightColor * ShadowFactor, Result);
 
-            if (bCascadeDebug != 0u)
+            if (bCascadeDebug != 0u && ShadowMode == SHADOW_MODE_CSM)
             {
                 int CascadeIndex = GetCascadeIndex(WorldPos);
                 float3 DebugColors[4] = {
