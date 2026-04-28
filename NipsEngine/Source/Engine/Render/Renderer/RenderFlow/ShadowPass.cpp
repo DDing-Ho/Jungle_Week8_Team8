@@ -188,16 +188,9 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 	}
 
     // ─────────────────── Spot Shadow ───────────────────
-    if (!ShaderBinding && !Commands.empty())
-    {
-        return true;
-    }
-
     const TArray<FSpotShadowConstants>& SpotShadows = Context->RenderBus->GetCastShadowSpotLights();
-    if (SpotShadows.empty() || Commands.empty())
+    if (ShaderBinding && !SpotShadows.empty() && !Commands.empty())
     {
-        return true;
-    }
 
     // 이전 프레임에 픽셀 셰이더에서 이 shadow atlas를 읽고 있었을 수 있으니,
     // depth를 다시 쓰기 전에 SRV 바인딩 끊어주기
@@ -298,6 +291,8 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         Context->RenderTargets->SpotShadowCount = RenderedSpotShadowCount;
 
 		Context->RenderTargets->SpotShadowVSMSRV = ShadowAtlasManager.GetSpotVSMAtlasSRV();
+    }
+
     }
 
     // ─────────────────── Point Shadow ───────────────────
