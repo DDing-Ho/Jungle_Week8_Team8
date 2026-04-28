@@ -374,14 +374,18 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
                     Context->DeviceContext->Draw(VertexCount, 0);
                 }
             }
-            ++RenderedPointShadowCount;
         }
-        if (Context->RenderTargets != nullptr)
-        {
-            Context->RenderTargets->PointShadowSRV = ShadowAtlasManager.GetPointAtlasSRV();
-            Context->RenderTargets->PointShadowCount = RenderedPointShadowCount;
-        }
+
+        ++RenderedPointShadowCount;
     }
+
+    if (Context->RenderTargets != nullptr)
+    {
+        Context->RenderTargets->PointShadowSRV = ShadowAtlasManager.GetPointAtlasSRV();
+        Context->RenderTargets->PointShadowCount = RenderedPointShadowCount;
+    }
+
+    return true;
 }
 
 bool FShadowPass::End(const FRenderPassContext* Context)

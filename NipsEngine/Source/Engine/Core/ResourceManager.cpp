@@ -28,6 +28,37 @@ namespace
 {
 	constexpr const char* DefaultUberLitShaderPath = "Shaders/UberLit.hlsl";
 
+	bool TryLoadKnownMaterialShader(FResourceManager& ResourceManager, const FString& ShaderName)
+	{
+		if (ShaderName == "Shaders/UberLit.hlsl" || ShaderName == "Shaders/UberUnlit.hlsl")
+		{
+			return ResourceManager.LoadShader(ShaderName, "mainVS", "mainPS", static_cast<const D3D_SHADER_MACRO*>(nullptr));
+		}
+
+		if (ShaderName == "Shaders/OutlinePostProcess.hlsl")
+		{
+			return ResourceManager.LoadShader(ShaderName, "VS", "PS", static_cast<const D3D_SHADER_MACRO*>(nullptr));
+		}
+
+		return false;
+	}
+
+	UShader* GetOrTryLoadMaterialShader(FResourceManager& ResourceManager, const FString& ShaderName)
+	{
+		if (UShader* Shader = ResourceManager.GetShader(ShaderName))
+		{
+			return Shader;
+		}
+
+		UE_LOG("Shader cache miss for material: %s. Attempting lazy load.", ShaderName.c_str());
+		if (!TryLoadKnownMaterialShader(ResourceManager, ShaderName))
+		{
+			return nullptr;
+		}
+
+		return ResourceManager.GetShader(ShaderName);
+	}
+
 	TArray<FShaderMacro> NormalizeShaderMacros(TArray<FShaderMacro> Macros)
 	{
 		std::sort(Macros.begin(), Macros.end(), [](const FShaderMacro& Left, const FShaderMacro& Right)
@@ -1129,7 +1160,7 @@ UMaterial* FResourceManager::GetOrCreateMaterial(const FString& Path, const FStr
 	Material->Name = Path;
 	Material->FilePath = Path;
 
-	UShader* Shader = GetShader(ShaderName);
+	UShader* Shader = GetOrTryLoadMaterialShader(*this, ShaderName);
 	Material->SetShader(Shader);
 
 	Materials[Path] = Material;
@@ -1149,7 +1180,7 @@ UMaterial* FResourceManager::GetOrCreateMaterial(const FString& Name, const FStr
 	Material->Name = Name;
 	Material->FilePath = Path;
 
-	UShader* Shader = GetShader(ShaderName);
+	UShader* Shader = GetOrTryLoadMaterialShader(*this, ShaderName);
 	Material->SetShader(Shader);
 
 	Materials[Name] = Material;
@@ -1164,7 +1195,7 @@ bool FResourceManager::LoadMaterial(const FString& MtlFilePath, const FString& S
 		return false;
 	}
 
-	UShader* Shader = FResourceManager::Get().GetShader(ShaderName);
+	UShader* Shader = GetOrTryLoadMaterialShader(*this, ShaderName);
 	if (!Shader)
 	{
 		UE_LOG("Shader not found for material: %s, using default shader", ShaderName.c_str());
@@ -1827,8 +1858,6 @@ UStaticMesh* FResourceManager::LoadStaticMeshWithOptions(const FString& Path, co
 	{
 		return FoundMesh;
 	}
-
- 	LoadMaterial(Path, DefaultUberLitShaderPath);
 
 	const FString BinaryPath = MakeStaticMeshBinaryPath(Path, LoadOptions.bNormalizeToUnitCube);
 

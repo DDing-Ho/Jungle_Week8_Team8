@@ -201,17 +201,17 @@ float ComputePointShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMap
     const float3 AbsDir = abs(ToFromLight);
     uint FaceIndex = 0u;
 
-    if (AbsDir.X >= AbsDir.Y && AbsDir.X >= AbsDir.Z)
+    if (AbsDir.x >= AbsDir.y && AbsDir.x >= AbsDir.z)
     {
-        FaceIndex = (ToFromLight.X >= 0.0f) ? 0u : 1u;
+        FaceIndex = (ToFromLight.x >= 0.0f) ? 0u : 1u;
     }
-    else if (AbsDir.Y >= AbsDir.X && AbsDir.Y >= AbsDir.Z)
+    else if (AbsDir.y >= AbsDir.x && AbsDir.y >= AbsDir.z)
     {
-        FaceIndex = (ToFromLight.Y >= 0.0f) ? 2u : 3u;
+        FaceIndex = (ToFromLight.y >= 0.0f) ? 2u : 3u;
     }
     else
     {
-        FaceIndex = (ToFromLight.Z >= 0.0f) ? 4u : 5u;
+        FaceIndex = (ToFromLight.z >= 0.0f) ? 4u : 5u;
     }
 
     const float4 ShadowClip = mul(float4(WorldPos, 1.0f), Shadow.LightViewProj[FaceIndex]);
@@ -552,7 +552,7 @@ FLightingResult EvaluateLightingFromWorldVertex(float3 WorldPos, float3 WorldNor
             if (Att <= 0.0f)
                 continue;
         }
-        else if (Light.Type == LIGHT_TYPE_POINT)         // ← 추가 분기
+        else if (Light.Type == LIGHT_TYPE_POINT)
         {
             Att *= ComputePointShadowFactor(WorldPos, Light.bCastShadows, Light.ShadowMapIndex, Light.ShadowBias);
             if (Att <= 0.0f) continue;
