@@ -7,6 +7,8 @@
 #include <cstring>
 #include <utility>
 
+#include "ShadowAtlasManager.h"
+
 namespace SceneLightBinding
 {
 	constexpr uint32 SpotShadowInfoRegister = 6;
@@ -58,7 +60,8 @@ namespace SceneLightBinding
     struct FPointShadowInfoConstants
     {
         uint32 PointShadowCount = 0;
-        float Padding[3] = { 0.0f, 0.0f, 0.0f };
+        uint32 PointAtlasResolution = 0;
+        float Padding[2] = { 0.0f, 0.0f };
     };
 
 	inline bool EnsureVisibleLightConstantBuffer(ID3D11Device* Device, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
@@ -427,6 +430,7 @@ namespace SceneLightBinding
 
 		FPointShadowInfoConstants InfoConstants = {};
 		InfoConstants.PointShadowCount = PointShadowCount;
+	    InfoConstants.PointAtlasResolution = FShadowAtlasManager::PointAtlasResolution;
 
 		D3D11_MAPPED_SUBRESOURCE MappedInfo = {};
 		if (SUCCEEDED(Context->DeviceContext->Map(PointShadowInfoConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedInfo)))

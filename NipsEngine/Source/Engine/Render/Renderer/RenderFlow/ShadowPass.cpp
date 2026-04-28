@@ -342,6 +342,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             PointShaderBinding->SetVector3("LightPosition", PointShadow.LightPosition);
             PointShaderBinding->SetFloat("FarPlane", PointShadow.FarPlane);
             PointShaderBinding->SetFloat("ShadowBias", PointShadow.ShadowBias);
+            PointShaderBinding->SetFloat("ShadowResolution", PointShadow.ShadowResolution);
             
             for (const FRenderCommand& Cmd : Commands)
             {

@@ -129,7 +129,8 @@ cbuffer DirectionalShadowInfo : register(b7)
 cbuffer PointShadowInfo : register(b8)
 {
     uint PointShadowCount;
-    float3 _PointShadowPad;
+    uint PointAtlasResolution;
+    float2 _PointShadowPad;
 };
 
 StructuredBuffer<FSpotShadowConstants> SpotShadowData : register(t11);
@@ -144,7 +145,6 @@ Texture2D<float> PointShadowMap : register(t17);
 
 static const int kCascadeShadowResoultion = 2048; // ShadowPass::CascadeShadowResolution과 일치
 static const int kDirectionalAtlasResolution = 4096;
-static const int kPointAtlasResolution = 4096; // ShadowAtlasManager::PointAtlasResolution과 일치
 
 // ─────────────────── Lights ───────────────────
 
@@ -299,7 +299,7 @@ float ComputePointShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMap
 
     // SampleLevel은 인접 face 타일과 bilinear blend가 일어남 → cube 경계에 누설.
     // 명시적으로 타일 픽셀 범위에 clamp한 뒤 Load(point fetch)로 읽어와 누설 차단.
-    const int AtlasSize = kPointAtlasResolution;
+    const int AtlasSize = (int)PointAtlasResolution;
     const int2 TileBase  = (int2)(AtlasRect.xy * (float)AtlasSize);
     const int2 TileSpan  = (int2)(AtlasRect.zw * (float)AtlasSize);
     const int2 TileMax   = TileBase + TileSpan - int2(1, 1);

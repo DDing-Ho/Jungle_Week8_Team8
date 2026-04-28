@@ -72,10 +72,10 @@ public:
     static constexpr uint32 PointCubeFaceCount = 6;
 
     static constexpr uint32 PointAtlasResolution = 4096;
-    static constexpr uint32 PointAtlasTileResolution = 512;
-    static constexpr uint32 PointAtlasCellsPerRow = PointAtlasResolution / PointAtlasTileResolution;
-    static constexpr uint32 PointAtlasBlockWidthInCells = 3;
-    static constexpr uint32 PointAtlasBlockHeightInCells = 2;
+    static constexpr uint32 PointAtlasCellResolution = 256;
+    static constexpr uint32 PointAtlasCellsPerRow = PointAtlasResolution / PointAtlasCellResolution;
+    static constexpr uint32 MinPointTileResolution = 256;
+    static constexpr uint32 MaxPointTileResolution = 1024;
     
 public:
     // Spot shadow atlas 텍스처/DSV/SRV를 생성합니다.
@@ -113,7 +113,8 @@ public:
 
     bool InitializePointAtlas(ID3D11Device* Device);
     static void BeginPointFrame();
-    static bool RequestPointAtlasSlot(FPointAtlasSlotDesc& OutSlot);
+    static uint32 SnapPointTileSize(float RequestedResolution);
+    static bool RequestPointAtlasSlot(uint32 DesiredResolution, FPointAtlasSlotDesc& OutSlot);
     static const TArray<FPointAtlasSlotDesc>& GetActivePointSlots() { return ActivePointSlots; }
     ID3D11DepthStencilView* GetPointAtlasDSV() const { return PointAtlasDSV.Get(); }
     ID3D11ShaderResourceView* GetPointAtlasSRV() const { return PointAtlasSRV.Get(); }
@@ -127,9 +128,13 @@ private:
     static void MarkSpotRegion(uint32 CellX, uint32 CellY, uint32 CellSpan, bool bOccupied);
     static void BuildSpotSlotDesc(uint32 CellX, uint32 CellY, uint32 TileResolution, uint32 TileIndex, FSpotAtlasSlotDesc& OutSlot);
   
-    static bool IsPointRegionFree(uint32 CellX, uint32 CellY);
-    static void MarkPointRegion(uint32 CellX, uint32 CellY, bool bOccupied);
-    static void BuildPointSlotDesc(uint32 CellX, uint32 CellY, uint32 CubeIndex, FPointAtlasSlotDesc& OutSlot);
+    static uint32 SanitizePointTileSize(uint32 DesiredResolution);
+    static bool TryAllocatePointFaceTiles(uint32 TileResolution, FPointAtlasSlotDesc& OutSlot);
+    static bool TryAllocatePointFaceTile(uint32 CellSpan,uint32& OutCellX, uint32& OutCellY);
+    static bool IsPointRegionFree(uint32 CellX, uint32 CellY, uint32 CellSpan);
+    static void MarkPointRegion(uint32 CellX, uint32 CellY, uint32 CellSpan, bool bOccupied);
+    static void BuildPointSlotDesc(const uint32 FaceCellX[PointCubeFaceCount], const uint32 FaceCellY[PointCubeFaceCount], 
+       uint32 TileResolution, uint32 CubeIndex, FPointAtlasSlotDesc& OutSlot);
     
 private:
     // --- Spot Atlas --- 
