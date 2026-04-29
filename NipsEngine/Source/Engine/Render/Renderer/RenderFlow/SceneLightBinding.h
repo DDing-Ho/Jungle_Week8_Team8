@@ -7,6 +7,8 @@
 #include <cstring>
 #include <utility>
 
+#include "ShadowAtlasManager.h"
+
 namespace SceneLightBinding
 {
 	constexpr uint32 SpotShadowInfoRegister = 6;
@@ -20,6 +22,7 @@ namespace SceneLightBinding
     constexpr uint32 SpotShadowVSMMapRegister = 15;
     constexpr uint32 DirectionalShadowVSMMapRegister = 16;
     constexpr uint32 PointShadowMapRegister = 17;
+    constexpr uint32 PointShadowVSMMapRegister = 18;
 
 	struct FVisibleLightConstants
 	{
@@ -58,7 +61,9 @@ namespace SceneLightBinding
     struct FPointShadowInfoConstants
     {
         uint32 PointShadowCount = 0;
-        float Padding[3] = { 0.0f, 0.0f, 0.0f };
+        uint32 PointAtlasResolution = 0;
+        uint32 ShadowFilterType = 0;
+        float Padding = 0.0f;
     };
 
 	inline bool EnsureVisibleLightConstantBuffer(ID3D11Device* Device, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)
@@ -390,10 +395,12 @@ namespace SceneLightBinding
 
 		uint32 PointShadowCount = 0;
 		ID3D11ShaderResourceView* PointShadowMapSRV = nullptr;
+        ID3D11ShaderResourceView* PointShadowMapVSMSRV = nullptr;
 		if (Context->RenderTargets != nullptr)
 		{
 			PointShadowCount = Context->RenderTargets->PointShadowCount;
 			PointShadowMapSRV = Context->RenderTargets->PointShadowSRV;
+            PointShadowMapVSMSRV = Context->RenderTargets->PointShadowVSMSRV;
 		}
 
 		const TArray<FPointShadowConstants>* PointShadows = nullptr;
@@ -427,6 +434,8 @@ namespace SceneLightBinding
 
 		FPointShadowInfoConstants InfoConstants = {};
 		InfoConstants.PointShadowCount = PointShadowCount;
+	    InfoConstants.PointAtlasResolution = FShadowAtlasManager::PointAtlasResolution;
+        InfoConstants.ShadowFilterType = (uint32)Context->RenderBus->GetShadowFilterType();
 
 		D3D11_MAPPED_SUBRESOURCE MappedInfo = {};
 		if (SUCCEEDED(Context->DeviceContext->Map(PointShadowInfoConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedInfo)))
@@ -455,6 +464,9 @@ namespace SceneLightBinding
 
 		ID3D11ShaderResourceView* ShadowMapSRV = PointShadowCount > 0 ? PointShadowMapSRV : nullptr;
 		Context->DeviceContext->PSSetShaderResources(PointShadowMapRegister, 1, &ShadowMapSRV);
+
+        ID3D11ShaderResourceView* ShadowMapVSMSRV = PointShadowCount > 0 ? PointShadowMapVSMSRV : nullptr;
+        Context->DeviceContext->PSSetShaderResources(PointShadowVSMMapRegister, 1, &ShadowMapVSMSRV);
 	}
 
 	inline void BindResources(const FRenderPassContext* Context, TComPtr<ID3D11Buffer>& VisibleLightConstantBuffer)

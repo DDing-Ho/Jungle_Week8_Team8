@@ -11,6 +11,7 @@ bool FBlurPass::Initialize()
     FShadowAtlasManager AtlasManager;
     SpotShadowResolution = AtlasManager.SpotAtlasResolution;
     DirectionalShadowResolution = AtlasManager.DirectionalCascadeResolution;
+    PointShadowResolution = AtlasManager.PointAtlasResolution;
 
     return true;
 }
@@ -34,6 +35,14 @@ bool FBlurPass::Release()
     DirectionalShadowBlurFinalTexture.Reset();
     DirectionalShadowBlurFinalSRV.Reset();
     DirectionalShadowBlurFinalUAV.Reset();
+
+    PointShadowBlurTempTexture.Reset();
+    PointShadowBlurTempSRV.Reset();
+    PointShadowBlurTempUAV.Reset();
+
+    PointShadowBlurFinalTexture.Reset();
+    PointShadowBlurFinalSRV.Reset();
+    PointShadowBlurFinalUAV.Reset();
 
 	ComputeShader.Reset();
     ConstantBuffer.Reset();
@@ -67,6 +76,10 @@ bool FBlurPass::Begin(const FRenderPassContext* Context)
      {
          return false;
      }
+     if (!EnsurePointShadowBlurResources(Context->Device))
+     {
+         return false;
+     }
 
     return true;
 }
@@ -92,6 +105,13 @@ bool FBlurPass::DrawCommand(const FRenderPassContext* Context)
                     DirectionalShadowBlurTempSRV.Get(), DirectionalShadowBlurTempUAV.Get(),
                     DirectionalShadowBlurFinalSRV.Get(), DirectionalShadowBlurFinalUAV.Get());
     Context->RenderTargets->DirectionalShadowVSMSRV = DirectionalShadowBlurFinalSRV.Get();
+
+    // Point
+    ShadowVSMInputSRV = Context->RenderTargets->PointShadowVSMSRV;
+    DrawBlurCommand(Context, PointShadowResolution,
+                    PointShadowBlurTempSRV.Get(), PointShadowBlurTempUAV.Get(),
+                    PointShadowBlurFinalSRV.Get(), PointShadowBlurFinalUAV.Get());
+    Context->RenderTargets->PointShadowVSMSRV = PointShadowBlurFinalSRV.Get();
 
     return true;
 }
@@ -421,6 +441,98 @@ bool FBlurPass::EnsureDirectionalShadowBlurResources(ID3D11Device* Device)
     DirectionalShadowBlurFinalTexture = std::move(NewBlurFinalTexture);
     DirectionalShadowBlurFinalSRV = std::move(NewBlurFinalSRV);
     DirectionalShadowBlurFinalUAV = std::move(NewBlurFinalUAV);
+
+    return true;
+}
+
+bool FBlurPass::EnsurePointShadowBlurResources(ID3D11Device* Device)
+{
+    if (Device == nullptr)
+    {
+        return false;
+    }
+
+    if (PointShadowBlurTempTexture && PointShadowBlurTempSRV && PointShadowBlurTempUAV)
+    {
+        return true;
+    }
+
+    if (PointShadowBlurFinalTexture && PointShadowBlurFinalSRV && PointShadowBlurFinalUAV)
+    {
+        return true;
+    }
+
+    D3D11_TEXTURE2D_DESC TexDesc = {};
+    TexDesc.Width = PointShadowResolution;
+    TexDesc.Height = PointShadowResolution;
+    TexDesc.MipLevels = 1;
+    TexDesc.ArraySize = 1;
+    TexDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    TexDesc.SampleDesc.Count = 1;
+    TexDesc.SampleDesc.Quality = 0;
+    TexDesc.Usage = D3D11_USAGE_DEFAULT;
+    TexDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+    SRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    SRVDesc.Texture2D.MostDetailedMip = 0;
+    SRVDesc.Texture2D.MipLevels = 1;
+
+    D3D11_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+    UAVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    UAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+    UAVDesc.Texture2D.MipSlice = 0;
+
+    TComPtr<ID3D11Texture2D> NewBlurTempTexture;
+    if (FAILED(Device->CreateTexture2D(&TexDesc, nullptr, NewBlurTempTexture.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow blur texture array");
+        return false;
+    }
+
+    TComPtr<ID3D11ShaderResourceView> NewBlurTempSRV;
+    if (FAILED(Device->CreateShaderResourceView(NewBlurTempTexture.Get(), &SRVDesc, NewBlurTempSRV.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow blur shader resource view");
+        return false;
+    }
+
+    TComPtr<ID3D11UnorderedAccessView> NewBlurTempUAV;
+    if (FAILED(Device->CreateUnorderedAccessView(NewBlurTempTexture.Get(), &UAVDesc, NewBlurTempUAV.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow unordered access view");
+        return false;
+    }
+
+    PointShadowBlurTempTexture = std::move(NewBlurTempTexture);
+    PointShadowBlurTempSRV = std::move(NewBlurTempSRV);
+    PointShadowBlurTempUAV = std::move(NewBlurTempUAV);
+
+    TComPtr<ID3D11Texture2D> NewBlurFinalTexture;
+    if (FAILED(Device->CreateTexture2D(&TexDesc, nullptr, NewBlurFinalTexture.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow blur texture array");
+        return false;
+    }
+
+    TComPtr<ID3D11ShaderResourceView> NewBlurFinalSRV;
+    if (FAILED(Device->CreateShaderResourceView(NewBlurFinalTexture.Get(), &SRVDesc, NewBlurFinalSRV.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow blur shader resource view");
+        return false;
+    }
+
+    TComPtr<ID3D11UnorderedAccessView> NewBlurFinalUAV;
+    if (FAILED(Device->CreateUnorderedAccessView(NewBlurFinalTexture.Get(), &UAVDesc, NewBlurFinalUAV.GetAddressOf())))
+    {
+        UE_LOG("Failed to create point shadow unordered access view");
+        return false;
+    }
+
+    PointShadowBlurFinalTexture = std::move(NewBlurFinalTexture);
+    PointShadowBlurFinalSRV = std::move(NewBlurFinalSRV);
+    PointShadowBlurFinalUAV = std::move(NewBlurFinalUAV);
 
     return true;
 }

@@ -5,8 +5,14 @@ cbuffer PointShadowBuffer : register(b0)
     float  FarPlane;
     float  ShadowBias;
     float  ShadowResolution;
-    float2 PointShadowPadding;
+    uint   ShadowFilterType;
+    float  PointShadowPadding;
 };
+
+static const uint SHADOW_FILTER_TYPE_PCF = 0u;
+static const uint SHADOW_FILTER_TYPE_VSM = 1u;
+static const uint SHADOW_FILTER_TYPE_ESM = 2u;
+static const float SHADOW_ESM_EXPONENT = 40.0f;
 
 cbuffer PerObjectBuffer : register(b1)
 {
@@ -29,6 +35,12 @@ struct FPointShadowVSOutput
     float3 WorldPos : TEXCOORD0;
 };
 
+struct FPointShadowPSOutput
+{
+    float2 Moments : SV_Target0;
+    float Depth : SV_Depth;
+};
+
 FPointShadowVSOutput mainVS(FPointShadowVSInput Input)
 {
     FPointShadowVSOutput Output;
@@ -40,8 +52,22 @@ FPointShadowVSOutput mainVS(FPointShadowVSInput Input)
     return Output;
 }
 
-void mainPS(FPointShadowVSOutput Input, out float OutDepth : SV_Depth)
+FPointShadowPSOutput mainPS(FPointShadowVSOutput Input)
 {
     float Dist = length(Input.WorldPos - LightPosition);
-    OutDepth = saturate(Dist / FarPlane);
+    float d = saturate(Dist / FarPlane);
+
+    FPointShadowPSOutput Output;
+    Output.Depth = d;
+    if (ShadowFilterType == SHADOW_FILTER_TYPE_ESM)
+    {
+        const float e = exp(SHADOW_ESM_EXPONENT * d);
+        Output.Moments = float2(e, e);
+    }
+    else
+    {
+        Output.Moments = float2(d, d * d);
+    }
+
+    return Output;
 }

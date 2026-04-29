@@ -225,6 +225,10 @@ void FShadowAtlasManager::Release()
     PointAtlasSRV.Reset();
     PointAtlasDSV.Reset();
     PointAtlasTexture.Reset();
+
+    PointVSMAtlasSRV.Reset();
+    PointVSMAtlasRTV.Reset();
+    PointVSMAtlasTexture.Reset();
 }
 
 void FShadowAtlasManager::BeginSpotFrame()
@@ -433,37 +437,127 @@ void FShadowAtlasManager::BeginPointFrame()
     ActivePointSlots.clear();
 }
 
-bool FShadowAtlasManager::RequestPointAtlasSlot(FPointAtlasSlotDesc& OutSlot)
+uint32 FShadowAtlasManager::SnapPointTileSize(float RequestedResolution)
+{
+    float Clamped = std::clamp(RequestedResolution, static_cast<float>(MinPointTileResolution), static_cast<float>(MaxPointTileResolution));
+    
+    uint32 Lower = MinPointTileResolution; 
+    while ((Lower<<1u) <= MaxPointTileResolution && static_cast<float>(Lower << 1u) <= Clamped)
+    {
+        Lower <<= 1u;
+    }
+    
+    uint32 Upper = Lower;
+    if (Upper < MaxPointTileResolution)
+    {
+        Upper <<= 1u;
+    }
+    
+    const float LowerDelta = std::fabs(Clamped - static_cast<float>(Lower));
+    const float UpperDelta = std::fabs(static_cast<float>(Upper) - Clamped);
+    
+    return (UpperDelta <= LowerDelta) ? Upper : Lower;
+}
+
+bool FShadowAtlasManager::RequestPointAtlasSlot(uint32 DesiredResolution, FPointAtlasSlotDesc& OutSlot)
 {
     if (ActivePointSlots.size() >= MaxPointShadowCount)
     {
         return false;
     }
     
-    for (uint32 CellY = 0; CellY + PointAtlasBlockHeightInCells <= PointAtlasCellsPerRow; ++CellY)
+    const uint32 TileResolution = SanitizePointTileSize(DesiredResolution);
+    return TryAllocatePointFaceTiles(TileResolution, OutSlot);
+}
+
+uint32 FShadowAtlasManager::SanitizePointTileSize(uint32 DesiredResolution)
+{
+    if (DesiredResolution < MinPointTileResolution || DesiredResolution > MaxPointTileResolution)
     {
-        for (uint32 CellX = 0; CellX + PointAtlasBlockWidthInCells <= PointAtlasCellsPerRow; ++CellX)
+        return SnapPointTileSize(static_cast<float>(DesiredResolution));
+    }
+    
+    switch (DesiredResolution)
+    {
+    case 256:
+    case 512:
+    case 1024:
+        return DesiredResolution;
+    default:
+        return SnapPointTileSize(static_cast<float>(DesiredResolution));
+    }
+}
+
+bool FShadowAtlasManager::TryAllocatePointFaceTiles(uint32 TileResolution, FPointAtlasSlotDesc& OutSlot)
+{
+    if (TileResolution == 0 || TileResolution % PointAtlasCellResolution != 0)
+    {
+        return false;
+    }
+    
+    const uint32 CellSpan = TileResolution / PointAtlasCellResolution;
+    if (CellSpan == 0 || CellSpan > PointAtlasCellsPerRow)
+    {
+        return false;
+    }
+    
+    uint32 FaceCellX[PointCubeFaceCount] = {};
+    uint32 FaceCellY[PointCubeFaceCount] = {};
+    uint32 AllocatedFaceCount  = 0;
+    
+    for (uint32 FaceIndex = 0; FaceIndex < PointCubeFaceCount; ++FaceIndex)
+    {
+        uint32 CellX = 0;
+        uint32 CellY = 0;
+        
+        if (!TryAllocatePointFaceTile(CellSpan, CellX, CellY))
         {
-            if (!IsPointRegionFree(CellX, CellY))
+            for (uint32 RollbackIndex = 0; RollbackIndex < AllocatedFaceCount; ++RollbackIndex)
+            {
+                MarkPointRegion(FaceCellX[RollbackIndex], FaceCellY[RollbackIndex], CellSpan, false);
+            }
+            return false;
+        }
+        MarkPointRegion(CellX, CellY, CellSpan, true);
+        
+        FaceCellX[FaceIndex] = CellX;
+        FaceCellY[FaceIndex] = CellY;
+        ++AllocatedFaceCount;
+    }
+    
+    const uint32 CubeIndex = static_cast<uint32>(ActivePointSlots.size());
+    BuildPointSlotDesc(FaceCellX, FaceCellY, TileResolution, CubeIndex, OutSlot);
+    ActivePointSlots.push_back(OutSlot);
+    return true;
+    
+}
+
+bool FShadowAtlasManager::TryAllocatePointFaceTile(uint32 CellSpan, uint32& OutCellX, uint32& OutCellY)
+{
+    for (uint32 CellY = 0; CellY + CellSpan <= PointAtlasCellsPerRow; ++CellY)
+    {
+        for (uint32 CellX = 0; CellX + CellSpan <= PointAtlasCellsPerRow; ++CellX)
+        {
+            if (!IsPointRegionFree(CellX, CellY, CellSpan))
             {
                 continue;
             }
-            MarkPointRegion(CellX, CellY, true);
-            
-            const uint32 CubeIndex = static_cast<uint32>(ActivePointSlots.size());
-            BuildPointSlotDesc(CellX, CellY, CubeIndex, OutSlot);
-            ActivePointSlots.push_back(OutSlot);
+
+            OutCellX = CellX;
+            OutCellY = CellY;
             return true;
         }
     }
+
     return false;
 }
 
-bool FShadowAtlasManager::IsPointRegionFree(uint32 CellX, uint32 CellY)
+
+bool FShadowAtlasManager::IsPointRegionFree(uint32 CellX, uint32 CellY, uint32 CellSpan)
 {
-    for (uint32 Y = CellY; Y < CellY + PointAtlasBlockHeightInCells; ++Y)
+    for (uint32 Y = CellY; Y < CellY + CellSpan; ++Y)
     {
-        for (uint32 X = CellX; X < CellX + PointAtlasBlockWidthInCells; ++X)
+        for (uint32 X = CellX; X < CellX + CellSpan; ++X)
         {
             const uint32 Index = Y * PointAtlasCellsPerRow + X;
             if (Index >= PointAtlasCellOccupancy.size() || PointAtlasCellOccupancy[Index] != 0u)
@@ -472,15 +566,17 @@ bool FShadowAtlasManager::IsPointRegionFree(uint32 CellX, uint32 CellY)
             }
         }
     }
+
     return true;
 }
 
-void FShadowAtlasManager::MarkPointRegion(uint32 CellX, uint32 CellY, bool bOccupied)
+void FShadowAtlasManager::MarkPointRegion(uint32 CellX, uint32 CellY, uint32 CellSpan, bool bOccupied)
 {
     const uint8 OccupiedValue = bOccupied ? 1u : 0u;
-    for (uint32 Y = CellY; Y < CellY + PointAtlasBlockHeightInCells; ++Y)
+
+    for (uint32 Y = CellY; Y < CellY + CellSpan; ++Y)
     {
-        for (uint32 X = CellX; X < CellX + PointAtlasBlockWidthInCells; ++X)
+        for (uint32 X = CellX; X < CellX + CellSpan; ++X)
         {
             const uint32 Index = Y * PointAtlasCellsPerRow + X;
             if (Index < PointAtlasCellOccupancy.size())
@@ -491,34 +587,23 @@ void FShadowAtlasManager::MarkPointRegion(uint32 CellX, uint32 CellY, bool bOccu
     }
 }
 
-void FShadowAtlasManager::BuildPointSlotDesc(uint32 CellX, uint32 CellY, uint32 CubeIndex, FPointAtlasSlotDesc& OutSlot)
+void FShadowAtlasManager::BuildPointSlotDesc(const uint32 FaceCellX[PointCubeFaceCount], const uint32 FaceCellY[PointCubeFaceCount],
+    uint32 TileResolution, uint32 CubeIndex,  FPointAtlasSlotDesc& OutSlot)
 {
     OutSlot = {};
     OutSlot.CubeIndex = CubeIndex;
-    OutSlot.BaseCellX = CellX;
-    OutSlot.BaseCellY = CellY;
-    OutSlot.TileResolution = PointAtlasTileResolution;
-    
-    static const uint32 FaceOffsets[6][2] = 
+    OutSlot.BaseCellX = FaceCellX[0];
+    OutSlot.BaseCellY = FaceCellY[0];
+    OutSlot.TileResolution = TileResolution;
+
+    const float Size = static_cast<float>(TileResolution);
+    const float AtlasSize = static_cast<float>(PointAtlasResolution);
+
+    for (uint32 FaceIndex = 0; FaceIndex < PointCubeFaceCount; ++FaceIndex)
     {
-        { 0, 0 }, // +X
-        { 1, 0 }, // -X
-        { 2, 0 }, // +Y
-        { 0, 1 }, // -Y
-        { 1, 1 }, // +Z
-        { 2, 1 }  // -Z   
-    };
-    
-    for (uint32 FaceIndex = 0; FaceIndex < 6; ++FaceIndex)
-    {
-        const uint32 FaceCellX = CellX + FaceOffsets[FaceIndex][0];
-        const uint32 FaceCellY = CellY + FaceOffsets[FaceIndex][1];
-        
-        const float X = static_cast<float>(FaceCellX * PointAtlasTileResolution);
-        const float Y = static_cast<float>(FaceCellY * PointAtlasTileResolution);
-        const float Size = static_cast<float>(PointAtlasTileResolution);
-        const float AtlasSize = static_cast<float>(PointAtlasResolution);
-        
+        const float X = static_cast<float>(FaceCellX[FaceIndex] * PointAtlasCellResolution);
+        const float Y = static_cast<float>(FaceCellY[FaceIndex] * PointAtlasCellResolution);
+
         OutSlot.FaceAtlasRects[FaceIndex] = FVector4(
             X / AtlasSize,
             Y / AtlasSize,
@@ -534,7 +619,7 @@ bool FShadowAtlasManager::InitializePointAtlas(ID3D11Device* Device)
         return false;
     }
 
-    if (PointAtlasTexture && PointAtlasDSV && PointAtlasSRV)
+    if (PointAtlasTexture && PointAtlasDSV && PointAtlasSRV && PointVSMAtlasTexture && PointVSMAtlasRTV && PointVSMAtlasSRV)
     {
         return true;
     }
@@ -572,6 +657,46 @@ bool FShadowAtlasManager::InitializePointAtlas(ID3D11Device* Device)
     ShaderResourceViewDesc.Texture2D.MipLevels = 1;
     
     if (FAILED(Device->CreateShaderResourceView(PointAtlasTexture.Get(), &ShaderResourceViewDesc, PointAtlasSRV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_TEXTURE2D_DESC VSMTextureDesc = {};
+    VSMTextureDesc.Width = PointAtlasResolution;
+    VSMTextureDesc.Height = PointAtlasResolution;
+    VSMTextureDesc.MipLevels = 1;
+    VSMTextureDesc.ArraySize = 1;
+    VSMTextureDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    VSMTextureDesc.SampleDesc.Count = 1;
+    VSMTextureDesc.SampleDesc.Quality = 0;
+    VSMTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    VSMTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+
+    if (FAILED(Device->CreateTexture2D(&VSMTextureDesc, nullptr, PointVSMAtlasTexture.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+    RTVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+    RTVDesc.Texture2D.MipSlice = 0;
+
+    if (FAILED(Device->CreateRenderTargetView(PointVSMAtlasTexture.Get(), &RTVDesc, PointVSMAtlasRTV.GetAddressOf())))
+    {
+        Release();
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC VSMSRVDesc = {};
+    VSMSRVDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    VSMSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    VSMSRVDesc.Texture2D.MostDetailedMip = 0;
+    VSMSRVDesc.Texture2D.MipLevels = 1;
+
+    if (FAILED(Device->CreateShaderResourceView(PointVSMAtlasTexture.Get(), &VSMSRVDesc, PointVSMAtlasSRV.GetAddressOf())))
     {
         Release();
         return false;

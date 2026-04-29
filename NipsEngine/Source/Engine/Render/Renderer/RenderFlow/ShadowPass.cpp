@@ -53,6 +53,7 @@ bool FShadowPass::Begin(const FRenderPassContext* Context)
         Context->RenderTargets->SpotShadowCount = 0;
         Context->RenderTargets->PointShadowSRV = nullptr;
         Context->RenderTargets->PointShadowCount = 0;
+        Context->RenderTargets->PointShadowVSMSRV = nullptr;
     }
 
 	if (!EnsureDirectionalShadowResources(Context->Device, MAX_CASCADE_COUNT))
@@ -134,6 +135,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 			Context->DeviceContext->RSSetViewports(1, &DirShadowViewport);
 
 			DirectionalShaderBinding->SetMatrix4("LightViewProj", DirShadow->LightViewProj[CascadeIndex]);
+            DirectionalShaderBinding->SetUInt("ShadowFilterType", static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
 
 			for (const FRenderCommand& Cmd : Commands)
 			{
@@ -188,16 +190,9 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 	}
 
     // ─────────────────── Spot Shadow ───────────────────
-    if (!ShaderBinding && !Commands.empty())
-    {
-        return true;
-    }
-
     const TArray<FSpotShadowConstants>& SpotShadows = Context->RenderBus->GetCastShadowSpotLights();
-    if (SpotShadows.empty() || Commands.empty())
+    if (ShaderBinding && !SpotShadows.empty() && !Commands.empty())
     {
-        return true;
-    }
 
     // 이전 프레임에 픽셀 셰이더에서 이 shadow atlas를 읽고 있었을 수 있으니,
     // depth를 다시 쓰기 전에 SRV 바인딩 끊어주기
@@ -245,6 +240,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 		ShaderBinding->SetFloat("ShadowResolution", SpotShadow.ShadowResolution);
 		ShaderBinding->SetFloat("ShadowBias", SpotShadow.ShadowBias);
 		ShaderBinding->SetFloat("ShadowFarPlane", SpotShadow.ShadowFarPlane);
+        ShaderBinding->SetUInt("ShadowFilterType", static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
 		
 		for (const FRenderCommand& Cmd : Commands)
 		{
@@ -300,6 +296,8 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 		Context->RenderTargets->SpotShadowVSMSRV = ShadowAtlasManager.GetSpotVSMAtlasSRV();
     }
 
+    }
+
     // ─────────────────── Point Shadow ───────────────────
     if (!PointShaderBinding)
     {
@@ -313,9 +311,11 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     }
     ID3D11ShaderResourceView* NullPointShadowSRV = nullptr;
     Context->DeviceContext->PSSetShaderResources(17, 1, &NullPointShadowSRV);
+    Context->DeviceContext->PSSetShaderResources(18, 1, &NullPointShadowSRV);
     
     ID3D11DepthStencilView* PointAtlasDSV = ShadowAtlasManager.GetPointAtlasDSV();
-    if (PointAtlasDSV == nullptr)
+    ID3D11RenderTargetView* PointAtlasRTV = ShadowAtlasManager.GetPointVSMAtlasRTV();
+    if (PointAtlasDSV == nullptr || PointAtlasRTV == nullptr)
     {
         return false;
     }
@@ -330,8 +330,11 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
         FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::SolidNoCull, Context->Device);
     Context->DeviceContext->RSSetState(PointShadowRasterizerState);
 
-    Context->DeviceContext->OMSetRenderTargets(0, nullptr, PointAtlasDSV);
+    Context->DeviceContext->OMSetRenderTargets(1, &PointAtlasRTV, PointAtlasDSV);
     Context->DeviceContext->ClearDepthStencilView(PointAtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    float PointClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Context->DeviceContext->ClearRenderTargetView(PointAtlasRTV, PointClearColor);
     
     uint32 RenderedPointShadowCount = 0;
     for (const FPointShadowConstants& PointShadow : PointShadows)
@@ -345,6 +348,8 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
             PointShaderBinding->SetVector3("LightPosition", PointShadow.LightPosition);
             PointShaderBinding->SetFloat("FarPlane", PointShadow.FarPlane);
             PointShaderBinding->SetFloat("ShadowBias", PointShadow.ShadowBias);
+            PointShaderBinding->SetFloat("ShadowResolution", PointShadow.ShadowResolution);
+            PointShaderBinding->SetUInt("ShadowFilterType", static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
             
             for (const FRenderCommand& Cmd : Commands)
             {
@@ -398,6 +403,7 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     {
         Context->RenderTargets->PointShadowSRV = ShadowAtlasManager.GetPointAtlasSRV();
         Context->RenderTargets->PointShadowCount = RenderedPointShadowCount;
+        Context->RenderTargets->PointShadowVSMSRV = ShadowAtlasManager.GetPointVSMAtlasSRV();
     }
     
     return true;

@@ -242,7 +242,7 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 		{
 			const int32 FilterType = ViewObj[EditorKey::ShadowFilterType].ToInt();
 			if (FilterType >= static_cast<int32>(EShadowFilterType::PCF) &&
-				FilterType <= static_cast<int32>(EShadowFilterType::VSM))
+				FilterType <= static_cast<int32>(EShadowFilterType::ESM))
 			{
 				ShadowFilterType = static_cast<EShadowFilterType>(FilterType);
 			}

@@ -23,6 +23,7 @@ private:
     bool EnsureConstantBuffer(ID3D11Device* Device);
     bool EnsureSpotShadowBlurResources(ID3D11Device* Device);
     bool EnsureDirectionalShadowBlurResources(ID3D11Device* Device);
+    bool EnsurePointShadowBlurResources(ID3D11Device* Device);
 
 	void DrawBlurCommand(const FRenderPassContext* Context, uint32 Resolution,
                          ID3D11ShaderResourceView* ShadowBlurTempSRV,
@@ -37,6 +38,7 @@ private:
 
     uint32 MaxSpotShadowCount = 8;
     uint32 SpotShadowResolution = 4096;
+    uint32 PointShadowResolution = 4096;
 
 	TComPtr<ID3D11ComputeShader> ComputeShader;
     TComPtr<ID3D11Buffer> ConstantBuffer;
@@ -65,4 +67,13 @@ private:
     TComPtr<ID3D11Texture2D> DirectionalShadowBlurFinalTexture;
     TComPtr<ID3D11ShaderResourceView> DirectionalShadowBlurFinalSRV;
     TComPtr<ID3D11UnorderedAccessView> DirectionalShadowBlurFinalUAV;
+
+    // ------------- Point --------------------
+    TComPtr<ID3D11Texture2D> PointShadowBlurTempTexture;
+    TComPtr<ID3D11ShaderResourceView> PointShadowBlurTempSRV;
+    TComPtr<ID3D11UnorderedAccessView> PointShadowBlurTempUAV;
+
+    TComPtr<ID3D11Texture2D> PointShadowBlurFinalTexture;
+    TComPtr<ID3D11ShaderResourceView> PointShadowBlurFinalSRV;
+    TComPtr<ID3D11UnorderedAccessView> PointShadowBlurFinalUAV;
 };

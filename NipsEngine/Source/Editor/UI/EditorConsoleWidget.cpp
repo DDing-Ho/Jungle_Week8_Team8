@@ -13,6 +13,7 @@ FEditorConsoleWidget::FEditorConsoleWidget()
 	// 임의의 명령어 문자열이 들어왔을 때 뒤의 함수를 실행하도록 분기한다.
 	RegisterCommand("stat", [this](const TArray<FString>& Args) { CmdStat(Args); });
     RegisterCommand("shadow_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
+    RegisterCommand("shader_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
 }
 
 FEditorConsoleWidget::~FEditorConsoleWidget() 
@@ -295,7 +296,7 @@ void FEditorConsoleWidget::CmdShadowFilter(const TArray<FString>& Args)
 {
     if (Args.size() < 2)
     {
-        AddLog("[WARN] Usage: shadow_filter <pcf|vsm>\n");
+        AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
         return;
     }
 
@@ -316,9 +317,14 @@ void FEditorConsoleWidget::CmdShadowFilter(const TArray<FString>& Args)
         Settings.ShadowFilterType = EShadowFilterType::VSM;
         AddLog("Shadow filter set to VSM\n");
     }
+    else if (Target == "esm")
+    {
+        Settings.ShadowFilterType = EShadowFilterType::ESM;
+        AddLog("Shadow filter set to ESM\n");
+    }
     else
     {
-        AddLog("[WARN] Usage: shadow_filter <pcf|vsm>\n");
+        AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
     }
 }
 
