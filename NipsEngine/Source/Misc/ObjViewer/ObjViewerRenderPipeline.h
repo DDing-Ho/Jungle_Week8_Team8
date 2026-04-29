@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Misc/ObjViewer/ObjViewerEngine.h"
 #include "Engine/Render/Renderer/IRenderPipeline.h"
-#include "Render/Scene/RenderCollector.h"
+#include "Render/Collector/RenderCollector.h"
 #include "Render/Scene/RenderBus.h"
 
 class UObjViewerEngine;

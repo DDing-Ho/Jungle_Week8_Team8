@@ -222,6 +222,12 @@
     <FxCompile Include="Shaders\Multipass\LightCullingCS.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Multipass\PointShadowDepth.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Multipass\ShadowBlurCS.hlsl">
+      <Filter>Shaders\Multipass</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Multipass\SkyPass.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
@@ -229,9 +235,6 @@
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Multipass\ToonOutlinePass.hlsl">
-      <Filter>Shaders\Multipass</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\Multipass\ShadowBlurCS.hlsl">
       <Filter>Shaders\Multipass</Filter>
     </FxCompile>
   </ItemGroup>
@@ -515,6 +518,9 @@
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BillboardRenderPass.cpp">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.cpp">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.cpp">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClCompile>
@@ -558,6 +564,9 @@
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\SelectionMaskRenderPass.cpp">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.cpp">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\ShadowPass.cpp">
@@ -612,9 +621,6 @@
       <Filter>Source\Engine\Render\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Scene\RenderBus.cpp">
-      <Filter>Source\Engine\Render\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Scene\RenderCollector.cpp">
       <Filter>Source\Engine\Render\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Runtime\Engine.cpp">
@@ -726,8 +732,10 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.cpp" />
+    <ClCompile Include="Source\Engine\Render\Collector\LightRenderCollector.cpp" />
+    <ClCompile Include="Source\Engine\Render\Collector\OverlayRenderCollector.cpp" />
+    <ClCompile Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.cpp" />
+    <ClCompile Include="Source\Engine\Render\Collector\RenderCollector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1117,6 +1125,9 @@
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BillboardRenderPass.h">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.h">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BufferVisualizationRenderPass.h">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClInclude>
@@ -1163,6 +1174,9 @@
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\SelectionMaskRenderPass.h">
+      <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.h">
       <Filter>Source\Engine\Render\Renderer\RenderFlow</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\ShadowPass.h">
@@ -1223,9 +1237,6 @@
       <Filter>Source\Engine\Render\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Scene\RenderBus.h">
-      <Filter>Source\Engine\Render\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Scene\RenderCollector.h">
       <Filter>Source\Engine\Render\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Scene\RenderCommand.h">
@@ -1375,12 +1386,10 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\BlurPass.h" />
-    <ClInclude Include="Source\Engine\Render\Renderer\RenderFlow\ShadowAtlasManager.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\Multipass\PointShadowDepth.hlsl">
-      <Filter>Shaders\Multipass</Filter>
-    </None>
+    <ClInclude Include="Source\Engine\Render\Collector\LightRenderCollector.h" />
+    <ClInclude Include="Source\Engine\Render\Collector\OverlayRenderCollector.h" />
+    <ClInclude Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.h" />
+    <ClInclude Include="Source\Engine\Render\Collector\RenderCollectionStats.h" />
+    <ClInclude Include="Source\Engine\Render\Collector\RenderCollector.h" />
   </ItemGroup>
 </Project>

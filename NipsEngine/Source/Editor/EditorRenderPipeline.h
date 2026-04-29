@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Render/Renderer/IRenderPipeline.h"
-#include "Render/Scene/RenderCollector.h"
+#include "Render/Collector/RenderCollector.h"
 #include "Render/Scene/RenderBus.h"
 
 class UEditorEngine;
