@@ -163,21 +163,33 @@ static const uint SHADOW_FILTER_TYPE_VSM = 1u;
 static const uint SHADOW_FILTER_TYPE_ESM = 2u;
 static const float POINT_SHADOW_FACE_EXTENT = 1.008765f; // tan(radians(90.5 * 0.5))
 
+static const float3 kPointShadowFaceForward[6] = {
+    float3( 1.0f,  0.0f,  0.0f),
+    float3(-1.0f,  0.0f,  0.0f),
+    float3( 0.0f,  1.0f,  0.0f),
+    float3( 0.0f, -1.0f,  0.0f),
+    float3( 0.0f,  0.0f,  1.0f),
+    float3( 0.0f,  0.0f, -1.0f),
+};
+
+static const float3 kPointShadowFaceUp[6] = {
+    float3( 0.0f,  0.0f,  1.0f),
+    float3( 0.0f,  0.0f,  1.0f),
+    float3( 0.0f,  0.0f,  1.0f),
+    float3( 0.0f,  0.0f,  1.0f),
+    float3(-1.0f,  0.0f,  0.0f),
+    float3( 1.0f,  0.0f,  0.0f),
+};
+
+
 float3 GetPointShadowFaceForward(uint FaceIndex)
 {
-    if (FaceIndex == 0u) return float3(1.0f, 0.0f, 0.0f);
-    if (FaceIndex == 1u) return float3(-1.0f, 0.0f, 0.0f);
-    if (FaceIndex == 2u) return float3(0.0f, 1.0f, 0.0f);
-    if (FaceIndex == 3u) return float3(0.0f, -1.0f, 0.0f);
-    if (FaceIndex == 4u) return float3(0.0f, 0.0f, 1.0f);
-    return float3(0.0f, 0.0f, -1.0f);
+    return kPointShadowFaceForward[FaceIndex];
 }
 
 float3 GetPointShadowFaceUp(uint FaceIndex)
 {
-    if (FaceIndex == 4u) return float3(-1.0f, 0.0f, 0.0f);
-    if (FaceIndex == 5u) return float3(1.0f, 0.0f, 0.0f);
-    return float3(0.0f, 0.0f, 1.0f);
+    return kPointShadowFaceUp[FaceIndex];
 }
 
 uint SelectPointShadowFace(float3 DirectionFromLight)

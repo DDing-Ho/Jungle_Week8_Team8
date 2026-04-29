@@ -5,6 +5,9 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
+#include <cstdio>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <ranges>
@@ -143,6 +146,126 @@ namespace
 
 		MacroData.Macros.push_back({ nullptr, nullptr });
 		return MacroData;
+	}
+
+    // ───────── Shader disk cache ─────────
+	uint64_t ShaderCacheFNV1a(const void* Data, size_t Size, uint64_t Seed = 14695981039346656037ULL)
+	{
+		const uint8_t* Bytes = static_cast<const uint8_t*>(Data);
+		uint64_t Hash = Seed;
+		for (size_t i = 0; i < Size; ++i)
+		{
+			Hash ^= Bytes[i];
+			Hash *= 1099511628211ULL;
+		}
+		return Hash;
+	}
+
+	uint64_t ShaderCacheHashFile(const std::filesystem::path& FilePath, uint64_t Seed)
+	{
+		std::ifstream File(FilePath, std::ios::binary);
+		if (!File) return Seed;
+		std::vector<char> Buffer((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
+		return ShaderCacheFNV1a(Buffer.data(), Buffer.size(), Seed);
+	}
+
+	uint64_t ShaderCacheHashAllIncludes(uint64_t Seed)
+	{
+		const std::filesystem::path Dir(FPaths::ShaderDir());
+		std::error_code EC;
+		if (!std::filesystem::exists(Dir, EC)) return Seed;
+
+		std::vector<std::filesystem::path> Includes;
+		for (auto It = std::filesystem::recursive_directory_iterator(Dir, EC);
+			!EC && It != std::filesystem::recursive_directory_iterator();
+			It.increment(EC))
+		{
+			if (It->is_regular_file(EC) && It->path().extension() == L".hlsli")
+			{
+				Includes.push_back(It->path());
+			}
+		}
+		std::sort(Includes.begin(), Includes.end());
+
+		uint64_t Hash = Seed;
+		for (const auto& IncPath : Includes)
+		{
+			const std::string Name = IncPath.filename().string();
+			Hash = ShaderCacheFNV1a(Name.data(), Name.size(), Hash);
+			Hash = ShaderCacheHashFile(IncPath, Hash);
+		}
+		return Hash;
+	}
+
+	std::filesystem::path ShaderCacheDir()
+	{
+		return std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"ShaderCache";
+	}
+
+	std::string ComputeShaderCacheKey(const FShaderCompileKey& Key, const char* Entry, const char* Target)
+	{
+		uint64_t Hash = 14695981039346656037ULL;
+
+		std::filesystem::path SourcePath(FPaths::RootDir());
+		SourcePath /= FPaths::ToWide(Key.FilePath);
+		Hash = ShaderCacheHashFile(SourcePath, Hash);
+
+		Hash = ShaderCacheHashAllIncludes(Hash);
+
+		for (const FShaderMacro& M : Key.Macros)
+		{
+			Hash = ShaderCacheFNV1a(M.Name.data(), M.Name.size(), Hash);
+			Hash = ShaderCacheFNV1a("=", 1, Hash);
+			Hash = ShaderCacheFNV1a(M.Value.data(), M.Value.size(), Hash);
+			Hash = ShaderCacheFNV1a(";", 1, Hash);
+		}
+
+		const size_t EntryLen = std::strlen(Entry);
+		Hash = ShaderCacheFNV1a(Entry, EntryLen, Hash);
+		Hash = ShaderCacheFNV1a(":", 1, Hash);
+		const size_t TargetLen = std::strlen(Target);
+		Hash = ShaderCacheFNV1a(Target, TargetLen, Hash);
+
+		char Buffer[24];
+		std::snprintf(Buffer, sizeof(Buffer), "%016llx", static_cast<unsigned long long>(Hash));
+		return std::string(Buffer);
+	}
+
+	bool TryLoadCachedShaderBlob(const std::string& CacheKey, ID3DBlob** OutBlob)
+	{
+		const std::filesystem::path Path = ShaderCacheDir() / (CacheKey + ".cso");
+		std::error_code EC;
+		if (!std::filesystem::exists(Path, EC)) return false;
+
+		std::ifstream File(Path, std::ios::binary | std::ios::ate);
+		if (!File) return false;
+		const std::streamsize Size = File.tellg();
+		if (Size <= 0) return false;
+		File.seekg(0);
+
+		ID3DBlob* Blob = nullptr;
+		if (FAILED(D3DCreateBlob(static_cast<SIZE_T>(Size), &Blob)) || !Blob) return false;
+		File.read(static_cast<char*>(Blob->GetBufferPointer()), Size);
+		if (!File)
+		{
+			Blob->Release();
+			return false;
+		}
+		*OutBlob = Blob;
+		return true;
+	}
+
+	void SaveCachedShaderBlob(const std::string& CacheKey, ID3DBlob* Blob)
+	{
+		if (!Blob) return;
+		std::error_code EC;
+		std::filesystem::create_directories(ShaderCacheDir(), EC);
+
+		const std::filesystem::path Path = ShaderCacheDir() / (CacheKey + ".cso");
+		std::ofstream File(Path, std::ios::binary | std::ios::trunc);
+		if (!File) return;
+		File.write(static_cast<const char*>(Blob->GetBufferPointer()),
+			static_cast<std::streamsize>(Blob->GetBufferSize()));
 	}
 
 	bool IsRemovedAmbientMaterialParam(const FString& ParamName)
@@ -989,8 +1112,46 @@ bool FResourceManager::LoadShaderInternal(const FShaderCompileKey& CompileKey,
 	const FCompiledShaderMacroData MacroData = BuildCompiledShaderMacroData(NormalizedKey.Macros);
 	const D3D_SHADER_MACRO* RawMacros = MacroData.Macros.empty() ? nullptr : MacroData.Macros.data();
 
-	HRESULT hr = D3DCompileFromFile(FPaths::ToWide(NormalizedKey.FilePath).c_str(), RawMacros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		NormalizedKey.VSEntryPoint.c_str(), "vs_5_0", 0, 0, &VSBlob, &ErrorBlob);
+    const std::string VSCacheKey = ComputeShaderCacheKey(NormalizedKey, NormalizedKey.VSEntryPoint.c_str(), "vs_5_0");
+    HRESULT hr = S_OK;
+    bool bVSFromCache = false;
+    {
+	    ID3DBlob* CachedBlob = nullptr;
+	    if (TryLoadCachedShaderBlob(VSCacheKey, &CachedBlob))
+	    {
+	        VSBlob.Attach(CachedBlob);
+	        bVSFromCache = true;
+	        UE_LOG("[ShaderCompile] VS cache-hit %s entry=%s key=%s",
+                NormalizedKey.FilePath.c_str(),
+                NormalizedKey.VSEntryPoint.c_str(),
+                VSCacheKey.c_str());
+	    }
+    }
+    if (!bVSFromCache)
+    {
+        const auto VSBegin = std::chrono::steady_clock::now();
+        hr = D3DCompileFromFile(FPaths::ToWide(NormalizedKey.FilePath).c_str(), RawMacros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            NormalizedKey.VSEntryPoint.c_str(), "vs_5_0", 0, 0, &VSBlob, &ErrorBlob);
+        const auto VSMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - VSBegin).count();
+        {
+            FString MacroDump;
+            for (const FShaderMacro& M : NormalizedKey.Macros)
+            {
+                if (!MacroDump.empty()) MacroDump += ",";
+                MacroDump += M.Name;
+            }
+            UE_LOG("[ShaderCompile] VS %lldms %s [%s] entry=%s",
+                static_cast<long long>(VSMs),
+                NormalizedKey.FilePath.c_str(),
+                MacroDump.c_str(),
+                NormalizedKey.VSEntryPoint.c_str());
+        }
+        if (SUCCEEDED(hr))
+        {
+            SaveCachedShaderBlob(VSCacheKey, VSBlob.Get());
+        }
+    }
 	if (FAILED(hr))
 	{
 		if (ErrorBlob)
@@ -1012,8 +1173,46 @@ bool FResourceManager::LoadShaderInternal(const FShaderCompileKey& CompileKey,
 	}
 	ErrorBlob.Reset();
 
-	hr = D3DCompileFromFile(FPaths::ToWide(NormalizedKey.FilePath).c_str(), RawMacros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		NormalizedKey.PSEntryPoint.c_str(), "ps_5_0", 0, 0, &PSBlob, &ErrorBlob);
+    const std::string PSCacheKey = ComputeShaderCacheKey(NormalizedKey, NormalizedKey.PSEntryPoint.c_str(), "ps_5_0");
+    hr = S_OK;
+    bool bPSFromCache = false;
+    {
+	    ID3DBlob* CachedBlob = nullptr;
+	    if (TryLoadCachedShaderBlob(PSCacheKey, &CachedBlob))
+	    {
+	        PSBlob.Attach(CachedBlob);
+	        bPSFromCache = true;
+	        UE_LOG("[ShaderCompile] PS cache-hit %s entry=%s key=%s",
+                NormalizedKey.FilePath.c_str(),
+                NormalizedKey.PSEntryPoint.c_str(),
+                PSCacheKey.c_str());
+	    }
+    }
+    if (!bPSFromCache)
+    {
+        const auto PSBegin = std::chrono::steady_clock::now();
+        hr = D3DCompileFromFile(FPaths::ToWide(NormalizedKey.FilePath).c_str(), RawMacros, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            NormalizedKey.PSEntryPoint.c_str(), "ps_5_0", 0, 0, &PSBlob, &ErrorBlob);
+        const auto PSMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - PSBegin).count();
+        {
+            FString MacroDump;
+            for (const FShaderMacro& M : NormalizedKey.Macros)
+            {
+                if (!MacroDump.empty()) MacroDump += ",";
+                MacroDump += M.Name;
+            }
+            UE_LOG("[ShaderCompile] PS %lldms %s [%s] entry=%s",
+                static_cast<long long>(PSMs),
+                NormalizedKey.FilePath.c_str(),
+                MacroDump.c_str(),
+                NormalizedKey.PSEntryPoint.c_str());
+        }
+        if (SUCCEEDED(hr))
+        {
+            SaveCachedShaderBlob(PSCacheKey, PSBlob.Get());
+        }
+    }
 	if (FAILED(hr))
 	{
 		if (ErrorBlob)
