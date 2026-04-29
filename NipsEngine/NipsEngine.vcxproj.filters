@@ -82,6 +82,9 @@
     <Filter Include="Source\Engine\Render">
       <UniqueIdentifier>{c2b26f68-96a9-037f-9122-8cc548e081ff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Render\Collector">
+      <UniqueIdentifier>{8fbd631b-aceb-a6cd-819c-c41292dde0e3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Render\Common">
       <UniqueIdentifier>{108dc0c1-4479-94be-2910-1d448b2d0fa7}</UniqueIdentifier>
     </Filter>
@@ -503,6 +506,18 @@
     <ClCompile Include="Source\Engine\Render\SubUVBatcher.cpp">
       <Filter>Source\Engine\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Collector\LightRenderCollector.cpp">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Collector\OverlayRenderCollector.cpp">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.cpp">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Collector\RenderCollector.cpp">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Device\D3DDevice.cpp">
       <Filter>Source\Engine\Render\Device</Filter>
     </ClCompile>
@@ -732,10 +747,6 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Engine\Render\Collector\LightRenderCollector.cpp" />
-    <ClCompile Include="Source\Engine\Render\Collector\OverlayRenderCollector.cpp" />
-    <ClCompile Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.cpp" />
-    <ClCompile Include="Source\Engine\Render\Collector\RenderCollector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1098,6 +1109,21 @@
     <ClInclude Include="Source\Engine\Render\SubUVBatcher.h">
       <Filter>Source\Engine\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Collector\LightRenderCollector.h">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Collector\OverlayRenderCollector.h">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.h">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Collector\RenderCollectionStats.h">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Collector\RenderCollector.h">
+      <Filter>Source\Engine\Render\Collector</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\Common\ComPtr.h">
       <Filter>Source\Engine\Render\Common</Filter>
     </ClInclude>
@@ -1386,10 +1412,5 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Collector\LightRenderCollector.h" />
-    <ClInclude Include="Source\Engine\Render\Collector\OverlayRenderCollector.h" />
-    <ClInclude Include="Source\Engine\Render\Collector\PrimitiveRenderCollector.h" />
-    <ClInclude Include="Source\Engine\Render\Collector\RenderCollectionStats.h" />
-    <ClInclude Include="Source\Engine\Render\Collector\RenderCollector.h" />
   </ItemGroup>
 </Project>
