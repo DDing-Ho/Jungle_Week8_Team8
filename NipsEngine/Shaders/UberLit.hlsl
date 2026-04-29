@@ -224,11 +224,13 @@ float SampleDirectionalShadowAtIndex(float3 WorldPos, float3 N, float3 L, int Sh
     }
     else if (ShadowFilterType == SHADOW_FILTER_TYPE_ESM)
     {
-        return SampleShadowESM(AtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, AtlasRect, AtlasSize);
+        return SampleShadowESM(ClampedAtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
     }
     else
     {
-        return SampleShadowVSM(AtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, AtlasRect, AtlasSize);
+        return SampleShadowVSM(ClampedAtlasUV, CurrentDepth - Bias, DirectionalShadowVSMMap, AtlasSize);
     }
 }
 
@@ -331,11 +333,13 @@ float ComputePointShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMap
     }
     else if (PointShadowFilterType == SHADOW_FILTER_TYPE_ESM)
     {
-        return SampleShadowESM(AtlasUV, CurrentDepth - Bias, PointShadowVSMMap, int2(AtlasSize, AtlasSize));
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, AtlasRect, int2(AtlasSize, AtlasSize));
+        return SampleShadowESM(ClampedAtlasUV, CurrentDepth - Bias, PointShadowVSMMap, int2(AtlasSize, AtlasSize));
     }
     else
     {
-        return SampleShadowVSM(AtlasUV, CurrentDepth - Bias, PointShadowVSMMap, int2(AtlasSize, AtlasSize));
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, AtlasRect, int2(AtlasSize, AtlasSize));
+        return SampleShadowVSM(ClampedAtlasUV, CurrentDepth - Bias, PointShadowVSMMap, int2(AtlasSize, AtlasSize));
     }
 }
 
@@ -443,11 +447,13 @@ float ComputeSpotShadowFactor(float3 WorldPos, uint bCastShadows, int ShadowMapI
     }
     else if (SpotShadowFilterType == SHADOW_FILTER_TYPE_ESM)
     {
-        return SampleShadowESM(AtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, Shadow.AtlasRect, AtlasSize);
+        return SampleShadowESM(ClampedAtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
     }
     else
     {
-        return SampleShadowVSM(AtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
+        const float2 ClampedAtlasUV = ClampShadowUVToAtlasRect(AtlasUV, Shadow.AtlasRect, AtlasSize);
+        return SampleShadowVSM(ClampedAtlasUV, LinearDepth - Bias, SpotShadowVSMMap, AtlasSize);
     }
 }
 

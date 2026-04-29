@@ -68,9 +68,7 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<flo
 // VSM
 float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapVSM, int2 AtlasSize)
 {
-    float2 TexelSize = 1.0f / (float2) AtlasSize;
-    
-    float2 Moments = ShadowMapVSM.Load(int3(ShadowUV * AtlasSize, 0)).xy;
+    float2 Moments = ShadowMapVSM.SampleLevel(SampleState, ShadowUV, 0.0f).xy;
     float d = Moments.x; // depth
     float dSq = Moments.y; // depth^2
 
@@ -96,10 +94,18 @@ float SampleShadowESM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> Sha
 {
     static const float ShadowESMExponent = 40.0f;
 
-    float Stored = ShadowMapESM.Load(int3(ShadowUV * AtlasSize, 0)).x;
+    float Stored = ShadowMapESM.SampleLevel(SampleState, ShadowUV, 0.0f).x;
     float Shadow = Stored * exp(-ShadowESMExponent * CurrentDepth);
     
     return saturate(Shadow);
+}
+
+float2 ClampShadowUVToAtlasRect(float2 ShadowUV, float4 AtlasRect, int2 AtlasSize)
+{
+    const float2 HalfTexel = 0.5f / (float2)AtlasSize;
+    const float2 MinUV = AtlasRect.xy + HalfTexel;
+    const float2 MaxUV = AtlasRect.xy + AtlasRect.zw - HalfTexel;
+    return clamp(ShadowUV, MinUV, MaxUV);
 }
 
 // PCSS
