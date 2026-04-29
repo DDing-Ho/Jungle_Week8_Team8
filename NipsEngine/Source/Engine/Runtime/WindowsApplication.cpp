@@ -110,6 +110,11 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 			OnSizingCallback();
 		}
 		return 0;
+	case WM_THEMECHANGED:
+	case WM_DWMCOLORIZATIONCOLORCHANGED:
+	case WM_SETTINGCHANGE:
+		Window.ApplySystemTheme();
+		return 0;
 	default:
 		break;
 	}
@@ -131,7 +136,7 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 		0,
 		WindowClass,
 		Title,
-		WS_POPUP | WS_VISIBLE | WS_OVERLAPPEDWINDOW,
+		WS_POPUP | WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		1920, 1080,
 		nullptr, nullptr, HInstance, this);
@@ -142,6 +147,9 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	}
 
 	Window.Initialize(HWindow);
+	Window.ApplySystemTheme();
+	ShowWindow(HWindow, SW_SHOW);
+	UpdateWindow(HWindow);
 	return true;
 }
 
