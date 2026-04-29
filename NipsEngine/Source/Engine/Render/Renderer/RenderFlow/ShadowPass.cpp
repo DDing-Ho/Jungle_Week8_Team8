@@ -5,6 +5,13 @@
 
 namespace
 {
+	float GetShadowMomentClearValue(uint32 ShadowFilterType)
+	{
+		static constexpr uint32 ShadowFilterTypeESM = 2u;
+		static constexpr float ShadowESMExponentClearValue = 2.3538527e17f; // exp(40)
+		return ShadowFilterType == ShadowFilterTypeESM ? ShadowESMExponentClearValue : 1.0f;
+	}
+
 	// AtlasRect(0~1 정규화 UV)를 실제 D3D viewport 픽셀 좌표로 바꿉니다.
 	D3D11_VIEWPORT MakeViewportFromAtlasRect(const FVector4& AtlasRect, float AtlasResolution)
 	{
@@ -119,7 +126,9 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
 		Context->DeviceContext->OMSetRenderTargets(1, &AtlasRTV, AtlasDSV);
 		Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-		float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		const float ShadowMomentClearValue =
+			GetShadowMomentClearValue(static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
+		float ClearColor[4] = { ShadowMomentClearValue, ShadowMomentClearValue, 1.0f, 1.0f };
 		Context->DeviceContext->ClearRenderTargetView(AtlasRTV, ClearColor);
 
 		const TArray<FDirectionalAtlasSlotDesc>& CascadeSlots = FShadowAtlasManager::GetDirectionalCascadeSlots();
@@ -224,7 +233,9 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     // 매 프레임 atlas 전체를 초기화하고, 이번 프레임의 visible spot shadow들을 다시 채우기
     Context->DeviceContext->ClearDepthStencilView(AtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-    float ClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const float ShadowMomentClearValue =
+        GetShadowMomentClearValue(static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
+    float ClearColor[4] = { ShadowMomentClearValue, ShadowMomentClearValue, 1.0f, 1.0f };
     Context->DeviceContext->ClearRenderTargetView(AtlasRTV, ClearColor);
 
     // 실제로 atlas에 그린 spot shadow 개수를 기록
@@ -332,7 +343,9 @@ bool FShadowPass::DrawCommand(const FRenderPassContext* Context)
     Context->DeviceContext->OMSetRenderTargets(1, &PointAtlasRTV, PointAtlasDSV);
     Context->DeviceContext->ClearDepthStencilView(PointAtlasDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-    float PointClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const float PointShadowMomentClearValue =
+        GetShadowMomentClearValue(static_cast<uint32>(Context->RenderBus->GetShadowFilterType()));
+    float PointClearColor[4] = { PointShadowMomentClearValue, PointShadowMomentClearValue, 1.0f, 1.0f };
     Context->DeviceContext->ClearRenderTargetView(PointAtlasRTV, PointClearColor);
     
     uint32 RenderedPointShadowCount = 0;

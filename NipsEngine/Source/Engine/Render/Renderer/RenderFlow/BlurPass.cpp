@@ -10,7 +10,7 @@ bool FBlurPass::Initialize()
 {
     FShadowAtlasManager AtlasManager;
     SpotShadowResolution = AtlasManager.SpotAtlasResolution;
-    DirectionalShadowResolution = AtlasManager.DirectionalCascadeResolution;
+    DirectionalShadowResolution = AtlasManager.DirectionalAtlasResolution;
     PointShadowResolution = AtlasManager.PointAtlasResolution;
 
     return true;

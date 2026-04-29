@@ -34,7 +34,7 @@ private:
     void UpdateConstantBuffer(ID3D11DeviceContext* DeviceContext, uint32 BlurDirection);
 
 private:
-    uint32 DirectionalShadowResolution = 2048;
+    uint32 DirectionalShadowResolution = 4096;
 
     uint32 MaxSpotShadowCount = 8;
     uint32 SpotShadowResolution = 4096;

@@ -28,7 +28,6 @@ struct FDirectionalShadowVSInput
 struct FDirectionalShadowVSOutput
 {
     float4 ClipPos : SV_POSITION;
-    float4 ClipPosW : TEXCOORD0;
 };
 
 FDirectionalShadowVSOutput mainVS(FDirectionalShadowVSInput Input)
@@ -37,14 +36,13 @@ FDirectionalShadowVSOutput mainVS(FDirectionalShadowVSInput Input)
 
     float4 WorldPos = mul(float4(Input.Position, 1.0f), World);
     Output.ClipPos = mul(WorldPos, LightViewProj);
-    Output.ClipPosW = Output.ClipPos;
     
     return Output;
 }
 
 float2 mainPS(FDirectionalShadowVSOutput Input) : SV_Target0
 {
-    float d = Input.ClipPosW.z / Input.ClipPosW.w;
+    float d = saturate(Input.ClipPos.z);
     if (ShadowFilterType == SHADOW_FILTER_TYPE_ESM)
     {
         const float e = exp(SHADOW_ESM_EXPONENT * d);
