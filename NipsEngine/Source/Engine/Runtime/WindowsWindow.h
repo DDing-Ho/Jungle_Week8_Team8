@@ -15,6 +15,8 @@ public:
 
 	HWND GetHWND() const { return HWindow; }
 
+	void ApplySystemTheme();
+
 	float GetWidth() const { return Width; }
 	float GetHeight() const { return Height; }
 
