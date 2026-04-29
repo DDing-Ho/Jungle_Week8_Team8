@@ -11,6 +11,7 @@
 #include "GameFramework/PrimitiveActors.h"
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
+#include "Component/Movement/MovementComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Object/Object.h"
 #include "Object/ActorIterator.h"
@@ -38,6 +39,7 @@ namespace SceneKeys
 	static constexpr const char* NonSceneComponents = "NonSceneComponents";
 	static constexpr const char* Properties         = "Properties";
 	static constexpr const char* Children           = "Children";
+	static constexpr const char* UpdatedComponentUUID = "UpdatedComponentUUID";
 
 	// PerspectiveCamera 섹션
 	static constexpr const char* PerspectiveCamera  = "PerspectiveCamera";
@@ -427,6 +429,14 @@ void FSceneSaveManager::Save(const FString& FilePath, FWorldContext& WorldContex
 			
 			Writer.BeginObject(std::to_string(Comp->GetUUID()));
 			Comp->Serialize(Writer);
+			if (!Comp->IsA<USceneComponent>())
+			{
+				if (USceneComponent* RootComp = Actor->GetRootComponent())
+				{
+					uint32 OwnerRootUUID = RootComp->GetUUID();
+					Writer << SceneKeys::OwnerRootUUID << OwnerRootUUID;
+				}
+			}
 			Writer.EndObject();
 		}
 	}
@@ -626,6 +636,16 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
 	}
 
 	// 3단계: 매핑된 컴포넌트들의 데이터 역직렬화
+	auto ResolveSceneComponent = [&](uint32 UUID) -> USceneComponent*
+	{
+		auto It = UUIDToComp.find(UUID);
+		if (It == UUIDToComp.end())
+		{
+			return nullptr;
+		}
+		return Cast<USceneComponent>(It->second);
+	};
+
 	Reader.BeginObject(SceneKeys::Primitives);
 	for (auto& Pair : UUIDToComp)
 	{
@@ -636,6 +656,32 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
 		if (USceneComponent* SceneComp = Cast<USceneComponent>(Pair.second))
 		{
 			SceneComp->MarkTransformDirty();
+		}
+		else if (UMovementComponent* MovementComp = Cast<UMovementComponent>(Pair.second))
+		{
+			json::JSON& CompJSON = PrimitivesNode[std::to_string(Pair.first)];
+			uint32 UpdatedUUID = 0;
+			if (CompJSON.hasKey(SceneKeys::UpdatedComponentUUID))
+			{
+				UpdatedUUID = static_cast<uint32>(CompJSON[SceneKeys::UpdatedComponentUUID].ToInt());
+			}
+			else if (CompJSON.hasKey("Updated Component"))
+			{
+				UpdatedUUID = static_cast<uint32>(CompJSON["Updated Component"].ToInt());
+			}
+
+			if (USceneComponent* UpdatedComp = ResolveSceneComponent(UpdatedUUID))
+			{
+				MovementComp->SetUpdatedComponent(UpdatedComp);
+			}
+			else
+			{
+				auto RootIt = NonSceneToRootMap.find(Pair.first);
+				if (RootIt != NonSceneToRootMap.end())
+				{
+					MovementComp->SetUpdatedComponent(ResolveSceneComponent(RootIt->second));
+				}
+			}
 		}
 	}
 	Reader.EndObject();

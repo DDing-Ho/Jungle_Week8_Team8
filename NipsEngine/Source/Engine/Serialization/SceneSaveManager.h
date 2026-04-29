@@ -60,7 +60,6 @@ public:
 
 private:
 	// ---- Serialization ----
-
 	static json::JSON SerializeWorldToPrimitives(UWorld* World, const FWorldContext& Ctx);
 	// SceneComponent 트리를 OutPrimitives에 재귀적으로 평탄화 직렬화
 	static void CollectComponentsFlat(USceneComponent* Comp, uint32 ParentID, json::JSON& OutPrimitives);

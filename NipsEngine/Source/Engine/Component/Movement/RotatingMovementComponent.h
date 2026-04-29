@@ -21,6 +21,7 @@ public:
 
 	virtual float GetMaxSpeed() const override { return 0.0f; } // 회전 컴포넌트이므로 0.0f 반환
 
+	virtual void Serialize(FArchive& Ar) override;
 	virtual void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 
 private:

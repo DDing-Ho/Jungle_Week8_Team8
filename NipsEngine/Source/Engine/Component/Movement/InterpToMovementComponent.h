@@ -17,6 +17,7 @@ public:
 	// Overrides
 	void				BeginPlay() override;
 	void				TickComponent(float DeltaTime) override;
+	void				Serialize(FArchive& Ar) override;
     void				GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
     void				PostDuplicate(UObject* Original) override;
 	float				GetMaxSpeed() const override { return 0; };

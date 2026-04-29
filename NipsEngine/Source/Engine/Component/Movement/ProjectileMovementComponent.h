@@ -9,6 +9,7 @@ public:
 
 	virtual void TickComponent(float DeltaTime) override;
 	virtual void BeginPlay() override;
+	virtual void Serialize(FArchive& Ar) override;
 
     void SetInitialSpeed(const float InSpeed) { InitialSpeed = InSpeed; }
     float GetInitialSpeed() const { return InitialSpeed; }

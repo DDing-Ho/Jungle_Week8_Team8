@@ -15,10 +15,11 @@ public:
 
     virtual void TickComponent(float DeltaTime) override = 0;
 
-    void SetUpdatedComponent(USceneComponent* InComponent);
-    USceneComponent* GetUpdatedComponent() const { return UpdatedComponent; }
-
     virtual void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
+    virtual void Serialize(FArchive& Ar) override;
+
+    void SetUpdatedComponent(USceneComponent* InComponent);
+	USceneComponent* GetUpdatedComponent() const { return UpdatedComponent; }
 
 	// 충돌을 고려하며 UpdatedComponent를 Delta만큼 이동시킨다.
 	// bool SafeMoveUpdatedComponent(const FVector& Delta, FHitResult& OutHit);

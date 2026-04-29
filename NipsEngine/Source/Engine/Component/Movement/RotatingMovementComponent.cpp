@@ -5,6 +5,14 @@
 DEFINE_CLASS(URotatingMovementComponent, UMovementComponent)
 REGISTER_FACTORY(URotatingMovementComponent)
 
+void URotatingMovementComponent::Serialize(FArchive& Ar)
+{
+    UMovementComponent::Serialize(Ar);
+    Ar << "RotationRate" << RotationRate;
+    Ar << "PivotTranslation" << PivotTranslation;
+    Ar << "RotationInLocalSpace" << bRotationInLocalSpace;
+}
+
 void URotatingMovementComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     UMovementComponent::GetEditableProperties(OutProps);

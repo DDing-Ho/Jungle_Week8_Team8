@@ -26,7 +26,23 @@ float GetPitch(const FVector& NormDir)
 }
 } // namespace
 
-// --- Overrides ---------------------------------------------------------
+void UInterpToMovementComponent::Serialize(FArchive& Ar)
+{
+    UMovementComponent::Serialize(Ar);
+    Ar << "AutoActivate"   << bAutoActivate;
+    Ar << "FaceTargetDir"  << bFaceTargetDir;
+    Ar << "Duration"       << Duration;
+
+    int32 BehaviourInt = static_cast<int32>(InterpBehaviour);
+    Ar << "InterpBehaviour" << BehaviourInt;
+    if (Ar.IsLoading())
+    {
+        InterpBehaviour = static_cast<EInterpBehaviour>(BehaviourInt);
+    }
+
+    Ar << "ControlPoints" << ControlPoints;
+}
+
 void UInterpToMovementComponent::BeginPlay()
 {
     if (!UpdatedComponent)
@@ -78,7 +94,8 @@ void UInterpToMovementComponent::PostDuplicate(UObject* Original)
 void UInterpToMovementComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     UMovementComponent::GetEditableProperties(OutProps);
-
+	
+    OutProps.push_back({ "Velocity", EPropertyType::Vec3, &Velocity });
     OutProps.push_back({ "Auto Activate", EPropertyType::Bool, &bAutoActivate });
     OutProps.push_back({ "Orient To Movement", EPropertyType::Bool, &bFaceTargetDir });
     OutProps.push_back({ "Interp Duration", EPropertyType::Float, &Duration, 0.1f, 2048.0f, 0.1f });
