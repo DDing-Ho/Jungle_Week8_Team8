@@ -66,7 +66,7 @@ float SampleShadowPoissonDisk(float2 ShadowUV, float CurrentDepth, Texture2D<flo
 }
 
 // VSM (모멘트 기반 — Cube-aware bilinear에서 사용)
-float SampleShadowVSMFromMoments(float2 Moments, float CurrentDepth)
+float SampleShadowVSMFromMoments(float2 Moments, float CurrentDepth, float Sharpen)
 {
     float d = Moments.x; // depth
     float dSq = Moments.y; // depth^2
@@ -80,8 +80,7 @@ float SampleShadowVSMFromMoments(float2 Moments, float CurrentDepth)
     variance = max(variance, epsilon);
     
     float probability = variance / (variance + (CurrentDepth - d) * (CurrentDepth - d));
-    float lerpFactor = 0.2f;
-    probability = smoothstep(lerpFactor, 1.0f, probability);
+    probability = smoothstep(Sharpen, 1.0f, probability);
     probability = pow(probability, 0.75f);
     
     float shadow = probability;
@@ -100,10 +99,10 @@ float SampleShadowESMFromStored(float Stored, float CurrentDepth)
 }
 
 // VSM
-float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapVSM, int2 AtlasSize)
+float SampleShadowVSM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapVSM, int2 AtlasSize, float Sharpen)
 {
     float2 Moments = ShadowMapVSM.SampleLevel(SampleState, ShadowUV, 0.0f).xy;
-    return SampleShadowVSMFromMoments(Moments, CurrentDepth);
+    return SampleShadowVSMFromMoments(Moments, CurrentDepth, Sharpen);
 }
 
 float SampleShadowESM(float2 ShadowUV, float CurrentDepth, Texture2D<float2> ShadowMapESM, int2 AtlasSize)
