@@ -114,6 +114,10 @@ public:
 	bool  IsBoxSelecting()    const { return bBoxSelecting; }
 	POINT GetBoxSelectStart() const { return BoxSelectStart; }
 	POINT GetBoxSelectEnd()   const { return BoxSelectEnd; }
+	bool  HasPendingActorPlacement() const { return bPendingActorPlacement; }
+	const FVector& GetPendingActorPlacementLocation() const { return PendingActorPlacementLocation; }
+	POINT GetPendingActorPlacementPopupPos() const { return PendingActorPlacementPopupPos; }
+	void  ClearPendingActorPlacement() { bPendingActorPlacement = false; }
 
 	void LockCursorToViewport();
 	void SetEndPIECallback(std::function<void()> Callback) { InputRouter.GetPIEController().SetEndPIECallback(std::move(Callback)); }
@@ -132,6 +136,7 @@ private:
 
 	// ── Selection helpers ────────────────────────────────────────────────────
 	void HandleBoxSelection();
+	bool RequestActorPlacement(float X, float Y, float PopupX, float PopupY);
 	bool TryProjectWorldToViewport(const FVector& WorldPos, float& OutViewportX, float& OutViewportY, float& OutDepth) const;
 	void FocusPrimarySelection();
 	void DeleteSelectedActors();
@@ -163,6 +168,9 @@ private:
 	POINT BoxSelectEnd   = { 0, 0 };
 
 	bool  bControlLocked = false;
+	bool  bPendingActorPlacement = false;
+	FVector PendingActorPlacementLocation = FVector::ZeroVector;
+	POINT PendingActorPlacementPopupPos = { 0, 0 };
 
 	// Caller-owned scratch buffer for frustum queries in HandleBoxSelection
 	FWorldSpatialIndex::FPrimitiveFrustumQueryScratch FrustumQueryScratch;

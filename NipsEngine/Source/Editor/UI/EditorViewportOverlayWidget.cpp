@@ -15,6 +15,7 @@
 #include "Engine/Render/Renderer/RenderFlow/LightCullingPass.h"
 #include "Engine/Render/Renderer/RenderFlow/ShadowPass.h"
 #include "Engine/Render/Renderer/RenderFlow/ShadowAtlasManager.h"
+#include "GameFramework/PrimitiveActors.h"
 
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
@@ -75,6 +76,41 @@ namespace
 	void DrawAtlasGrid(ImDrawList* DrawList, const ImVec2& Min, const ImVec2& Max, uint32 GridDimension);
 	const char* GetPointFaceLabel(uint32 FaceIndex);
 	bool DrawRoundSelectButton(const char* Id, const char* Label, bool bSelected, const ImVec4& AccentColor);
+
+	template <typename T>
+	void SpawnActorAt(UWorld* World, FSelectionManager& SelectionManager, const FVector& Location)
+	{
+		if (!World)
+			return;
+
+		T* Actor = World->SpawnActor<T>();
+		if (!Actor)
+			return;
+
+		Actor->InitDefaultComponents();
+		Actor->SetActorLocation(Location);
+		SelectionManager.Select(Actor);
+	}
+
+	struct FPlacementActorEntry
+	{
+		const char* Label;
+		void (*Spawn)(UWorld*, FSelectionManager&, const FVector&);
+	};
+
+	// 꼭 모든 Actor Types가 저장될 필요는 없습니다. 우클릭으로 생성할 수 있는 액터만 관리합니다.
+	static const FPlacementActorEntry PlacementActorTypes[] = {
+		{ "Scene", SpawnActorAt<ASceneActor> },
+		{ "StaticMesh", SpawnActorAt<AStaticMeshActor> },
+		{ "TextRender", SpawnActorAt<ATextRenderActor> },
+		{ "SubUV", SpawnActorAt<ASubUVActor> },
+		{ "Billboard", SpawnActorAt<ABillboardActor> },
+		{ "Decal", SpawnActorAt<ADecalActor> },
+		{ "Directional Light", SpawnActorAt<ADirectionalLightActor> },
+		{ "Ambient Light", SpawnActorAt<AAmbientLightActor> },
+		{ "Point Light", SpawnActorAt<APointLightActor> },
+		{ "Spot Light", SpawnActorAt<ASpotLightActor> },
+	};
 }
 
 // ──────────── FEditorViewPortOverlayWidget의 메인 렌더링 함수입니다. ────────────
@@ -87,6 +123,7 @@ void FEditorViewportOverlayWidget::Render(float DeltaTime)
 	RenderDebugStats(DeltaTime);
 	RenderSplitterBar();
 	RenderBoxSelectionOverlay();
+	RenderActorPlacementPopup();
 	RenderShortcutsWindow();
 }
 
@@ -353,6 +390,61 @@ void FEditorViewportOverlayWidget::RenderBoxSelectionOverlay()
 	}
 }
 
+void FEditorViewportOverlayWidget::RenderActorPlacementPopup()
+{
+	if (!EditorEngine)
+	{
+		return;
+	}
+
+	FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
+	FEditorViewportClient* Client = Layout.GetViewportClient(Layout.GetLastFocusedViewportIndex());
+	if (!Client)
+	{
+		return;
+	}
+
+	if (Client->HasPendingActorPlacement() && !bActorPlacementPopupOpened)
+	{
+		const POINT PopupPos = Client->GetPendingActorPlacementPopupPos();
+		ImGui::SetNextWindowPos(ImVec2(static_cast<float>(PopupPos.x), static_cast<float>(PopupPos.y)), ImGuiCond_Always);
+		ImGui::OpenPopup("Actor Placement##Popup");
+		bActorPlacementPopupOpened = true;
+	}
+
+	if (ImGui::BeginPopup("Actor Placement##Popup"))
+	{
+		ImGui::TextUnformatted("Spawn Actor");
+		ImGui::Separator();
+
+		for (const FPlacementActorEntry& Entry : PlacementActorTypes)
+		{
+			if (ImGui::Selectable(Entry.Label))
+			{
+				Entry.Spawn(EditorEngine->GetFocusedWorld(), EditorEngine->GetSelectionManager(), Client->GetPendingActorPlacementLocation());
+				Client->ClearPendingActorPlacement();
+				bActorPlacementPopupOpened = false;
+				ImGui::CloseCurrentPopup();
+				break;
+			}
+		}
+
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+		{
+			Client->ClearPendingActorPlacement();
+			bActorPlacementPopupOpened = false;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+	else if (bActorPlacementPopupOpened)
+	{
+		Client->ClearPendingActorPlacement();
+		bActorPlacementPopupOpened = false;
+	}
+}
+
 // 현재 에디터에서 사용 가능한 단축키 목록을 보여주는 팝업 창을 렌더링합니다.
 void FEditorViewportOverlayWidget::RenderShortcutsWindow()
 {
@@ -438,6 +530,11 @@ void FEditorViewportOverlayWidget::RenderShortcutsWindow()
 		{"Ctrl + A", "전체 Actor 선택"},
 		{"Ctrl + Alt + Drag", "박스 선택"},
 		{"Ctrl + Alt + Shift + Drag", "기존 선택에 박스 선택 추가"},
+	});
+
+	DrawShortcutTable("Actor Placement",
+	{
+		{"Ctrl + Mouse Right Click", "클릭한 지점에 Ray Casting 후 Actor 생성 메뉴 열기"},
 	});
 
 	DrawShortcutTable("Gizmo",

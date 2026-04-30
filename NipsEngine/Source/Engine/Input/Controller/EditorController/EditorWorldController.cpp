@@ -161,6 +161,8 @@ void FEditorWorldController::OnLeftMouseButtonUp(float X, float Y)
 
 void FEditorWorldController::OnRightMouseClick(float DeltaX, float DeltaY)
 {
+    (void)DeltaX;
+    (void)DeltaY;
     // Seed Yaw/Pitch from current camera orientation so the first drag doesn't snap
     if (!Camera)
         return;

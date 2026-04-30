@@ -19,6 +19,7 @@ private:
 	bool bExpanded = false;
 	bool bShowViewportSettings = true;
 	bool bShowShortcutsWindow = false;
+	bool bActorPlacementPopupOpened = false;
 	EShadowAtlasPreviewMode ShadowAtlasPreviewMode = EShadowAtlasPreviewMode::Directional;
 
 private:
@@ -26,6 +27,7 @@ private:
 	void RenderDebugStats(float DeltaTime);
 	void RenderSplitterBar();
 	void RenderBoxSelectionOverlay();
+	void RenderActorPlacementPopup();
 	void RenderShortcutsWindow();
 
 public:

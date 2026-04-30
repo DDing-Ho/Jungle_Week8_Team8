@@ -251,7 +251,8 @@ void FEditorViewportClient::TickCursorCapture()
 		return;
 
 	const InputSystem& IS = InputSystem::Get();
-	const bool bDragBegin = IS.GetKeyDown(VK_RBUTTON) || IS.GetKeyDown(VK_MBUTTON);
+	const bool bCtrlDown = IS.GetKey(VK_CONTROL);
+	const bool bDragBegin = (IS.GetKeyDown(VK_RBUTTON) && !bCtrlDown) || IS.GetKeyDown(VK_MBUTTON);
 	const bool bDragEnd   = IS.GetKeyUp(VK_RBUTTON)   || IS.GetKeyUp(VK_MBUTTON);
 
 	if (bDragBegin)
@@ -374,8 +375,14 @@ void FEditorViewportClient::TickMouseInput(float VX, float VY)
 		InputRouter.RouteMouseInput(EMouseInputType::E_MouseMovedAbsolute, LocalX, LocalY);
 	}
 
+	if (IS.GetKeyDown(VK_RBUTTON) && InputRouter.GetActiveController() == EActiveEditorController::EditorWorldController && IS.GetKey(VK_CONTROL))
+	{
+		if (RequestActorPlacement(LocalX, LocalY, VX + LocalX, VY + LocalY))
+			return;
+	}
+
 	if (IS.GetKeyDown(VK_RBUTTON))
-		InputRouter.RouteMouseInput(EMouseInputType::E_RightMouseClicked, DX, DY);
+		InputRouter.RouteMouseInput(EMouseInputType::E_RightMouseClicked, LocalX, LocalY);
 	if (IS.GetRightDragging())
 		InputRouter.RouteMouseInput(EMouseInputType::E_RightMouseDragged, DX, DY);
 	if (IS.GetMiddleDragging())
@@ -539,6 +546,49 @@ void FEditorViewportClient::HandleBoxSelection()
 		if (Px >= MinX && Px <= MaxX && Py >= MinY && Py <= MaxY)
 			SelectionManager->AddSelect(Actor);
 	}
+}
+
+bool FEditorViewportClient::RequestActorPlacement(float X, float Y, float PopupX, float PopupY)
+{
+	if (!World || !bHasCamera)
+		return false;
+
+	FRay Ray = Camera.DeprojectScreenToWorld(X, Y, WindowWidth, WindowHeight);
+
+	FHitResult BestHit{};
+	bool       bHasHit = false;
+	float      ClosestDist = FLT_MAX;
+
+	FWorldSpatialIndex::FPrimitiveRayQueryScratch RayQueryScratch;
+	TArray<UPrimitiveComponent*> CandidatePrimitives;
+	TArray<float>                CandidateTs;
+	World->GetSpatialIndex().RayQueryPrimitives(Ray, CandidatePrimitives, CandidateTs, RayQueryScratch);
+
+	for (int32 CandidateIndex = 0; CandidateIndex < static_cast<int32>(CandidatePrimitives.size()); ++CandidateIndex)
+	{
+		if (CandidateTs[CandidateIndex] > ClosestDist)
+			break;
+
+		UPrimitiveComponent* PrimitiveComp = CandidatePrimitives[CandidateIndex];
+		if (!PrimitiveComp)
+			continue;
+
+		FHitResult HitResult{};
+		if (PrimitiveComp->Raycast(Ray, HitResult) && HitResult.Distance < ClosestDist)
+		{
+			ClosestDist = HitResult.Distance;
+			BestHit = HitResult;
+			bHasHit = true;
+		}
+	}
+
+	if (!bHasHit)
+		return false;
+
+	PendingActorPlacementLocation = BestHit.Location;
+	PendingActorPlacementPopupPos = { static_cast<LONG>(PopupX), static_cast<LONG>(PopupY) };
+	bPendingActorPlacement = true;
+	return true;
 }
 
 void FEditorViewportClient::FocusPrimarySelection()
