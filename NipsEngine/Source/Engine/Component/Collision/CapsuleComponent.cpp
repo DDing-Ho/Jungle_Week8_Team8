@@ -10,6 +10,7 @@ DEFINE_CLASS(UCapsuleComponent, UShapeComponent)
 
 UCapsuleComponent::UCapsuleComponent()
 {
+	 CollisionType = ECollisionType::Capsule;
 }
 
 void UCapsuleComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -47,7 +48,7 @@ void UCapsuleComponent::UpdateWorldAABB() const
     WorldAABB = FAABB::TransformAABB(LocalAABB, GetWorldMatrix());
 }
 
-// 임시 AABB RayCasting 처리
+// RayCasting 전용 AABB
 bool UCapsuleComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
     float HitT = 0.0f;

@@ -7,6 +7,7 @@ DEFINE_CLASS(USphereComponent, UShapeComponent)
 
 USphereComponent::USphereComponent()
 {
+     CollisionType = ECollisionType::Sphere;
 }
 
 void USphereComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -31,7 +32,7 @@ void USphereComponent::Serialize(FArchive& Ar)
     Ar << "SphereRadius" << SphereRadius;
 }
 
-// 임시 AABB RayCasting 처리
+// RayCasting 전용 AABB
 void USphereComponent::UpdateWorldAABB() const
 {
     const float SafeRadius = std::fabs(SphereRadius);

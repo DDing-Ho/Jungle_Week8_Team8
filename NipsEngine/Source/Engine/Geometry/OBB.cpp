@@ -1,5 +1,7 @@
 ﻿#include "OBB.h"
 
+#include <algorithm>
+
 FOBB::FOBB()
 	: Center(0.0f, 0.0f, 0.0f), Extents(0.0f, 0.0f, 0.0f), Rotation(0.0f, 0.0f, 0.0f, 1.0f)
 {
@@ -36,7 +38,7 @@ FOBB FOBB::FromAABB(const FAABB& InAABB, const FMatrix& InTransform)
 	FVector Scale;
 	Scale.X = InTransform.GetScaledAxis(EAxis::X).Size();
 	Scale.Y = InTransform.GetScaledAxis(EAxis::Y).Size();
-	Scale.Z = InTransform.GetScaledAxis(EAxis::Z).Size();	
+	Scale.Z = InTransform.GetScaledAxis(EAxis::Z).Size();
 
 	Result.Extents = InAABB.GetExtent() * Scale;
 

@@ -7,6 +7,7 @@ DEFINE_CLASS(UBoxComponent, UShapeComponent)
 
 UBoxComponent::UBoxComponent()
 {
+     CollisionType = ECollisionType::Box;
 }
 
 void UBoxComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -34,7 +35,7 @@ void UBoxComponent::UpdateWorldAABB() const
     WorldAABB = FAABB::TransformAABB(LocalAABB, GetWorldMatrix());
 }
 
-// 임시 AABB RayCasting 처리
+// RayCasting 전용 AABB
 bool UBoxComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
     float HitT = 0.0f;

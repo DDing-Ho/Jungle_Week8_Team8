@@ -378,6 +378,27 @@ void FWorldSpatialIndex::SphereQueryPrimitives(const FVector& Center, float Radi
 	}
 }
 
+// Query AABB와 겹치는 primitive component를 BVH에서 조회합니다.
+void FWorldSpatialIndex::AABBQueryPrimitives(const FAABB& QueryBounds, TArray<UPrimitiveComponent*>& OutPrimitives,
+											 FPrimitiveAABBQueryScratch& Scratch)
+{
+	FlushDirtyBounds();
+
+	Scratch.ObjectIndices.clear();
+	BVH.AABBQuery(Bounds, QueryBounds, Scratch.ObjectIndices, Scratch.BVHScratch);
+
+	OutPrimitives.clear();
+	OutPrimitives.reserve(Scratch.ObjectIndices.size());
+
+	for (int32 ObjectIndex : Scratch.ObjectIndices)
+	{
+		if (UPrimitiveComponent* Primitive = Resolve(ObjectIndex))
+		{
+			OutPrimitives.push_back(Primitive);
+		}
+	}
+}
+
 UPrimitiveComponent* FWorldSpatialIndex::Resolve(int32 ObjectIndex) const
 {
 	if (ObjectIndex < 0 || ObjectIndex >= static_cast<int32>(Primitives.size()))

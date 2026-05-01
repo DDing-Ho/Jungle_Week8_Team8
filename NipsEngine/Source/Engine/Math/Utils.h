@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <algorithm>
+
 namespace MathUtil
 {
     static constexpr float Epsilon{1e-6f};
@@ -27,5 +29,15 @@ namespace MathUtil
     template <typename T> static inline T Clamp(const T Value, const T Min, const T Max)
     {
         return (Value < Min) ? Min : (Value > Max) ? Max : Value;
+    }
+
+    template <typename T> static inline T Max3(const T A, const T B, const T C)
+    {
+        return std::max(A, std::max(B, C));
+    }
+
+    template <typename T> static inline T Min3(const T A, const T B, const T C)
+    {
+        return std::min(A, std::min(B, C));
     }
 } // namespace MathUtil

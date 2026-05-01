@@ -9,6 +9,8 @@ UShapeComponent::UShapeComponent()
 {
     // UShapeComponent는 메시처럼 그려지지 않고 디버그 와이어로만 표시되므로 컬링을 끈다.
     bEnableCull = false;
+    bGenerateOverlapEvents = false;
+    bBlockComponent = true;
 }
 
 void UShapeComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -37,7 +39,7 @@ void UShapeComponent::Serialize(FArchive& Ar)
 // BoxExtent/Radius/HalfHeight를 변경한 뒤 호출한다.
 void UShapeComponent::UpdateBodySetup()
 {
-	// UE5 BodySetup은 구현되어 있지 않고, BVH 트리에 충돌체 크기 변경을 반영하는 역할만 수행한다.
-	// 추후 중복되는 충돌체를 가진 액터가 아주 많은 씬의 경우 BodySetup을 구현했을 때 성능이 개선될 수 있다.
+    // UE5 BodySetup은 구현되어 있지 않고, BVH 트리에 충돌체 크기 변경을 반영하는 역할만 수행한다.
+    // 추후 중복되는 충돌체를 가진 액터가 아주 많은 씬의 경우 BodySetup을 구현했을 때 성능이 개선될 수 있다.
     NotifySpatialIndexDirty();
 }

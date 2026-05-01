@@ -64,6 +64,12 @@ class FWorldSpatialIndex
 		TArray<int32> ObjectIndices;
 	};
 
+	struct FPrimitiveAABBQueryScratch
+	{
+		FBVH::FAABBQueryScratch BVHScratch;
+		TArray<int32> ObjectIndices;
+	};
+
 	FWorldSpatialIndex() = default;
 	~FWorldSpatialIndex() = default;
 
@@ -145,6 +151,10 @@ class FWorldSpatialIndex
 	/** @brief Collect primitives whose BVH leaf AABBs overlap the input world-space sphere. */
 	void SphereQueryPrimitives(const FVector& Center, float Radius, TArray<UPrimitiveComponent*>& OutPrimitives,
 							   FPrimitiveSphereQueryScratch& Scratch);
+
+	/** @brief Collect primitives whose BVH leaf AABBs overlap the input world-space AABB. */
+	void AABBQueryPrimitives(const FAABB& QueryBounds, TArray<UPrimitiveComponent*>& OutPrimitives,
+							 FPrimitiveAABBQueryScratch& Scratch);
 
 
 	/** @brief Resolve a tracked object index back to its primitive component. */

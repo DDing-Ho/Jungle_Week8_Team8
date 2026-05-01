@@ -216,6 +216,15 @@ class FBVH
 		TArray<FStackEntry> TraversalStack;
 	};
 
+	struct FAABBQueryScratch
+	{
+		struct FStackEntry
+		{
+			int32 NodeIndex{INDEX_NONE};
+		};
+		TArray<FStackEntry> TraversalStack;
+	};
+
 	// Queries ---------------------------------------------------------------
 
 	/**
@@ -258,6 +267,9 @@ class FBVH
 
 	/** @brief Collect object indices whose AABBs overlap the input world-space sphere. */
 	void SphereQuery(const TArray<FAABB>& ObjectBounds, const FVector& Center, float Radius, TArray<int32>& OutIndices, FSphereQueryScratch& Scratch) const;
+
+	/** @brief Collect object indices whose AABBs overlap the input world-space AABB. */
+	void AABBQuery(const TArray<FAABB>& ObjectBounds, const FAABB& QueryBounds, TArray<int32>& OutIndices, FAABBQueryScratch& Scratch) const;
 
 
 	// State -----------------------------------------------------------------

@@ -7,29 +7,29 @@ struct FHitResult
     class UPrimitiveComponent* HitComponent = nullptr;
 
     float Distance = FLT_MAX;
-	
-	//	World 기준
+    
+    //	World 기준
     FVector Location = { 0, 0, 0 };
     FVector Normal = { 0, 0, 0 };
-	
+    
     int FaceIndex = -1; 
 
     bool bHit = false;
-	
-	void Reset()
-	{
-		HitComponent = nullptr;
-		Distance = FLT_MAX;
-		Location = { 0, 0, 0 };
-		Normal = { 0, 0, 0 };
-		FaceIndex = -1;
-		bHit = false;
-	}
-	
-	bool IsValid() const
-	{
-		return bHit && (HitComponent != nullptr);
-	}
+    
+    void Reset()
+    {
+        HitComponent = nullptr;
+        Distance = FLT_MAX;
+        Location = { 0, 0, 0 };
+        Normal = { 0, 0, 0 };
+        FaceIndex = -1;
+        bHit = false;
+    }
+    
+    bool IsValid() const
+    {
+        return bHit && (HitComponent != nullptr);
+    }
 };
 
 struct FOverlapResult
@@ -38,6 +38,18 @@ struct FOverlapResult
     class UPrimitiveComponent* OtherComp = nullptr;
 
     bool operator==(const FOverlapResult& Other) const
+    {
+        return OtherActor == Other.OtherActor && OtherComp == Other.OtherComp;
+    }
+};
+
+struct FBlockingResult
+{
+    class AActor* OtherActor = nullptr;
+    class UPrimitiveComponent* OtherComp = nullptr;
+    FHitResult Hit;
+
+    bool operator==(const FBlockingResult& Other) const
     {
         return OtherActor == Other.OtherActor && OtherComp == Other.OtherComp;
     }
