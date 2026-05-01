@@ -1037,8 +1037,22 @@ void FEditorPropertyWidget::AttachAndSelectNewComponent(AActor* PrimaryActor, UA
 	if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(NewComp))
 	{
 		const FString ScriptName = GetEditorLuaScriptName(EditorEngine, PrimaryActor);
-		LuaComp->SetScriptPath(LuaComp->GetScriptPathForName(ScriptName));
-		LuaComp->SetEditorScriptName(ScriptName);
+		if (LuaComp->DoesScriptFileExistForName(ScriptName))
+		{
+			LuaComp->SetScriptPath(LuaComp->GetScriptPathForName(ScriptName));
+			LuaComp->SetEditorScriptName(ScriptName);
+			UE_LOG("LuaScriptComponent: assigned existing script '%s'.", LuaComp->GetScriptPath().c_str());
+		}
+		else if (LuaComp->CreateScriptFileFromName(ScriptName, false))
+		{
+			UE_LOG("LuaScriptComponent: auto-created script '%s'.", LuaComp->GetScriptPath().c_str());
+		}
+		else
+		{
+			UE_LOG("LuaScriptComponent: failed to auto-create script '%s': %s",
+				LuaComp->GetScriptPathForName(ScriptName).c_str(),
+				LuaComp->GetLastScriptError().empty() ? "unknown error" : LuaComp->GetLastScriptError().c_str());
+		}
 	}
 
 	SelectedComponent = NewComp;
