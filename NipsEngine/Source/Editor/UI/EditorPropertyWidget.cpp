@@ -8,6 +8,7 @@
 #include "Core/ResourceManager.h"
 #include "Object/FName.h"
 #include <cctype>
+#include <cstring>
 #include <functional>
 
 #include "Editor/Utility/EditorComponentFactory.h"
@@ -20,6 +21,8 @@
 #include "Editor/Viewport/ViewportLayout.h"
 #include "Editor/Utility/EditorUIUtils.h"
 #include "Engine/Render/Renderer/RenderFlow/ShadowAtlasManager.h"
+#include "Engine/Scripting/ScriptUtils.h"
+#include "Editor/UI/EditorConsoleWidget.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
 
@@ -43,6 +46,10 @@ namespace
 
 	// ─────────────────── Helper ───────────────────────────
 	int32 ExtractActorID(const AActor* Actor);
+	bool IsLuaScriptComponent(const UActorComponent* Component);
+	FString GetEditorScriptSceneName();
+	FString GetEditorScriptActorName(const AActor* Actor);
+	void RenderLuaScriptComponentActions(UActorComponent* Component);
 }
 
 void FEditorPropertyWidget::Initialize(UEditorEngine* InEditorEngine)
@@ -551,6 +558,11 @@ void FEditorPropertyWidget::RenderComponentProperties()
 		RenderInterpControlPoints(InterpComp);
 	}
 
+	if (IsLuaScriptComponent(SelectedComponent))
+	{
+		RenderLuaScriptComponentActions(SelectedComponent);
+	}
+
 	// Special: Light component — override camera with light's perspective
 	if (SelectedComponent->IsA<ULightComponent>())
 	{
@@ -1019,6 +1031,79 @@ namespace
 		}
 
 		return Result;
+	}
+
+	bool IsLuaScriptComponent(const UActorComponent* Component)
+	{
+		if (Component == nullptr || Component->GetTypeInfo() == nullptr)
+		{
+			return false;
+		}
+
+		const char* TypeName = Component->GetTypeInfo()->name;
+		return strcmp(TypeName, "LuaScriptComponent") == 0 ||
+			   strcmp(TypeName, "ULuaScriptComponent") == 0;
+	}
+
+	FString GetEditorScriptSceneName()
+	{
+		return "EditorScene";
+	}
+
+	FString GetEditorScriptActorName(const AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return "";
+		}
+
+		FString ActorName = Actor->GetFName().ToString();
+		if (ActorName.empty() && Actor->GetTypeInfo())
+		{
+			ActorName = Actor->GetTypeInfo()->name;
+		}
+		return ActorName;
+	}
+
+	void RenderLuaScriptComponentActions(UActorComponent* Component)
+	{
+		AActor* Owner = Component ? Component->GetOwner() : nullptr;
+		const FString SceneName = GetEditorScriptSceneName();
+		const FString ActorName = GetEditorScriptActorName(Owner);
+		const FString ScriptPath = FScriptUtils::MakeActorScriptPath(SceneName, ActorName);
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Text("Lua Script");
+		ImGui::Spacing();
+		ImGui::TextDisabled("%s", ScriptPath.c_str());
+
+		FString Error;
+		if (ImGui::Button("Create Script", ImVec2(-1, 0)))
+		{
+			const FScriptCreateResult Result = FScriptUtils::CreateScriptFromTemplate(SceneName, ActorName);
+			if (!Result.bSuccess)
+			{
+				UE_LOG("%s", Result.ErrorMessage.c_str());
+			}
+		}
+
+		if (ImGui::Button("Edit Script", ImVec2(-1, 0)))
+		{
+			if (!FScriptUtils::OpenScript(ScriptPath, &Error))
+			{
+				UE_LOG("%s", Error.c_str());
+			}
+		}
+
+		ImGui::BeginDisabled();
+		ImGui::Button("Reload Script", ImVec2(-1, 0));
+		ImGui::EndDisabled();
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip("Lua runtime reload is not connected yet.");
+		}
 	}
 }
 
