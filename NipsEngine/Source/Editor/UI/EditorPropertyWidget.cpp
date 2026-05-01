@@ -708,9 +708,9 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 	const FString& SoundPath = Comp->GetSoundPath();
 	const bool bHasPath = !SoundPath.empty();
 	const bool bFileExists = bHasPath && DoesRelativeAssetFileExist(SoundPath);
-	const bool bHasPlayback = Comp->HasPlayback();
-	const bool bIsPlaying = Comp->IsPlaying();
-	const float Duration = Comp->GetDuration();
+	const bool bHasPlayback = Comp->HasPreviewPlayback();
+	const bool bIsPlaying = Comp->IsPreviewPlaying();
+	const float Duration = Comp->GetPreviewDuration();
 	if (PreviewAudioObject != Comp)
 	{
 		PreviewAudioObject = Comp;
@@ -719,7 +719,7 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 		AudioTimelineDragTime = 0.0f;
 	}
 
-	float CurrentTime = bHasPlayback ? Comp->GetPlaybackTime() : PendingAudioPreviewStartTime;
+	float CurrentTime = bHasPlayback ? Comp->GetPreviewPlaybackTime() : PendingAudioPreviewStartTime;
 	if (Duration > 0.0f)
 	{
 		CurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
@@ -739,7 +739,7 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 		{
 			Comp->SetSoundPath(SelectedAudioPath);
 			Comp->PostEditProperty("Sound Path");
-			Comp->Stop();
+			Comp->StopPreview();
 			PendingAudioPreviewStartTime = 0.0f;
 			UE_LOG("AudioComponent: selected audio '%s'.", Comp->GetSoundPath().c_str());
 		}
@@ -756,18 +756,18 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 		}
 		else if (bIsPlaying)
 		{
-			Comp->Pause();
+			Comp->PausePreview();
 		}
 		else if (bHasPlayback)
 		{
-			Comp->Resume();
+			Comp->ResumePreview();
 		}
 		else
 		{
-			Comp->Play();
+			Comp->PlayPreview();
 			if (PendingAudioPreviewStartTime > 0.0f)
 			{
-				Comp->SetPlaybackTime(PendingAudioPreviewStartTime);
+				Comp->SetPreviewPlaybackTime(PendingAudioPreviewStartTime);
 			}
 		}
 	}
@@ -775,7 +775,7 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 	ImGui::SameLine();
 	if (ImGui::Button("Stop", ImVec2(ButtonWidth, 0)))
 	{
-		Comp->Stop();
+		Comp->StopPreview();
 		PendingAudioPreviewStartTime = 0.0f;
 		bAudioTimelineDragging = false;
 		AudioTimelineDragTime = 0.0f;
@@ -791,11 +791,11 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 			AudioTimelineDragTime = 0.0f;
 			if (bHasPlayback)
 			{
-				Comp->Restart();
+				Comp->RestartPreview();
 			}
 			else
 			{
-				Comp->Play();
+				Comp->PlayPreview();
 			}
 		}
 		else
@@ -828,15 +828,15 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 			PendingAudioPreviewStartTime = SeekTime;
 			if (bHasPlayback)
 			{
-				const bool bShouldResume = Comp->IsPlaying();
+				const bool bShouldResume = Comp->IsPreviewPlaying();
 				if (bShouldResume)
 				{
-					Comp->Pause();
+					Comp->PausePreview();
 				}
-				Comp->SetPlaybackTime(SeekTime);
+				Comp->SetPreviewPlaybackTime(SeekTime);
 				if (bShouldResume)
 				{
-					Comp->Resume();
+					Comp->ResumePreview();
 				}
 			}
 		}

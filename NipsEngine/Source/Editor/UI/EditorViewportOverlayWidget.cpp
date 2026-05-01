@@ -154,6 +154,12 @@ void FEditorViewportOverlayWidget::RenderViewportSettings(float DeltaTime)
 	{
 		ImGui::Indent();
 		ImGui::Checkbox("BVH Bounding Volume", &Settings.ShowFlags.bBVHBoundingVolume);
+		ImGui::Unindent();
+	}
+	ImGui::Checkbox("Audio Range", &Settings.ShowFlags.bAudioRange);
+	if (Settings.ShowFlags.bAudioRange)
+	{
+		ImGui::Indent();
 		ImGui::Checkbox("Audio Component Range", &Settings.ShowFlags.bAudioComponentRange);
 		ImGui::Checkbox("Audio Zone Range", &Settings.ShowFlags.bAudioZoneRange);
 		ImGui::Unindent();

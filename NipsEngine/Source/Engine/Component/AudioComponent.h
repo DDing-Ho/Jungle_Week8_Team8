@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ActorComponent.h"
+#include "Component/SceneComponent.h"
 #include "Audio/AudioSystem.h"
 
-class UAudioComponent : public UActorComponent
+class UAudioComponent : public USceneComponent
 {
 public:
-	DECLARE_CLASS(UAudioComponent, UActorComponent)
+	DECLARE_CLASS(UAudioComponent, USceneComponent)
 
 	UAudioComponent();
 	~UAudioComponent() override = default;
@@ -29,6 +29,16 @@ public:
 	void SetPlaybackTime(float TimeSeconds);
 	float GetPlaybackTime() const;
 	float GetDuration() const;
+	FAudioHandle PlayPreview();
+	void PausePreview();
+	void ResumePreview();
+	void RestartPreview();
+	void StopPreview();
+	bool IsPreviewPlaying() const;
+	bool HasPreviewPlayback() const { return PreviewPlaybackHandle.IsValid(); }
+	void SetPreviewPlaybackTime(float TimeSeconds);
+	float GetPreviewPlaybackTime() const;
+	float GetPreviewDuration() const;
 
 	const FString& GetSoundPath() const { return SoundPath; }
 	void SetSoundPath(const FString& InSoundPath) { SoundPath = InSoundPath; }
@@ -45,7 +55,7 @@ protected:
 
 private:
 	FAudioPlayParams MakePlayParams() const;
-	FVector GetOwnerLocation() const;
+	FVector GetAudioLocation() const;
 	FVector GetListenerLocation() const;
 	bool IsListenerOutsideMaxDistance() const;
 	EAudioOutsideBehavior GetOutsideRangeBehavior() const;
@@ -65,4 +75,5 @@ private:
 	bool bStoppedByOutsideRange = false;
 	bool bStartedByStartBehavior = false;
 	FAudioHandle PlaybackHandle;
+	FAudioHandle PreviewPlaybackHandle;
 };

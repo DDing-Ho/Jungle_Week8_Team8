@@ -62,7 +62,9 @@ void UAudioZoneComponent::Serialize(FArchive& Ar)
 
 void UAudioZoneComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
-	USceneComponent::GetEditableProperties(OutProps);
+	OutProps.push_back({ "Location", EPropertyType::Vec3, &RelativeLocation, 0.0f, 0.0f, 0.1f });
+	OutProps.push_back({ "Rotation", EPropertyType::Vec3, &RelativeRotation, 0.0f, 0.0f, 0.1f });
+	OutProps.push_back({ "Scale", EPropertyType::Vec3, &RelativeScale3D, 0.0f, 0.0f, 0.1f });
 	OutProps.push_back({ "Box Extent", EPropertyType::Vec3, &BoxExtent, 0.01f, 10000.0f, 0.1f });
 	OutProps.push_back({ "Priority", EPropertyType::Int, &Priority, -1000.0f, 1000.0f, 1.0f });
 	OutProps.push_back({ "Fade In Time", EPropertyType::Float, &FadeInTime, 0.0f, 60.0f, 0.1f });
@@ -71,6 +73,8 @@ void UAudioZoneComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Out
 	OutProps.push_back({ "SFX Volume", EPropertyType::Float, &SFXVolume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Music Volume", EPropertyType::Float, &MusicVolume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Ambient Volume", EPropertyType::Float, &AmbientVolume, 0.0f, 2.0f, 0.01f });
+	OutProps.push_back({ "Enable Tick", EPropertyType::Bool, &bCanEverTick });
+	OutProps.push_back({ "Editor Only", EPropertyType::Bool, &bIsEditorOnly });
 }
 
 void UAudioZoneComponent::PostEditProperty(const char* PropertyName)

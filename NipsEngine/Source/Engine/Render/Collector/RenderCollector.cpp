@@ -173,6 +173,11 @@ void FRenderCollector::CollectSelection(const TArray<AActor*>& SelectedActors, c
 	OverlayRenderCollector.CollectSelection(SelectedActors, ShowFlags, ViewMode, RenderBus, LineBatcher);
 }
 
+void FRenderCollector::CollectDebugBounds(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus)
+{
+	OverlayRenderCollector.CollectDebugBounds(World, ShowFlags, ViewMode, RenderBus, LineBatcher);
+}
+
 void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, FRenderBus& RenderBus, bool bOrthographic)
 {
 	OverlayRenderCollector.CollectGrid(GridSpacing, GridHalfLineCount, RenderBus, bOrthographic);

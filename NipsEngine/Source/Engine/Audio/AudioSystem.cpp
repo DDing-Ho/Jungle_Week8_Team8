@@ -303,7 +303,7 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 	}
 
 	auto Sound = std::make_unique<ma_sound>();
-	const ma_uint32 Flags = MA_SOUND_FLAG_DECODE;
+	const ma_uint32 Flags = 0;
 	ma_result Result = ma_sound_init_from_file(&Impl->Engine, AbsolutePath.c_str(), Flags, nullptr, nullptr, Sound.get());
 	if (Result != MA_SUCCESS)
 	{

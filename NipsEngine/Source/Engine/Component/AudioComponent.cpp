@@ -7,8 +7,9 @@
 #include "Serialization/Archive.h"
 
 #include <algorithm>
+#include <cstring>
 
-DEFINE_CLASS(UAudioComponent, UActorComponent)
+DEFINE_CLASS(UAudioComponent, USceneComponent)
 REGISTER_FACTORY(UAudioComponent)
 
 UAudioComponent::UAudioComponent()
@@ -18,7 +19,7 @@ UAudioComponent::UAudioComponent()
 
 void UAudioComponent::BeginPlay()
 {
-	UActorComponent::BeginPlay();
+	USceneComponent::BeginPlay();
 	bStartedByStartBehavior = false;
 
 	if (GetStartBehavior() == EAudioStartBehavior::OnBeginPlay)
@@ -31,18 +32,21 @@ void UAudioComponent::BeginPlay()
 void UAudioComponent::EndPlay()
 {
 	Stop();
+	StopPreview();
 }
 
 void UAudioComponent::OnUnregister()
 {
 	Stop();
+	StopPreview();
 	bRegistered = false;
 }
 
 void UAudioComponent::PostDuplicate(UObject* Original)
 {
-	UActorComponent::PostDuplicate(Original);
+	USceneComponent::PostDuplicate(Original);
 	PlaybackHandle = {};
+	PreviewPlaybackHandle = {};
 	bPausedByOutsideRange = false;
 	bStoppedByOutsideRange = false;
 	bStartedByStartBehavior = false;
@@ -50,7 +54,7 @@ void UAudioComponent::PostDuplicate(UObject* Original)
 
 void UAudioComponent::Serialize(FArchive& Ar)
 {
-	UActorComponent::Serialize(Ar);
+	USceneComponent::Serialize(Ar);
 	Ar << "SoundPath" << SoundPath;
 	Ar << "StartBehavior" << StartBehavior;
 	Ar << "Loop" << bLoop;
@@ -69,24 +73,35 @@ void UAudioComponent::Serialize(FArchive& Ar)
 
 void UAudioComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
-	UActorComponent::GetEditableProperties(OutProps);
 	static const char* StartBehaviorNames[] = { "On BeginPlay", "On First In Range", "Manual Only" };
 	static const char* OutsideBehaviorNames[] = { "Continue Playing", "Pause And Resume", "Stop And Restart" };
 	static const char* AudioBusNames[] = { "SFX", "Music", "Ambient" };
+
 	OutProps.push_back({ "Sound Path", EPropertyType::String, &SoundPath });
-	OutProps.push_back({ "Start Behavior", EPropertyType::Enum, &StartBehavior, 0.0f, 0.0f, 0.0f, StartBehaviorNames, 3 });
+	OutProps.push_back({ "Audio Bus", EPropertyType::Enum, &AudioBus, 0.0f, 0.0f, 0.0f, AudioBusNames, 3 });
+	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Loop", EPropertyType::Bool, &bLoop });
 	OutProps.push_back({ "Spatial", EPropertyType::Bool, &bSpatial });
-	OutProps.push_back({ "Audio Bus", EPropertyType::Enum, &AudioBus, 0.0f, 0.0f, 0.0f, AudioBusNames, 3 });
-	OutProps.push_back({ "Outside Range Behavior", EPropertyType::Enum, &OutsideRangeBehavior, 0.0f, 0.0f, 0.0f, OutsideBehaviorNames, 3 });
-	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Min Distance", EPropertyType::Float, &MinDistance, 0.01f, 10000.0f, 1.0f });
 	OutProps.push_back({ "Max Distance", EPropertyType::Float, &MaxDistance, 0.01f, 10000.0f, 1.0f });
+	OutProps.push_back({ "Start Behavior", EPropertyType::Enum, &StartBehavior, 0.0f, 0.0f, 0.0f, StartBehaviorNames, 3 });
+	OutProps.push_back({ "Outside Range Behavior", EPropertyType::Enum, &OutsideRangeBehavior, 0.0f, 0.0f, 0.0f, OutsideBehaviorNames, 3 });
+	OutProps.push_back({ "Location", EPropertyType::Vec3, &RelativeLocation, 0.0f, 0.0f, 0.1f });
+	OutProps.push_back({ "Rotation", EPropertyType::Vec3, &RelativeRotation, 0.0f, 0.0f, 0.1f });
+	OutProps.push_back({ "Scale", EPropertyType::Vec3, &RelativeScale3D, 0.0f, 0.0f, 0.1f });
+	OutProps.push_back({ "Enable Tick", EPropertyType::Bool, &bCanEverTick });
+	OutProps.push_back({ "Editor Only", EPropertyType::Bool, &bIsEditorOnly });
 }
 
 void UAudioComponent::PostEditProperty(const char* PropertyName)
 {
-	UActorComponent::PostEditProperty(PropertyName);
+	USceneComponent::PostEditProperty(PropertyName);
+
+	if (PropertyName && strcmp(PropertyName, "Sound Path") == 0)
+	{
+		Stop();
+		StopPreview();
+	}
 
 	Volume = std::clamp(Volume, 0.0f, 2.0f);
 	MinDistance = std::max(0.01f, MinDistance);
@@ -94,6 +109,15 @@ void UAudioComponent::PostEditProperty(const char* PropertyName)
 	StartBehavior = std::clamp(StartBehavior, 0, static_cast<int32>(EAudioStartBehavior::Count) - 1);
 	AudioBus = std::clamp(AudioBus, 0, static_cast<int32>(EAudioBus::Count) - 1);
 	OutsideRangeBehavior = std::clamp(OutsideRangeBehavior, 0, static_cast<int32>(EAudioOutsideBehavior::Count) - 1);
+
+	if (PlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().SetVolume(PlaybackHandle, Volume);
+	}
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().SetVolume(PreviewPlaybackHandle, Volume);
+	}
 }
 
 FAudioHandle UAudioComponent::Play()
@@ -188,6 +212,91 @@ float UAudioComponent::GetDuration() const
 	return FAudioSystem::Get().GetSoundDuration(SoundPath);
 }
 
+FAudioHandle UAudioComponent::PlayPreview()
+{
+	if (SoundPath.empty())
+	{
+		return {};
+	}
+
+	StopPreview();
+	PreviewPlaybackHandle = FAudioSystem::Get().Play2D(SoundPath, Volume, bLoop);
+	return PreviewPlaybackHandle;
+}
+
+void UAudioComponent::PausePreview()
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Pause(PreviewPlaybackHandle);
+	}
+}
+
+void UAudioComponent::ResumePreview()
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Resume(PreviewPlaybackHandle);
+	}
+	else
+	{
+		PlayPreview();
+	}
+}
+
+void UAudioComponent::RestartPreview()
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Restart(PreviewPlaybackHandle);
+	}
+	else
+	{
+		PlayPreview();
+	}
+}
+
+void UAudioComponent::StopPreview()
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Stop(PreviewPlaybackHandle);
+		PreviewPlaybackHandle = {};
+	}
+}
+
+bool UAudioComponent::IsPreviewPlaying() const
+{
+	return PreviewPlaybackHandle.IsValid() && FAudioSystem::Get().IsPlaying(PreviewPlaybackHandle);
+}
+
+void UAudioComponent::SetPreviewPlaybackTime(float TimeSeconds)
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().SetPlaybackTime(PreviewPlaybackHandle, TimeSeconds);
+	}
+}
+
+float UAudioComponent::GetPreviewPlaybackTime() const
+{
+	return PreviewPlaybackHandle.IsValid() ? FAudioSystem::Get().GetPlaybackTime(PreviewPlaybackHandle) : 0.0f;
+}
+
+float UAudioComponent::GetPreviewDuration() const
+{
+	if (PreviewPlaybackHandle.IsValid())
+	{
+		const float ActiveDuration = FAudioSystem::Get().GetDuration(PreviewPlaybackHandle);
+		if (ActiveDuration > 0.0f)
+		{
+			return ActiveDuration;
+		}
+	}
+
+	return FAudioSystem::Get().GetSoundDuration(SoundPath);
+}
+
 void UAudioComponent::TickComponent(float DeltaTime)
 {
 	(void)DeltaTime;
@@ -244,7 +353,7 @@ void UAudioComponent::TickComponent(float DeltaTime)
 
 	if (bSpatial)
 	{
-		FAudioSystem::Get().SetSoundPosition(PlaybackHandle, GetOwnerLocation());
+		FAudioSystem::Get().SetSoundPosition(PlaybackHandle, GetAudioLocation());
 	}
 }
 
@@ -257,14 +366,13 @@ FAudioPlayParams UAudioComponent::MakePlayParams() const
 	Params.Volume = Volume;
 	Params.MinDistance = MinDistance;
 	Params.MaxDistance = MaxDistance;
-	Params.Location = GetOwnerLocation();
+	Params.Location = GetAudioLocation();
 	return Params;
 }
 
-FVector UAudioComponent::GetOwnerLocation() const
+FVector UAudioComponent::GetAudioLocation() const
 {
-	const AActor* OwnerActor = GetOwner();
-	return OwnerActor ? OwnerActor->GetActorLocation() : FVector::ZeroVector;
+	return GetWorldLocation();
 }
 
 FVector UAudioComponent::GetListenerLocation() const
@@ -272,7 +380,7 @@ FVector UAudioComponent::GetListenerLocation() const
 	const AActor* OwnerActor = GetOwner();
 	const UWorld* World = OwnerActor ? OwnerActor->GetFocusedWorld() : nullptr;
 	const FViewportCamera* Camera = World ? World->GetActiveCamera() : nullptr;
-	return Camera ? Camera->GetLocation() : GetOwnerLocation();
+	return Camera ? Camera->GetLocation() : GetAudioLocation();
 }
 
 bool UAudioComponent::IsListenerOutsideMaxDistance() const
@@ -282,7 +390,7 @@ bool UAudioComponent::IsListenerOutsideMaxDistance() const
 		return false;
 	}
 
-	return FVector::Distance(GetListenerLocation(), GetOwnerLocation()) > MaxDistance;
+	return FVector::Distance(GetListenerLocation(), GetAudioLocation()) > MaxDistance;
 }
 
 EAudioOutsideBehavior UAudioComponent::GetOutsideRangeBehavior() const
