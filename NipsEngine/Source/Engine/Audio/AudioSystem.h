@@ -20,7 +20,7 @@ struct FAudioPlayParams
 	bool bSpatial = false;
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;
-	float MaxDistance = 20.0f;
+	float MaxDistance = 8.0f;
 	FVector Location = FVector::ZeroVector;
 };
 
@@ -39,12 +39,20 @@ public:
 
 	FAudioHandle Play2D(const FString& SoundPath, float Volume = 1.0f, bool bLoop = false);
 	FAudioHandle PlayAtLocation(const FString& SoundPath, const FVector& Location, float Volume = 1.0f,
-		bool bLoop = false, float MinDistance = 1.0f, float MaxDistance = 20.0f);
+		bool bLoop = false, float MinDistance = 1.0f, float MaxDistance = 8.0f);
 	FAudioHandle Play(const FString& SoundPath, const FAudioPlayParams& Params);
 
 	void Stop(FAudioHandle Handle);
+	void Pause(FAudioHandle Handle);
+	void Resume(FAudioHandle Handle);
+	void Restart(FAudioHandle Handle);
 	void StopAll();
 	bool IsPlaying(FAudioHandle Handle) const;
+
+	void SetPlaybackTime(FAudioHandle Handle, float TimeSeconds);
+	float GetPlaybackTime(FAudioHandle Handle) const;
+	float GetDuration(FAudioHandle Handle) const;
+	float GetSoundDuration(const FString& SoundPath) const;
 
 	void SetSoundPosition(FAudioHandle Handle, const FVector& Location);
 	void SetListenerTransform(const FVector& Location, const FVector& Forward, const FVector& Up);

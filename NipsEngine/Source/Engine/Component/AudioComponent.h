@@ -20,8 +20,15 @@ public:
 	void PostEditProperty(const char* PropertyName) override;
 
 	FAudioHandle Play();
+	void Pause();
+	void Resume();
+	void Restart();
 	void Stop();
 	bool IsPlaying() const;
+	bool HasPlayback() const { return PlaybackHandle.IsValid(); }
+	void SetPlaybackTime(float TimeSeconds);
+	float GetPlaybackTime() const;
+	float GetDuration() const;
 
 	const FString& GetSoundPath() const { return SoundPath; }
 	void SetSoundPath(const FString& InSoundPath) { SoundPath = InSoundPath; }
@@ -43,6 +50,6 @@ private:
 	bool bSpatial = true;
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;
-	float MaxDistance = 20.0f;
+	float MaxDistance = 8.0f;
 	FAudioHandle PlaybackHandle;
 };

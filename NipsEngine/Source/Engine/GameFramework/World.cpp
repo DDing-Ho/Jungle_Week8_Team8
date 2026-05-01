@@ -67,6 +67,13 @@ void UWorld::PostDuplicate(UObject* Original)
 void UWorld::BeginPlay()
 {
     bHasBegunPlay = true;
+    if (ActiveCamera && WorldType != EWorldType::Editor)
+    {
+        FAudioSystem::Get().SetListenerTransform(
+            ActiveCamera->GetLocation(),
+            ActiveCamera->GetForwardVector(),
+            ActiveCamera->GetUpVector());
+    }
     PersistentLevel->BeginPlay();
     RebuildSpatialIndex();
 }

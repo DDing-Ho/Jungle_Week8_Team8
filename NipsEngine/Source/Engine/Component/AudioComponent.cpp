@@ -60,16 +60,16 @@ void UAudioComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
 	OutProps.push_back({ "Play On BeginPlay", EPropertyType::Bool, &bPlayOnBeginPlay });
 	OutProps.push_back({ "Loop", EPropertyType::Bool, &bLoop });
 	OutProps.push_back({ "Spatial", EPropertyType::Bool, &bSpatial });
-	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 1.0f, 0.01f });
-	OutProps.push_back({ "Min Distance", EPropertyType::Float, &MinDistance, 0.01f, 1000.0f, 0.1f });
-	OutProps.push_back({ "Max Distance", EPropertyType::Float, &MaxDistance, 0.01f, 1000.0f, 0.1f });
+	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 2.0f, 0.01f });
+	OutProps.push_back({ "Min Distance", EPropertyType::Float, &MinDistance, 0.01f, 10000.0f, 1.0f });
+	OutProps.push_back({ "Max Distance", EPropertyType::Float, &MaxDistance, 0.01f, 10000.0f, 1.0f });
 }
 
 void UAudioComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 
-	Volume = std::clamp(Volume, 0.0f, 1.0f);
+	Volume = std::clamp(Volume, 0.0f, 2.0f);
 	MinDistance = std::max(0.01f, MinDistance);
 	MaxDistance = std::max(MinDistance, MaxDistance);
 }
@@ -86,6 +86,38 @@ FAudioHandle UAudioComponent::Play()
 	return PlaybackHandle;
 }
 
+void UAudioComponent::Pause()
+{
+	if (PlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Pause(PlaybackHandle);
+	}
+}
+
+void UAudioComponent::Resume()
+{
+	if (PlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Resume(PlaybackHandle);
+	}
+	else
+	{
+		Play();
+	}
+}
+
+void UAudioComponent::Restart()
+{
+	if (PlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().Restart(PlaybackHandle);
+	}
+	else
+	{
+		Play();
+	}
+}
+
 void UAudioComponent::Stop()
 {
 	if (PlaybackHandle.IsValid())
@@ -98,6 +130,33 @@ void UAudioComponent::Stop()
 bool UAudioComponent::IsPlaying() const
 {
 	return PlaybackHandle.IsValid() && FAudioSystem::Get().IsPlaying(PlaybackHandle);
+}
+
+void UAudioComponent::SetPlaybackTime(float TimeSeconds)
+{
+	if (PlaybackHandle.IsValid())
+	{
+		FAudioSystem::Get().SetPlaybackTime(PlaybackHandle, TimeSeconds);
+	}
+}
+
+float UAudioComponent::GetPlaybackTime() const
+{
+	return PlaybackHandle.IsValid() ? FAudioSystem::Get().GetPlaybackTime(PlaybackHandle) : 0.0f;
+}
+
+float UAudioComponent::GetDuration() const
+{
+	if (PlaybackHandle.IsValid())
+	{
+		const float ActiveDuration = FAudioSystem::Get().GetDuration(PlaybackHandle);
+		if (ActiveDuration > 0.0f)
+		{
+			return ActiveDuration;
+		}
+	}
+
+	return FAudioSystem::Get().GetSoundDuration(SoundPath);
 }
 
 void UAudioComponent::TickComponent(float DeltaTime)
