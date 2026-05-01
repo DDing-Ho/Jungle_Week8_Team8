@@ -51,6 +51,7 @@ private:
 	bool CallFunction(ULuaScriptComponent* Component, const char* FunctionName, AActor* Owner, float DeltaTime);
 	bool CallFunction(ULuaScriptComponent* Component, const char* FunctionName, AActor* Owner, AActor* OtherActor);
 	bool CallHitFunction(ULuaScriptComponent* Component, const char* FunctionName, AActor* Owner, const FHitResult& Hit);
+	void ReportCallError(ULuaScriptComponent* Component, const char* FunctionName, const char* ErrorMessage);
 
 	TMap<ULuaScriptComponent*, FScriptState> Scripts;
 #endif

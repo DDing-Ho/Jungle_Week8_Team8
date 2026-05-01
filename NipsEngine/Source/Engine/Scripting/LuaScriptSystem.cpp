@@ -3,6 +3,7 @@
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"
 #include "Scripting/LuaBindings.h"
+#include "UI/EditorConsoleWidget.h"
 
 FLuaScriptSystem::FLuaScriptSystem()
 {
@@ -30,6 +31,7 @@ bool FLuaScriptSystem::LoadScript(ULuaScriptComponent* Component, const FString&
 	{
 		sol::error Error = Result;
 		SetLastError(Error.what());
+		UE_LOG("LuaScriptSystem: failed to load '%s': %s", ScriptPath.c_str(), LastError.c_str());
 		return false;
 	}
 
@@ -45,7 +47,6 @@ bool FLuaScriptSystem::LoadScript(ULuaScriptComponent* Component, const FString&
 
 bool FLuaScriptSystem::ReloadScript(ULuaScriptComponent* Component, const FString& ScriptPath)
 {
-	UnloadScript(Component);
 	return LoadScript(Component, ScriptPath);
 }
 
@@ -147,7 +148,7 @@ bool FLuaScriptSystem::CallFunction(ULuaScriptComponent* Component, const char* 
 	if (!Result.valid())
 	{
 		sol::error Error = Result;
-		SetLastError(Error.what());
+		ReportCallError(Component, FunctionName, Error.what());
 		return false;
 	}
 
@@ -172,7 +173,7 @@ bool FLuaScriptSystem::CallFunction(ULuaScriptComponent* Component, const char* 
 	if (!Result.valid())
 	{
 		sol::error Error = Result;
-		SetLastError(Error.what());
+		ReportCallError(Component, FunctionName, Error.what());
 		return false;
 	}
 
@@ -197,7 +198,7 @@ bool FLuaScriptSystem::CallFunction(ULuaScriptComponent* Component, const char* 
 	if (!Result.valid())
 	{
 		sol::error Error = Result;
-		SetLastError(Error.what());
+		ReportCallError(Component, FunctionName, Error.what());
 		return false;
 	}
 
@@ -222,7 +223,7 @@ bool FLuaScriptSystem::CallFunction(ULuaScriptComponent* Component, const char* 
 	if (!Result.valid())
 	{
 		sol::error Error = Result;
-		SetLastError(Error.what());
+		ReportCallError(Component, FunctionName, Error.what());
 		return false;
 	}
 
@@ -247,11 +248,27 @@ bool FLuaScriptSystem::CallHitFunction(ULuaScriptComponent* Component, const cha
 	if (!Result.valid())
 	{
 		sol::error Error = Result;
-		SetLastError(Error.what());
+		ReportCallError(Component, FunctionName, Error.what());
 		return false;
 	}
 
 	return true;
+}
+
+void FLuaScriptSystem::ReportCallError(ULuaScriptComponent* Component, const char* FunctionName, const char* ErrorMessage)
+{
+	const FString ErrorText = ErrorMessage ? ErrorMessage : "unknown Lua error";
+	SetLastError(ErrorText);
+
+	const FString ScriptPath = Component ? Component->GetScriptPath() : "";
+	if (!ScriptPath.empty())
+	{
+		UE_LOG("LuaScriptSystem: failed to call %s in '%s': %s", FunctionName, ScriptPath.c_str(), ErrorText.c_str());
+	}
+	else
+	{
+		UE_LOG("LuaScriptSystem: failed to call %s: %s", FunctionName, ErrorText.c_str());
+	}
 }
 #endif
 

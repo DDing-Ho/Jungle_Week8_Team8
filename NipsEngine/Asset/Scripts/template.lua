@@ -2,6 +2,7 @@
 -- owner: AActor bound from C++
 -- otherActor: AActor or nil
 -- hit: FHitResult
+-- Log(message): writes to the editor console
 
 function BeginPlay(owner)
 end

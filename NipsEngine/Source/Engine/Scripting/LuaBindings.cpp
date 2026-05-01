@@ -6,9 +6,15 @@
 #include "Math/Vector.h"
 #include "Object/Object.h"
 #include "Core/CollisionTypes.h"
+#include "UI/EditorConsoleWidget.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
+	Lua.set_function("Log", [](const FString& Message)
+	{
+		UE_LOG("[Lua] %s", Message.c_str());
+	});
+
 	Lua.new_usertype<FVector>(
 		"FVector",
 		sol::constructors<FVector(), FVector(float, float, float)>(),

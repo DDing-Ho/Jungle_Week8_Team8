@@ -251,6 +251,11 @@ void FEditorViewportClient::TickCursorCapture()
 		return;
 
 	const InputSystem& IS = InputSystem::Get();
+	if (IS.GetGuiInputState().bUsingMouse)
+	{
+		return;
+	}
+
 	const bool bCtrlDown = IS.GetKey(VK_CONTROL);
 	const bool bDragBegin = (IS.GetKeyDown(VK_RBUTTON) && !bCtrlDown) || IS.GetKeyDown(VK_MBUTTON);
 	const bool bDragEnd   = IS.GetKeyUp(VK_RBUTTON)   || IS.GetKeyUp(VK_MBUTTON);
@@ -277,6 +282,11 @@ void FEditorViewportClient::TickKeyboardInput()
 
 	if (bControlLocked) return;
 	const InputSystem& IS = InputSystem::Get();
+	if (IS.GetGuiInputState().bUsingKeyboard)
+	{
+		return;
+	}
+
 	for (int VK : WatchKeys)
 	{
 		if (IS.GetKeyDown(VK)) InputRouter.RouteKeyboardInput(EKeyInputType::KeyPressed,  VK);
@@ -292,6 +302,11 @@ void FEditorViewportClient::TickEditorShortcuts()
 		return;
 
 	const InputSystem& IS        = InputSystem::Get();
+	if (IS.GetGuiInputState().bUsingKeyboard)
+	{
+		return;
+	}
+
 	const bool         bCtrlDown = IS.GetKey(VK_CONTROL);
 	const bool         bAltDown  = IS.GetKey(VK_MENU);
 
@@ -343,6 +358,10 @@ void FEditorViewportClient::TickPIEShortCuts()
 	if (InputRouter.GetActiveController() != EActiveEditorController::PIEController) return;
 
 	InputSystem& IS = InputSystem::Get();
+	if (IS.GetGuiInputState().bUsingKeyboard)
+	{
+		return;
+	}
 
 	if (IS.GetKeyDown(VK_F4)) {
 		if (!bControlLocked) {
@@ -361,6 +380,10 @@ void FEditorViewportClient::TickMouseInput(float VX, float VY)
 {
 	if (bControlLocked) return;
 	const InputSystem& IS = InputSystem::Get();
+	if (IS.GetGuiInputState().bUsingMouse)
+	{
+		return;
+	}
 
 	POINT MP = IS.GetMousePos();
 	if (Window) MP = Window->ScreenToClientPoint(MP);
