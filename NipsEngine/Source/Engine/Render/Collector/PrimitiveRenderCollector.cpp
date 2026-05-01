@@ -147,25 +147,21 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 		const FStaticMesh* MeshData = StaticMesh->GetMeshData(SelectedLOD);
 		const TArray<FStaticMeshSection>& Sections = MeshData->Sections;
 		const bool bDebugCollisionHighlight = ShouldHighlightDebugCollision(Primitive, ViewMode);
-		const FVector4 PrimitiveColor = bDebugCollisionHighlight ? FColor::Red().ToVector4() : FColor::White().ToVector4();
+		const FVector4 PrimitiveColor = FColor::White().ToVector4();
 
 		for (int32 SectionIdx = 0; SectionIdx < static_cast<int32>(Sections.size()); ++SectionIdx)
 		{
 			const FStaticMeshSection& Section = Sections[SectionIdx];
-			UMaterialInterface* Material = Cast<UMaterialInterface>(StaticMeshComp->GetMaterial(SectionIdx));
+			UMaterialInterface* Material = bDebugCollisionHighlight
+				? FResourceManager::Get().GetMaterial("DefaultRed")
+				: Cast<UMaterialInterface>(StaticMeshComp->GetMaterial(SectionIdx));
+
 			if (Material == nullptr)
 			{
 				Material = FResourceManager::Get().GetMaterial("DefaultWhite");
 				if (Material == nullptr)
 				{
 					continue;
-				}
-			}
-			else if (bDebugCollisionHighlight)
-			{
-				if (UMaterialInterface* DebugMaterial = FResourceManager::Get().GetMaterial("DefaultWhite"))
-				{
-					Material = DebugMaterial;
 				}
 			}
 

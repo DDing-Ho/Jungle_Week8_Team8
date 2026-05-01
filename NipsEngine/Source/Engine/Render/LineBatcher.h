@@ -90,9 +90,10 @@ public:
 	void AddArc(const FVector& Position, const FVector& Forward, const FVector& Axis, float ConeAngle, float Radius, uint32 TipIdx, const FVector4& Color);
 	void AddCircle(const FVector& Center, const FVector& AxisA, const FVector& AxisB, float Radius, const FVector4& Color);
 	void AddSpotLight(const FVector& Position, const FVector& Direction, const FVector& DirectionRight, float AttenuationRadius, float InnerConeAngle, float OuterConeAngle);
-	void AddPointLight(const FVector& Position, float AttenuationRadius, const FVector& Right, const FVector& Up);
+	void AddSphere(const FVector& Position, float AttenuationRadius, const FVector& Right, const FVector& Up, FColor LineColor);
 	void AddDirectionalLight(const FVector& Position, const FVector& Direction, const FVector& DirectionRight, const FVector4& LineColor);
 	void AddSingleCone(const FVector& Position, const FVector& Forward, const FVector& Right, const FVector& Up, float ConeAngle, float Radius, const FVector4& Color);
+	void AddCapsule(const FVector& Position, float HalfHeight, float Radius, const FVector& UpVector, const FVector& RightVector, const FVector& ForwardVector, const FColor& InColor);
 
 private:
 	UMaterialInterface* Material = nullptr;

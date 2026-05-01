@@ -17,8 +17,8 @@ UCapsuleComponent::UCapsuleComponent()
 void UCapsuleComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     UShapeComponent::GetEditableProperties(OutProps);
-    OutProps.push_back({ "Capsule Half Height", EPropertyType::Float, &CapsuleHalfHeight, 0.0f, FLT_MAX, 1.0f });
-    OutProps.push_back({ "Capsule Radius", EPropertyType::Float, &CapsuleRadius, 0.0f, FLT_MAX, 1.0f });
+    OutProps.push_back({ "Capsule Half Height", EPropertyType::Float, &CapsuleHalfHeight, 0.0f, FLT_MAX, 0.05f });
+    OutProps.push_back({ "Capsule Radius", EPropertyType::Float, &CapsuleRadius, 0.0f, FLT_MAX, 0.05f });
 }
 
 void UCapsuleComponent::PostEditProperty(const char* PropertyName)
@@ -46,7 +46,9 @@ void UCapsuleComponent::UpdateWorldAABB() const
 
     const FVector LocalExtent(SafeRadius, SafeRadius, SafeHalfHeight);
     const FAABB LocalAABB(-LocalExtent, LocalExtent);
-    WorldAABB = FAABB::TransformAABB(LocalAABB, GetWorldMatrix());
+    FMatrix ShapeWorldMatrix = GetWorldMatrix().GetRotationMatrix();
+    ShapeWorldMatrix.SetOrigin(GetWorldLocation());
+    WorldAABB = FAABB::TransformAABB(LocalAABB, ShapeWorldMatrix);
 }
 
 // RayCasting 전용 AABB

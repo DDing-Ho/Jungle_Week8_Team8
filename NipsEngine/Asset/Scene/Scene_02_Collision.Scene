@@ -1,13 +1,13 @@
 {
   "ClassName" : "UWorld",
   "Name" : "Scene_02_Collision",
-  "NextUUID" : 154,
+  "NextUUID" : 169,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [1.412960, 1.555170, 1.435198],
+    "Location" : [-1.674448, 0.580705, 2.518690],
     "NearClip" : 0.100000,
-    "Rotation" : [20.296852, -31.087616, -144.386810]
+    "Rotation" : [51.562817, 0.049153, -89.960999]
   },
   "Primitives" : {
     "122" : {
@@ -35,7 +35,7 @@
       "EnableTick" : true,
       "GenerateOverlapEvents" : true,
       "HiddenInEditor" : false,
-      "Location" : [-0.527810, -0.604288, -0.034326],
+      "Location" : [-1.294417, -0.986515, -0.064971],
       "Materials" : ["MatID_1.001"],
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset/Mesh/bitten_apple_mid/bitten_apple_mid.obj",
@@ -53,7 +53,7 @@
       "EnableTick" : true,
       "GenerateOverlapEvents" : true,
       "HiddenInEditor" : false,
-      "Location" : [0.000000, -1.104924, 0.000000],
+      "Location" : [-1.453206, -1.104924, 0.000000],
       "Materials" : ["MatID_1"],
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset/Mesh/apple_mid/apple_mid.obj",
@@ -116,10 +116,28 @@
       "Location" : [0.000000, 0.000000, 0.000000],
       "ParentUUID" : 127,
       "Rotation" : [0.000000, 0.000000, 0.000000],
-      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Scale" : [0.400000, 0.400000, 0.400000],
       "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
       "SphereRadius" : 1.000000,
       "Type" : "USphereComponent",
+      "Visible" : true
+    },
+    "167" : {
+      "BlockComponent" : true,
+      "BoxExtent" : [1.000000, 1.000000, 1.000000],
+      "DrawOnlyIfSelected" : false,
+      "EditorOnly" : false,
+      "EnableCull" : false,
+      "EnableTick" : true,
+      "GenerateOverlapEvents" : false,
+      "HiddenInEditor" : false,
+      "LineThickness" : 1.000000,
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "ParentUUID" : 125,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [0.400000, 0.400000, 0.400000],
+      "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
+      "Type" : "UBoxComponent",
       "Visible" : true
     }
   },

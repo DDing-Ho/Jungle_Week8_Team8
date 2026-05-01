@@ -33,7 +33,9 @@ void UBoxComponent::UpdateWorldAABB() const
 {
     const FVector SafeExtent(std::fabs(BoxExtent.X), std::fabs(BoxExtent.Y), std::fabs(BoxExtent.Z));
     const FAABB LocalAABB(-SafeExtent, SafeExtent);
-    WorldAABB = FAABB::TransformAABB(LocalAABB, GetWorldMatrix());
+    FMatrix ShapeWorldMatrix = GetWorldMatrix().GetRotationMatrix();
+    ShapeWorldMatrix.SetOrigin(GetWorldLocation());
+    WorldAABB = FAABB::TransformAABB(LocalAABB, ShapeWorldMatrix);
 }
 
 // RayCasting 전용 AABB

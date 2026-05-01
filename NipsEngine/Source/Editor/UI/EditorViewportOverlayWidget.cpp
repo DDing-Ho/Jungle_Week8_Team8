@@ -155,7 +155,7 @@ void FEditorViewportOverlayWidget::RenderViewportSettings(float DeltaTime)
 		ImGui::Checkbox("BVH Bounding Volume", &Settings.ShowFlags.bBVHBoundingVolume);
 		ImGui::Unindent();
 	}
-	ImGui::Checkbox("Enable LOD", &Settings.ShowFlags.bEnableLOD);
+	ImGui::Checkbox("LOD", &Settings.ShowFlags.bEnableLOD);
 	ImGui::Checkbox("Decals", &Settings.ShowFlags.bDecals);
 	ImGui::Checkbox("Fog", &Settings.ShowFlags.bFog);
 	ImGui::Checkbox("Shadow", &Settings.ShowFlags.bShadow);

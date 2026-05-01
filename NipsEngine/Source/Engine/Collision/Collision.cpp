@@ -16,30 +16,20 @@ namespace
     FOBB MakeOBB(const UBoxComponent* Box)
     {
         const FMatrix& WorldMatrix = Box->GetWorldMatrix();
-        const FVector Scale = WorldMatrix.GetScaleVector();
         const FVector Extent = Box->GetBoxExtent();
-
-        const FVector ScaledExtent(MathUtil::Abs(Extent.X * Scale.X), MathUtil::Abs(Extent.Y * Scale.Y), MathUtil::Abs(Extent.Z * Scale.Z));
-
-        return FOBB(Box->GetWorldLocation(), ScaledExtent, WorldMatrix.GetRotationMatrix());
+        return FOBB(Box->GetWorldLocation(), FVector(MathUtil::Abs(Extent.X), MathUtil::Abs(Extent.Y), MathUtil::Abs(Extent.Z)), WorldMatrix.GetRotationMatrix());
     }
 
     float GetSphereWorldRadius(const USphereComponent* Sphere)
     {
-        const FVector Scale = Sphere->GetWorldScale();
-        return MathUtil::Abs(Sphere->GetSphereRadius()) * MathUtil::Max3(MathUtil::Abs(Scale.X), MathUtil::Abs(Scale.Y), MathUtil::Abs(Scale.Z));
+        return MathUtil::Abs(Sphere->GetSphereRadius());
     }
 
     FCapsule MakeCapsule(const UCapsuleComponent* Capsule)
     {
         const FMatrix& WorldMatrix = Capsule->GetWorldMatrix();
-        const FVector Scale = WorldMatrix.GetScaleVector();
-        const float RadiusScale = std::max(MathUtil::Abs(Scale.X), MathUtil::Abs(Scale.Y));
-        const float HalfHeightScale = MathUtil::Abs(Scale.Z);
-
-        const float Radius = MathUtil::Abs(Capsule->GetCapsuleRadius()) * RadiusScale;
-
-        const float HalfHeight = std::max(MathUtil::Abs(Capsule->GetCapsuleHalfHeight()) * HalfHeightScale, Radius);
+        const float Radius = MathUtil::Abs(Capsule->GetCapsuleRadius());
+        const float HalfHeight = std::max(MathUtil::Abs(Capsule->GetCapsuleHalfHeight()), Radius);
         const float SegmentHalfLength = std::max(0.0f, HalfHeight - Radius);
         const FVector Up = WorldMatrix.GetUnitAxis(EAxis::Z);
         const FVector Center = Capsule->GetWorldLocation();
