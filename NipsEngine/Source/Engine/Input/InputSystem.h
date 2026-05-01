@@ -7,6 +7,7 @@ struct FGuiInputState
 {
     bool bUsingMouse = false;
     bool bUsingKeyboard = false;
+    bool bBlockViewportInput = false;
 
     bool          bViewportHostVisible = false;
     FViewportRect ViewportHostRect;

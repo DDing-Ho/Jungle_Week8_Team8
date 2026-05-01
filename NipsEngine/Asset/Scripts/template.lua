@@ -1,14 +1,20 @@
+-- LuaScriptComponent contract
+-- owner: AActor bound from C++
+-- otherActor: AActor or nil
+-- hit: FHitResult
+-- Log(message): writes to the editor console
+
 function BeginPlay(owner)
-    print("[BeginPlay] " .. owner:GetName())
+    Log("[BeginPlay] " .. owner:GetName())
 end
 
 function EndPlay(owner)
-    print("[EndPlay] " .. owner:GetName())
+    Log("[EndPlay] " .. owner:GetName())
 end
 
 function OnOverlap(owner, otherActor)
     if otherActor ~= nil then
-        print(owner:GetName() .. " overlapped " .. otherActor:GetName())
+        Log(owner:GetName() .. " overlapped " .. otherActor:GetName())
     end
 end
 

@@ -209,11 +209,14 @@ void FEditorMainPanel::Update()
 		IO.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 	}
 
-	InputSystem::Get().GetGuiInputState().bUsingMouse = bViewportOperationActive ? false : IO.WantCaptureMouse;
-	InputSystem::Get().GetGuiInputState().bUsingKeyboard = IO.WantCaptureKeyboard;
+	const bool bPropertyModalBlockingInput = PropertyWidget.IsModalInputBlocking();
+	FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	GuiState.bBlockViewportInput = bPropertyModalBlockingInput;
+	GuiState.bUsingMouse = bPropertyModalBlockingInput || (bViewportOperationActive ? false : IO.WantCaptureMouse);
+	GuiState.bUsingKeyboard = bPropertyModalBlockingInput || IO.WantCaptureKeyboard;
 
 	//	Focus는 MainPanel에서 입력 받음
-	if (EditorEngine && InputSystem::Get().GetKeyUp('F') && !IO.WantTextInput)
+	if (EditorEngine && InputSystem::Get().GetKeyUp('F') && !IO.WantTextInput && !bPropertyModalBlockingInput)
 	{
 		FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
 		const int32 FocusedIdx = Layout.GetLastFocusedViewportIndex();

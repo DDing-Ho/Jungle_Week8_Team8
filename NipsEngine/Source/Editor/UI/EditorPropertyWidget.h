@@ -15,6 +15,7 @@ public:
 
 	UActorComponent* GetSelectedComponent() const { return SelectedComponent; }
 	bool IsActorSelected() const { return bActorSelected; }
+	bool IsModalInputBlocking() const;
 
 	void ResetSelection();
 
@@ -39,6 +40,8 @@ private:
 	bool RenderPropertyWidget(struct FPropertyDescriptor& Prop);
 	void RenderSceneComponentRefWidget(struct FPropertyDescriptor& Prop, AActor* Owner);
 	void RenderInterpControlPoints(class UInterpToMovementComponent* Comp);
+	void RenderLuaScriptControls(class ULuaScriptComponent* Comp);
+	void RenderLuaScriptCreatePopup();
 
 	// 유틸리티
 	void AttachAndSelectNewComponent(AActor* PrimaryActor, UActorComponent* NewComp);
