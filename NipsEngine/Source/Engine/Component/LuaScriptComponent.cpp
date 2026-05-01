@@ -51,11 +51,7 @@ void ULuaScriptComponent::BeginPlay()
 	UActorComponent::BeginPlay();
 	BindCollisionEvents();
 
-	if (bUseDefaultScriptPath || ScriptPath.empty())
-	{
-		ScriptPath = MakeDefaultScriptPath();
-		bUseDefaultScriptPath = true;
-	}
+	EnsureDefaultScriptPath();
 
 	if (bAutoCreateScript)
 	{
@@ -95,6 +91,7 @@ void ULuaScriptComponent::OnRegister()
 
 	if (GetOwner())
 	{
+		EnsureDefaultScriptPath();
 		BindCollisionEvents();
 	}
 }
@@ -105,6 +102,35 @@ void ULuaScriptComponent::OnUnregister()
 	FLuaScriptSystem::Get().UnloadScript(this);
 	bLoaded = false;
 	bRegistered = false;
+}
+
+void ULuaScriptComponent::PostDuplicate(UObject* Original)
+{
+	UObject::PostDuplicate(Original);
+
+	const ULuaScriptComponent* OriginalScript = Cast<ULuaScriptComponent>(Original);
+	if (!OriginalScript)
+	{
+		return;
+	}
+
+	if (ScriptPath.empty())
+	{
+		if (!OriginalScript->ScriptPath.empty())
+		{
+			ScriptPath = OriginalScript->ScriptPath;
+		}
+		else
+		{
+			ScriptPath = MakeDefaultScriptPathForActor(OriginalScript->GetOwner());
+			bUseDefaultScriptPath = true;
+		}
+	}
+
+	bLoaded = false;
+	bCollisionEventsBound = false;
+	bLoggedRuntimeDisabled = false;
+	LastScriptError.clear();
 }
 
 void ULuaScriptComponent::Serialize(FArchive& Ar)
@@ -153,11 +179,7 @@ void ULuaScriptComponent::PostEditProperty(const char* PropertyName)
 
 bool ULuaScriptComponent::ReloadScript()
 {
-	if (bUseDefaultScriptPath || ScriptPath.empty())
-	{
-		ScriptPath = MakeDefaultScriptPath();
-		bUseDefaultScriptPath = true;
-	}
+	EnsureDefaultScriptPath();
 
 	bLoaded = FLuaScriptSystem::Get().ReloadScript(this, FPaths::ToAbsoluteString(FPaths::ToWide(ScriptPath)));
 	SetLastScriptError(FLuaScriptSystem::Get().GetLastError());
@@ -177,11 +199,7 @@ bool ULuaScriptComponent::ReloadScript()
 
 bool ULuaScriptComponent::EnsureScriptFile()
 {
-	if (bUseDefaultScriptPath || ScriptPath.empty())
-	{
-		ScriptPath = MakeDefaultScriptPath();
-		bUseDefaultScriptPath = true;
-	}
+	EnsureDefaultScriptPath();
 
 	std::filesystem::path Target(FPaths::ToAbsolute(FPaths::ToWide(ScriptPath)));
 	if (std::filesystem::exists(Target))
@@ -338,9 +356,24 @@ void ULuaScriptComponent::UnbindCollisionEvents()
 	bCollisionEventsBound = false;
 }
 
+void ULuaScriptComponent::EnsureDefaultScriptPath()
+{
+	if (!ScriptPath.empty())
+	{
+		return;
+	}
+
+	ScriptPath = MakeDefaultScriptPath();
+	bUseDefaultScriptPath = true;
+}
+
 FString ULuaScriptComponent::MakeDefaultScriptPath() const
 {
-	const AActor* OwnerActor = GetOwner();
+	return MakeDefaultScriptPathForActor(GetOwner());
+}
+
+FString ULuaScriptComponent::MakeDefaultScriptPathForActor(const AActor* OwnerActor) const
+{
 	const FString ActorName = OwnerActor ? OwnerActor->GetFName().ToString() : "Actor";
 	return "Asset/Scripts/" + SanitizeScriptName(ActorName) + ".lua";
 }

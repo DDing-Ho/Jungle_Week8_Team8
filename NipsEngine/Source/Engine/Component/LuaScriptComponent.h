@@ -15,6 +15,7 @@ public:
 	void EndPlay() override;
 	void OnRegister() override;
 	void OnUnregister() override;
+	void PostDuplicate(UObject* Original) override;
 	void Serialize(FArchive& Ar) override;
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void PostEditProperty(const char* PropertyName) override;
@@ -38,7 +39,9 @@ protected:
 private:
 	void BindCollisionEvents();
 	void UnbindCollisionEvents();
+	void EnsureDefaultScriptPath();
 	FString MakeDefaultScriptPath() const;
+	FString MakeDefaultScriptPathForActor(const AActor* OwnerActor) const;
 	void SetLastScriptError(const FString& Error);
 
 	FString ScriptPath;
