@@ -39,6 +39,7 @@ void FEditorSceneWidget::NewScene()
 
 	EditorEngine->GetMainPanel().ResetWidgetSelections();
 	EditorEngine->NewScene();
+	strncpy_s(SceneName, IM_ARRAYSIZE(SceneName), "Default", _TRUNCATE);
 	NewSceneNotificationTimer = common::constants::ImGui::NotificationTimer;
 }
 
@@ -120,6 +121,12 @@ void FEditorSceneWidget::LoadSceneFromFilePath(const FString& FilePath)
 	{
 		return;
 	}
+
+	const std::filesystem::path SourcePath(FPaths::ToWide(FilePath));
+	const FString LoadedSceneName = FPaths::ToUtf8(SourcePath.stem().wstring());
+	strncpy_s(SceneName, IM_ARRAYSIZE(SceneName),
+		LoadedSceneName.empty() ? "Default" : LoadedSceneName.c_str(),
+		_TRUNCATE);
 
 	EditorEngine->GetMainPanel().ResetWidgetSelections();
 	EditorEngine->ClearScene();
