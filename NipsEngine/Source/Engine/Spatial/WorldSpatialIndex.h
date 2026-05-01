@@ -152,7 +152,7 @@ class FWorldSpatialIndex
 	void SphereQueryPrimitives(const FVector& Center, float Radius, TArray<UPrimitiveComponent*>& OutPrimitives,
 							   FPrimitiveSphereQueryScratch& Scratch);
 
-	/** @brief Collect primitives whose BVH leaf AABBs overlap the input world-space AABB. */
+	/** @brief Collect primitives whose BVH leaf AABBs overlap the input world-space AABB without flushing dirty bounds. */
 	void AABBQueryPrimitives(const FAABB& QueryBounds, TArray<UPrimitiveComponent*>& OutPrimitives,
 							 FPrimitiveAABBQueryScratch& Scratch);
 

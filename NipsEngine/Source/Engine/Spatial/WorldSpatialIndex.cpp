@@ -382,8 +382,6 @@ void FWorldSpatialIndex::SphereQueryPrimitives(const FVector& Center, float Radi
 void FWorldSpatialIndex::AABBQueryPrimitives(const FAABB& QueryBounds, TArray<UPrimitiveComponent*>& OutPrimitives,
 											 FPrimitiveAABBQueryScratch& Scratch)
 {
-	FlushDirtyBounds();
-
 	Scratch.ObjectIndices.clear();
 	BVH.AABBQuery(Bounds, QueryBounds, Scratch.ObjectIndices, Scratch.BVHScratch);
 

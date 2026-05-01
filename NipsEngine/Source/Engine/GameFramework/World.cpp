@@ -79,6 +79,7 @@ void UWorld::Tick(float DeltaTime)
     else
         PersistentLevel->TickGame(DeltaTime);
 
+    // 월드 틱에서 발생한 bounds 변경을 충돌 쿼리 전에 한 번만 BVH에 반영한다.
     SyncSpatialIndex();
     FCollisionSystem::UpdateWorldCollision(this);
 }

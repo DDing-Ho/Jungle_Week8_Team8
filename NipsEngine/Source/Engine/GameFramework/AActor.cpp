@@ -356,17 +356,3 @@ const TArray<UPrimitiveComponent*>& AActor::GetPrimitiveComponents() const
 	}
 	return PrimitiveCache;
 }
-
-// 소유한 PrimitiveComponent 중 하나라도 대상 Actor와 overlap 중인지 확인한다.
-bool AActor::IsOverlappingActor(const AActor* Other) const
-{
-	for (UPrimitiveComponent* PrimComp : GetPrimitiveComponents())
-	{
-		if (PrimComp && PrimComp->GetOverlapInfos().size() > 0 && PrimComp->IsOverlappingActor(Other))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}

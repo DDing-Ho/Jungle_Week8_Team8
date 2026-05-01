@@ -19,7 +19,7 @@ public:
 
 	virtual void Serialize(FArchive& Ar) override;
 
-    virtual void InitDefaultComponents() {}
+	virtual void InitDefaultComponents() {}
 
 	// 컴포넌트 생성 + Owner 설정 + 등록만 수행. Attach는 별도로 호출할 것.
 	template<typename T>
@@ -90,9 +90,6 @@ public:
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void PostEditProperty(const char* PropertyName) override {}
 
-	// 충돌 처리
-	bool IsOverlappingActor(const AActor* Other) const;
-
 	const TArray<UPrimitiveComponent*>& GetPrimitiveComponents() const;
 
 protected:
@@ -105,7 +102,7 @@ protected:
 
 	bool bVisible = true;
 	bool bIsActive = true;
-    bool bTickInEditor = false;
+	bool bTickInEditor = false;
 
 	TArray<UActorComponent*> OwnedComponents;
 
