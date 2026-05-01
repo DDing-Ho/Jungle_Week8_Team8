@@ -42,6 +42,11 @@ bool UObject::IsValid(const UObject* Obj)
     return false;
 }
 
+bool UObject::IsUObjectAlive(const void* Ptr)
+{
+    return UObject::IsValid(static_cast<const UObject*>(Ptr));
+}
+
 // FObjectFactory 로 같은 타입의 인스턴스를 생성한 뒤 프로퍼티 복사 → PostDuplicate 훅을 실행합니다.
 // 팩토리에 등록되지 않은 추상 클래스(PrimitiveComponent 등)는 Create() 가 nullptr 를 반환하므로
 // 그대로 nullptr 를 반환합니다.

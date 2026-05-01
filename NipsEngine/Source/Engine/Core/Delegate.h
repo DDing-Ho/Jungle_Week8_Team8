@@ -3,6 +3,8 @@
 #include <functional>
 #include <vector>
 
+bool IsUObjectAlive(const void* Ptr);
+
 #define DECLARE_DELEGATE(Name, ...) using Name = TDelegate<__VA_ARGS__>
 
 template<typename... Args>
@@ -17,11 +19,22 @@ public:
 	}
 
 	template <typename T> 
-	void AddDynamic(T* Instance, void (T::* Func)(Args...))
+	void AddRaw(T* Instance, void (T::* Func)(Args...))
 	{
         Handlers.push_back([Instance, Func](Args... args)
         { 
 			(Instance->*Func)(args...);
+	    });
+	}
+
+	template <typename T>
+	void AddDynamic(T* Instance, void (T::* Func)(Args...))
+	{
+        const void* ObjPtr = static_cast<const void*>(Instance);
+        Handlers.push_back([ObjPtr, Instance, Func](Args... args)
+        { 
+			if (IsUObjectAlive(ObjPtr))
+				(Instance->*Func)(args...);
 	    });
 	}
 

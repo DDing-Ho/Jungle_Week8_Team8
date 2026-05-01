@@ -102,6 +102,8 @@ public:
 
 	static bool IsValid(const UObject* Obj);
 
+	bool IsUObjectAlive(const void* Ptr);
+
 protected:
 	FName ObjectName;
 
