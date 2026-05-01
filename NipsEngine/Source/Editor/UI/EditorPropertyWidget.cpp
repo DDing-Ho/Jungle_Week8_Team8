@@ -77,6 +77,13 @@ void FEditorPropertyWidget::ResetSelection()
 	bActorSelected = true;
 }
 
+void FEditorPropertyWidget::RestoreSelection(AActor* Actor, UActorComponent* Component, bool bInActorSelected)
+{
+	LastSelectedActor = Actor;
+	SelectedComponent = Component;
+	bActorSelected = bInActorSelected || Component == nullptr;
+}
+
 bool FEditorPropertyWidget::IsModalInputBlocking() const
 {
 	return bLuaScriptPopupInputBlocking || bRequestOpenCreateLuaScriptPopup || PendingLuaScriptComponent != nullptr;

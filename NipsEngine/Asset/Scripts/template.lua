@@ -19,5 +19,8 @@ end
 function OnHit(owner, hit)
 end
 
+function OnInteract(owner, interactor)
+end
+
 function Tick(owner, deltaTime)
 end

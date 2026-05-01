@@ -547,6 +547,7 @@ void FEditorViewportOverlayWidget::RenderShortcutsWindow()
 	DrawShortcutTable("Editor",
 	{
 		{"Delete", "선택된 Actor 삭제"},
+		{"F4", "PIE 중 마우스 캡처/커서 표시 토글"},
 	});
 
 	ImGui::Spacing();

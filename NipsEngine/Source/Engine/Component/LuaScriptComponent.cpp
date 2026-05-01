@@ -424,6 +424,14 @@ void ULuaScriptComponent::HandleHit(const FHitResult& Hit)
 	}
 }
 
+void ULuaScriptComponent::HandleInteract(AActor* Interactor)
+{
+	if (bLoaded)
+	{
+		FLuaScriptSystem::Get().CallInteract(this, GetOwner(), Interactor);
+	}
+}
+
 void ULuaScriptComponent::SetScriptPath(const FString& InScriptPath)
 {
 	ScriptPath = InScriptPath;

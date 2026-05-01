@@ -2,6 +2,7 @@
 
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 #include "Scripting/LuaBindings.h"
 #include "UI/EditorConsoleWidget.h"
 
@@ -132,6 +133,17 @@ void FLuaScriptSystem::CallHit(ULuaScriptComponent* Component, AActor* Owner, co
 #endif
 }
 
+void FLuaScriptSystem::CallInteract(ULuaScriptComponent* Component, AActor* Owner, AActor* Interactor)
+{
+#if WITH_LUA
+	CallFunction(Component, "OnInteract", Owner, Interactor);
+#else
+	(void)Component;
+	(void)Owner;
+	(void)Interactor;
+#endif
+}
+
 #if WITH_LUA
 void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptState& State)
 {
@@ -210,6 +222,117 @@ void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptS
 
 		return ScriptState->CoroutineScheduler.Cancel(FLuaCoroutineHandle{ CoroutineId });
 	});
+
+	State.Lua->set_function("FindActorByName", [this, Component](const FString& ActorName) -> AActor*
+	{
+		return FindActorByName(Component, ActorName);
+	});
+
+	State.Lua->set_function("SetGameState", [this](const FString& Key, sol::object Value)
+	{
+		return SetGameStateValue(Key, Value);
+	});
+
+	State.Lua->set_function("GetGameState", [this](sol::this_state LuaState, const FString& Key)
+	{
+		return GetGameStateValue(Key, LuaState);
+	});
+}
+
+AActor* FLuaScriptSystem::FindActorByName(ULuaScriptComponent* Component, const FString& ActorName) const
+{
+	if (Component == nullptr || ActorName.empty())
+	{
+		return nullptr;
+	}
+
+	const AActor* Owner = Component->GetOwner();
+	UWorld* World = Owner ? Owner->GetFocusedWorld() : nullptr;
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+
+	const TArray<AActor*> Actors = World->GetActors();
+	for (AActor* Actor : Actors)
+	{
+		if (Actor == nullptr)
+		{
+			continue;
+		}
+
+		if (Actor->GetFName().ToString() == ActorName)
+		{
+			return Actor;
+		}
+	}
+
+	return nullptr;
+}
+
+bool FLuaScriptSystem::SetGameStateValue(const FString& Key, sol::object Value)
+{
+	if (Key.empty())
+	{
+		return false;
+	}
+
+	FGameStateValue StoredValue;
+	switch (Value.get_type())
+	{
+	case sol::type::nil:
+		GameState.erase(Key);
+		return true;
+
+	case sol::type::boolean:
+		StoredValue.Type = FGameStateValue::EType::Boolean;
+		StoredValue.BoolValue = Value.as<bool>();
+		break;
+
+	case sol::type::number:
+		StoredValue.Type = FGameStateValue::EType::Number;
+		StoredValue.NumberValue = Value.as<double>();
+		break;
+
+	case sol::type::string:
+		StoredValue.Type = FGameStateValue::EType::String;
+		StoredValue.StringValue = Value.as<FString>();
+		break;
+
+	default:
+		UE_LOG("LuaScriptSystem: SetGameState only supports nil, bool, number, and string values.");
+		return false;
+	}
+
+	GameState[Key] = StoredValue;
+	return true;
+}
+
+sol::object FLuaScriptSystem::GetGameStateValue(const FString& Key, sol::this_state LuaState) const
+{
+	lua_State* L = LuaState;
+	auto It = GameState.find(Key);
+	if (It == GameState.end())
+	{
+		return sol::make_object(L, sol::nil);
+	}
+
+	const FGameStateValue& Value = It->second;
+	switch (Value.Type)
+	{
+	case FGameStateValue::EType::Boolean:
+		return sol::make_object(L, Value.BoolValue);
+
+	case FGameStateValue::EType::Number:
+		return sol::make_object(L, Value.NumberValue);
+
+	case FGameStateValue::EType::String:
+		return sol::make_object(L, Value.StringValue);
+
+	case FGameStateValue::EType::Nil:
+	default:
+		return sol::make_object(L, sol::nil);
+	}
 }
 
 FLuaCoroutineHandle FLuaScriptSystem::CreateCoroutine(ULuaScriptComponent* Component, sol::function Function, bool bStartPaused)

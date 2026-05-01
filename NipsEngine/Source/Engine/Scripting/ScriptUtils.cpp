@@ -35,6 +35,9 @@ namespace
 		"function OnHit(owner, hit)\n"
 		"end\n"
 		"\n"
+		"function OnInteract(owner, interactor)\n"
+		"end\n"
+		"\n"
 		"function Tick(owner, deltaTime)\n"
 		"end\n";
 

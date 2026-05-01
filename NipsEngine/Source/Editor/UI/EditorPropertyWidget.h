@@ -18,6 +18,7 @@ public:
 	bool IsModalInputBlocking() const;
 
 	void ResetSelection();
+	void RestoreSelection(AActor* Actor, UActorComponent* Component, bool bInActorSelected);
 
 private:
 	// 선택 상태 관리

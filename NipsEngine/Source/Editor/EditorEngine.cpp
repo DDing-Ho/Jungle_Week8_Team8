@@ -129,7 +129,25 @@ void UEditorEngine::StartPlaySession()
 
     if (!FocusedWorld) return;
 
-    FocusedClient->SaveCameraSnapshot();
+	const TArray<AActor*> PreviousSelectedActors = SelectionManager.GetSelectedActors();
+	AActor* PreviousPrimaryActor = SelectionManager.GetPrimarySelection();
+	UActorComponent* PreviousSelectedComponent = MainPanel.GetPropertyWidget().GetSelectedComponent();
+	const bool bPreviousActorSelected = MainPanel.GetPropertyWidget().IsActorSelected();
+	int32 PreviousSelectedComponentIndex = -1;
+	if (PreviousPrimaryActor != nullptr && PreviousSelectedComponent != nullptr)
+	{
+		const TArray<UActorComponent*>& Components = PreviousPrimaryActor->GetComponents();
+		for (int32 Index = 0; Index < static_cast<int32>(Components.size()); ++Index)
+		{
+			if (Components[Index] == PreviousSelectedComponent)
+			{
+				PreviousSelectedComponentIndex = Index;
+				break;
+			}
+		}
+	}
+
+	FocusedClient->SaveCameraSnapshot();
 
 	// 주의! Editor State는 실제 에디터의 상태가 아닌, 현재 에디터가 포커스한 뷰포트의 상태를 의미합니다.
     SetEditorState(EViewportPlayState::Playing); 
@@ -150,7 +168,52 @@ void UEditorEngine::StartPlaySession()
 
     FocusedClient->LockCursorToViewport();
     InputSystem::Get().SetCursorVisibility(false);
-    SelectionManager.ClearSelection();
+
+	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
+	const TArray<AActor*> PIEActors = PIEWorld->GetActors();
+	TArray<AActor*> MappedSelectedActors;
+	MappedSelectedActors.reserve(PreviousSelectedActors.size());
+	AActor* MappedPrimaryActor = nullptr;
+
+	for (AActor* PreviousActor : PreviousSelectedActors)
+	{
+		AActor* MappedActor = nullptr;
+		for (int32 Index = 0; Index < static_cast<int32>(EditorActors.size()); ++Index)
+		{
+			if (EditorActors[Index] == PreviousActor && Index < static_cast<int32>(PIEActors.size()))
+			{
+				MappedActor = PIEActors[Index];
+				break;
+			}
+		}
+
+		if (MappedActor != nullptr)
+		{
+			MappedSelectedActors.push_back(MappedActor);
+			if (PreviousActor == PreviousPrimaryActor)
+			{
+				MappedPrimaryActor = MappedActor;
+			}
+		}
+	}
+
+	SelectionManager.ClearSelection();
+	for (AActor* MappedActor : MappedSelectedActors)
+	{
+		SelectionManager.AddSelect(MappedActor);
+	}
+
+	UActorComponent* MappedSelectedComponent = nullptr;
+	if (MappedPrimaryActor != nullptr && PreviousSelectedComponentIndex >= 0)
+	{
+		const TArray<UActorComponent*>& MappedComponents = MappedPrimaryActor->GetComponents();
+		if (PreviousSelectedComponentIndex < static_cast<int32>(MappedComponents.size()))
+		{
+			MappedSelectedComponent = MappedComponents[PreviousSelectedComponentIndex];
+		}
+	}
+
+	MainPanel.GetPropertyWidget().RestoreSelection(MappedPrimaryActor, MappedSelectedComponent, bPreviousActorSelected);
 
     PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
     PIEWorld->BeginPlay();

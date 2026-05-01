@@ -42,6 +42,8 @@ void RegisterLuaBindings(sol::state& Lua)
 		"SetActorRotation", &AActor::SetActorRotation,
 		"GetActorScale", &AActor::GetActorScale,
 		"SetActorScale", &AActor::SetActorScale,
+		"IsVisible", &AActor::IsVisible,
+		"SetVisible", &AActor::SetVisible,
 		"GetName", [](AActor& Actor) { return Actor.GetFName().ToString(); },
 		"GetUUID", &AActor::GetUUID
 	);
