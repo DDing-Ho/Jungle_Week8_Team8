@@ -254,7 +254,7 @@
     <ClCompile Include="Source\Engine\Audio\AudioSystem.cpp" />
     <ClCompile Include="Source\Engine\Component\ActorComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\AudioComponent.cpp" />
-    <ClCompile Include="Source\Engine\Component\AudioVolumeComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\AudioZoneComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\BillboardComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\CameraComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp" />
@@ -445,7 +445,7 @@
     <ClInclude Include="Source\Engine\Audio\AudioSystem.h" />
     <ClInclude Include="Source\Engine\Component\ActorComponent.h" />
     <ClInclude Include="Source\Engine\Component\AudioComponent.h" />
-    <ClInclude Include="Source\Engine\Component\AudioVolumeComponent.h" />
+    <ClInclude Include="Source\Engine\Component\AudioZoneComponent.h" />
     <ClInclude Include="Source\Engine\Component\BillboardComponent.h" />
     <ClInclude Include="Source\Engine\Component\CameraComponent.h" />
     <ClInclude Include="Source\Engine\Component\DecalComponent.h" />

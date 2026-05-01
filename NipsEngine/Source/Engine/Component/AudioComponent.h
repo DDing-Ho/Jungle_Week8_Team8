@@ -56,6 +56,7 @@ private:
 	int32 StartBehavior = static_cast<int32>(EAudioStartBehavior::OnBeginPlay);
 	bool bLoop = false;
 	bool bSpatial = true;
+	int32 AudioBus = static_cast<int32>(EAudioBus::SFX);
 	int32 OutsideRangeBehavior = static_cast<int32>(EAudioOutsideBehavior::ContinuePlaying);
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;

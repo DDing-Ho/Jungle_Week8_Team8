@@ -14,10 +14,19 @@ struct FAudioHandle
 	bool IsValid() const { return Id != 0; }
 };
 
+enum class EAudioBus : int32
+{
+	SFX = 0,
+	Music,
+	Ambient,
+	Count
+};
+
 struct FAudioPlayParams
 {
 	bool bLoop = false;
 	bool bSpatial = false;
+	EAudioBus Bus = EAudioBus::SFX;
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;
 	float MaxDistance = 8.0f;
@@ -73,6 +82,9 @@ public:
 
 	void SetSoundPosition(FAudioHandle Handle, const FVector& Location);
 	void SetListenerTransform(const FVector& Location, const FVector& Forward, const FVector& Up);
+	void SubmitZoneMix(uint32 ZoneId, int32 Priority, float Weight,
+		float MasterVolume, float SFXVolume, float MusicVolume, float AmbientVolume);
+	void RemoveZoneMix(uint32 ZoneId);
 
 private:
 	FAudioSystem();

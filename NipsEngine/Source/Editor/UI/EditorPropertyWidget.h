@@ -44,7 +44,6 @@ private:
 	void RenderInterpControlPoints(class UInterpToMovementComponent* Comp);
 	void RenderLuaScriptControls(class ULuaScriptComponent* Comp);
 	void RenderAudioControls(class UAudioComponent* Comp);
-	void RenderAudioVolumeControls(class UAudioVolumeComponent* Comp);
 	void RenderLuaScriptCreatePopup();
 
 	// 유틸리티

@@ -55,6 +55,7 @@ void UAudioComponent::Serialize(FArchive& Ar)
 	Ar << "StartBehavior" << StartBehavior;
 	Ar << "Loop" << bLoop;
 	Ar << "Spatial" << bSpatial;
+	Ar << "AudioBus" << AudioBus;
 	Ar << "OutsideRangeBehavior" << OutsideRangeBehavior;
 	Ar << "Volume" << Volume;
 	Ar << "MinDistance" << MinDistance;
@@ -71,10 +72,12 @@ void UAudioComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
 	UActorComponent::GetEditableProperties(OutProps);
 	static const char* StartBehaviorNames[] = { "On BeginPlay", "On First In Range", "Manual Only" };
 	static const char* OutsideBehaviorNames[] = { "Continue Playing", "Pause And Resume", "Stop And Restart" };
+	static const char* AudioBusNames[] = { "SFX", "Music", "Ambient" };
 	OutProps.push_back({ "Sound Path", EPropertyType::String, &SoundPath });
 	OutProps.push_back({ "Start Behavior", EPropertyType::Enum, &StartBehavior, 0.0f, 0.0f, 0.0f, StartBehaviorNames, 3 });
 	OutProps.push_back({ "Loop", EPropertyType::Bool, &bLoop });
 	OutProps.push_back({ "Spatial", EPropertyType::Bool, &bSpatial });
+	OutProps.push_back({ "Audio Bus", EPropertyType::Enum, &AudioBus, 0.0f, 0.0f, 0.0f, AudioBusNames, 3 });
 	OutProps.push_back({ "Outside Range Behavior", EPropertyType::Enum, &OutsideRangeBehavior, 0.0f, 0.0f, 0.0f, OutsideBehaviorNames, 3 });
 	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Min Distance", EPropertyType::Float, &MinDistance, 0.01f, 10000.0f, 1.0f });
@@ -89,6 +92,7 @@ void UAudioComponent::PostEditProperty(const char* PropertyName)
 	MinDistance = std::max(0.01f, MinDistance);
 	MaxDistance = std::max(MinDistance, MaxDistance);
 	StartBehavior = std::clamp(StartBehavior, 0, static_cast<int32>(EAudioStartBehavior::Count) - 1);
+	AudioBus = std::clamp(AudioBus, 0, static_cast<int32>(EAudioBus::Count) - 1);
 	OutsideRangeBehavior = std::clamp(OutsideRangeBehavior, 0, static_cast<int32>(EAudioOutsideBehavior::Count) - 1);
 }
 
@@ -249,6 +253,7 @@ FAudioPlayParams UAudioComponent::MakePlayParams() const
 	FAudioPlayParams Params;
 	Params.bLoop = bLoop;
 	Params.bSpatial = bSpatial;
+	Params.Bus = static_cast<EAudioBus>(AudioBus);
 	Params.Volume = Volume;
 	Params.MinDistance = MinDistance;
 	Params.MaxDistance = MaxDistance;

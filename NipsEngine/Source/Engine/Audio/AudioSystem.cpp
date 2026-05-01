@@ -3,6 +3,7 @@
 #include "UI/EditorConsoleWidget.h"
 
 #include <memory>
+#include <cmath>
 
 #if __has_include(<miniaudio.h>)
 	#define NIPS_WITH_MINIAUDIO 1
@@ -27,6 +28,16 @@ namespace
 		if (Value < 0.0f) return 0.0f;
 		if (Value > 2.0f) return 2.0f;
 		return Value;
+	}
+
+	int32 ToBusIndex(EAudioBus Bus)
+	{
+		const int32 Index = static_cast<int32>(Bus);
+		if (Index < 0 || Index >= static_cast<int32>(EAudioBus::Count))
+		{
+			return static_cast<int32>(EAudioBus::SFX);
+		}
+		return Index;
 	}
 
 	FVector ToAudioVector(const FVector& WorldVector)
@@ -57,12 +68,91 @@ struct FAudioSystemImpl
 	{
 		std::unique_ptr<ma_sound> Sound;
 		bool bLoop = false;
+		EAudioBus Bus = EAudioBus::SFX;
+		float BaseVolume = 1.0f;
+	};
+
+	struct FZoneMix
+	{
+		int32 Priority = 0;
+		float Weight = 0.0f;
+		float MasterVolume = 1.0f;
+		float SFXVolume = 1.0f;
+		float MusicVolume = 1.0f;
+		float AmbientVolume = 1.0f;
 	};
 
 	ma_engine Engine{};
 	bool bInitialized = false;
 	uint32 NextHandleId = 1;
 	std::unordered_map<uint32, FActiveSound> ActiveSounds;
+	std::unordered_map<uint32, FZoneMix> ZoneMixes;
+	float MasterVolume = 1.0f;
+	float BusVolumes[static_cast<int32>(EAudioBus::Count)] = { 1.0f, 1.0f, 1.0f };
+
+	float GetEffectiveVolume(float BaseVolume, EAudioBus Bus) const
+	{
+		return ClampVolume(BaseVolume * MasterVolume * BusVolumes[ToBusIndex(Bus)]);
+	}
+
+	void ApplyVolume(FActiveSound& ActiveSound)
+	{
+		if (ActiveSound.Sound)
+		{
+			ma_sound_set_volume(ActiveSound.Sound.get(), GetEffectiveVolume(ActiveSound.BaseVolume, ActiveSound.Bus));
+		}
+	}
+
+	void ApplyVolumes()
+	{
+		for (auto& Pair : ActiveSounds)
+		{
+			ApplyVolume(Pair.second);
+		}
+	}
+
+	void EvaluateZoneMixes()
+	{
+		FZoneMix BestZone;
+		bool bHasBestZone = false;
+
+		for (const auto& Pair : ZoneMixes)
+		{
+			const FZoneMix& Zone = Pair.second;
+			if (Zone.Weight <= 0.0f)
+			{
+				continue;
+			}
+
+			if (!bHasBestZone ||
+				Zone.Priority > BestZone.Priority ||
+				(Zone.Priority == BestZone.Priority && Zone.Weight > BestZone.Weight))
+			{
+				BestZone = Zone;
+				bHasBestZone = true;
+			}
+		}
+
+		const float Weight = bHasBestZone ? std::clamp(BestZone.Weight, 0.0f, 1.0f) : 0.0f;
+		const float NewMaster = bHasBestZone ? 1.0f + (BestZone.MasterVolume - 1.0f) * Weight : 1.0f;
+		const float NewSFX = bHasBestZone ? 1.0f + (BestZone.SFXVolume - 1.0f) * Weight : 1.0f;
+		const float NewMusic = bHasBestZone ? 1.0f + (BestZone.MusicVolume - 1.0f) * Weight : 1.0f;
+		const float NewAmbient = bHasBestZone ? 1.0f + (BestZone.AmbientVolume - 1.0f) * Weight : 1.0f;
+
+		if (std::fabs(MasterVolume - NewMaster) <= 0.0001f &&
+			std::fabs(BusVolumes[0] - NewSFX) <= 0.0001f &&
+			std::fabs(BusVolumes[1] - NewMusic) <= 0.0001f &&
+			std::fabs(BusVolumes[2] - NewAmbient) <= 0.0001f)
+		{
+			return;
+		}
+
+		MasterVolume = ClampVolume(NewMaster);
+		BusVolumes[0] = ClampVolume(NewSFX);
+		BusVolumes[1] = ClampVolume(NewMusic);
+		BusVolumes[2] = ClampVolume(NewAmbient);
+		ApplyVolumes();
+	}
 };
 #else
 struct FAudioSystemImpl
@@ -119,6 +209,11 @@ void FAudioSystem::Shutdown()
 	}
 
 	StopAll();
+	Impl->ZoneMixes.clear();
+	Impl->MasterVolume = 1.0f;
+	Impl->BusVolumes[0] = 1.0f;
+	Impl->BusVolumes[1] = 1.0f;
+	Impl->BusVolumes[2] = 1.0f;
 	ma_engine_uninit(&Impl->Engine);
 	Impl->bInitialized = false;
 	UE_LOG("AudioSystem: shutdown.");
@@ -134,6 +229,8 @@ void FAudioSystem::Tick(float DeltaTime)
 	{
 		return;
 	}
+
+	Impl->EvaluateZoneMixes();
 
 	for (auto It = Impl->ActiveSounds.begin(); It != Impl->ActiveSounds.end();)
 	{
@@ -214,7 +311,8 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 		return {};
 	}
 
-	ma_sound_set_volume(Sound.get(), ClampVolume(Params.Volume));
+	const float BaseVolume = ClampVolume(Params.Volume);
+	ma_sound_set_volume(Sound.get(), Impl->GetEffectiveVolume(BaseVolume, Params.Bus));
 	ma_sound_set_looping(Sound.get(), Params.bLoop ? MA_TRUE : MA_FALSE);
 	ma_sound_set_spatialization_enabled(Sound.get(), Params.bSpatial ? MA_TRUE : MA_FALSE);
 
@@ -244,7 +342,7 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 		Impl->NextHandleId = 1;
 	}
 
-	Impl->ActiveSounds[Handle.Id] = FAudioSystemImpl::FActiveSound{ std::move(Sound), Params.bLoop };
+	Impl->ActiveSounds[Handle.Id] = FAudioSystemImpl::FActiveSound{ std::move(Sound), Params.bLoop, Params.Bus, BaseVolume };
 	return Handle;
 #else
 	(void)SoundPath;
@@ -399,7 +497,8 @@ void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 		return;
 	}
 
-	ma_sound_set_volume(It->second.Sound.get(), ClampVolume(Volume));
+	It->second.BaseVolume = ClampVolume(Volume);
+	Impl->ApplyVolume(It->second);
 #else
 	(void)Handle;
 	(void)Volume;
@@ -557,5 +656,47 @@ void FAudioSystem::SetListenerTransform(const FVector& Location, const FVector& 
 	(void)Location;
 	(void)Forward;
 	(void)Up;
+#endif
+}
+
+void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float Weight,
+	float MasterVolume, float SFXVolume, float MusicVolume, float AmbientVolume)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (ZoneId == 0)
+	{
+		return;
+	}
+
+	FAudioSystemImpl::FZoneMix& Zone = Impl->ZoneMixes[ZoneId];
+	Zone.Priority = Priority;
+	Zone.Weight = std::clamp(Weight, 0.0f, 1.0f);
+	Zone.MasterVolume = ClampVolume(MasterVolume);
+	Zone.SFXVolume = ClampVolume(SFXVolume);
+	Zone.MusicVolume = ClampVolume(MusicVolume);
+	Zone.AmbientVolume = ClampVolume(AmbientVolume);
+#else
+	(void)ZoneId;
+	(void)Priority;
+	(void)Weight;
+	(void)MasterVolume;
+	(void)SFXVolume;
+	(void)MusicVolume;
+	(void)AmbientVolume;
+#endif
+}
+
+void FAudioSystem::RemoveZoneMix(uint32 ZoneId)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (ZoneId == 0)
+	{
+		return;
+	}
+
+	Impl->ZoneMixes.erase(ZoneId);
+	Impl->EvaluateZoneMixes();
+#else
+	(void)ZoneId;
 #endif
 }

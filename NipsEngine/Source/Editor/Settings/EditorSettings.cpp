@@ -38,7 +38,8 @@ namespace EditorKey
 	constexpr const char* bEnableLOD = "bEnableLOD";
 	constexpr const char* bBVHBoundingVolume = "bBVHBoundingVolume";
 	constexpr const char* bAudioComponentRange = "bAudioComponentRange";
-	constexpr const char* bAudioVolumeRange = "bAudioVolumeRange";
+	constexpr const char* bAudioZoneRange = "bAudioZoneRange";
+	constexpr const char* bAudioVolumeRange = "bAudioVolumeRange"; // Backward compatibility
 	constexpr const char* bShadow = "bShadow";
 	constexpr const char* bCascadeDebug = "bCascadeDebug";
 	constexpr const char* FXAAEnabled = "FXAAEnabled";
@@ -101,7 +102,7 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 	ViewObj[EditorKey::bEnableLOD] = ShowFlags.bEnableLOD;
 	ViewObj[EditorKey::bBVHBoundingVolume] = ShowFlags.bBVHBoundingVolume;
 	ViewObj[EditorKey::bAudioComponentRange] = ShowFlags.bAudioComponentRange;
-	ViewObj[EditorKey::bAudioVolumeRange] = ShowFlags.bAudioVolumeRange;
+	ViewObj[EditorKey::bAudioZoneRange] = ShowFlags.bAudioZoneRange;
 	ViewObj[EditorKey::bShadow] = ShowFlags.bShadow;
 	ViewObj[EditorKey::FXAAEnabled] = bEnableFXAA;
 	ViewObj[EditorKey::ShadowFilterType] = static_cast<int32>(ShadowFilterType);
@@ -236,8 +237,10 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 			ShowFlags.bBVHBoundingVolume = ViewObj[EditorKey::bBVHBoundingVolume].ToBool();
 		if (ViewObj.hasKey(EditorKey::bAudioComponentRange))
 			ShowFlags.bAudioComponentRange = ViewObj[EditorKey::bAudioComponentRange].ToBool();
-		if (ViewObj.hasKey(EditorKey::bAudioVolumeRange))
-			ShowFlags.bAudioVolumeRange = ViewObj[EditorKey::bAudioVolumeRange].ToBool();
+		if (ViewObj.hasKey(EditorKey::bAudioZoneRange))
+			ShowFlags.bAudioZoneRange = ViewObj[EditorKey::bAudioZoneRange].ToBool();
+		else if (ViewObj.hasKey(EditorKey::bAudioVolumeRange))
+			ShowFlags.bAudioZoneRange = ViewObj[EditorKey::bAudioVolumeRange].ToBool();
 		if (ViewObj.hasKey(EditorKey::bShadow))
 			ShowFlags.bShadow = ViewObj[EditorKey::bShadow].ToBool();
 		if (ViewObj.hasKey(EditorKey::bCascadeDebug) && ViewObj[EditorKey::bCascadeDebug].ToBool())

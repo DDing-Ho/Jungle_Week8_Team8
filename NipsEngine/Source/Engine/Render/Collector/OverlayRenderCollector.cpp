@@ -2,7 +2,7 @@
 
 #include "Component/ActorComponent.h"
 #include "Component/AudioComponent.h"
-#include "Component/AudioVolumeComponent.h"
+#include "Component/AudioZoneComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/CapsuleComponent.h"
@@ -187,17 +187,18 @@ namespace
 		LineBatcher->AddSphere(Center, AudioComponent->GetMaxDistance(), Right, Up, FColor(40, 120, 255));
 	}
 
-	void DrawAudioVolumeRange(const UAudioVolumeComponent* AudioVolumeComponent, FLineBatcher* LineBatcher)
+	void DrawAudioZoneRange(const UAudioZoneComponent* AudioZoneComponent, FLineBatcher* LineBatcher)
 	{
-		if (AudioVolumeComponent == nullptr || LineBatcher == nullptr)
+		if (AudioZoneComponent == nullptr || LineBatcher == nullptr)
 		{
 			return;
 		}
 
-		const FVector Center = AudioVolumeComponent->GetWorldLocation();
-		const FVector Extent = AudioVolumeComponent->GetBoxExtent();
-		const FAABB Box(Center - Extent, Center + Extent);
-		LineBatcher->AddAABB(Box, FColor(80, 255, 180));
+		const FOBB Box(
+			AudioZoneComponent->GetWorldLocation(),
+			AudioZoneComponent->GetScaledBoxExtent(),
+			AudioZoneComponent->GetWorldMatrix().GetRotationMatrix());
+		LineBatcher->AddOBB(Box, FColor(80, 255, 180));
 	}
 }
 
@@ -422,11 +423,11 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 			}
 		}
 
-		if (ShowFlags.bBoundingVolume && ShowFlags.bAudioVolumeRange)
+		if (ShowFlags.bBoundingVolume && ShowFlags.bAudioZoneRange)
 		{
-			if (const UAudioVolumeComponent* AudioVolumeComponent = Cast<UAudioVolumeComponent>(Component))
+			if (const UAudioZoneComponent* AudioZoneComponent = Cast<UAudioZoneComponent>(Component))
 			{
-				DrawAudioVolumeRange(AudioVolumeComponent, LineBatcher);
+				DrawAudioZoneRange(AudioZoneComponent, LineBatcher);
 			}
 		}
 

@@ -22,7 +22,6 @@
 #include "GameFramework/AActor.h"
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
-#include "Component/AudioVolumeComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -583,15 +582,10 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	{
 		RenderAudioControls(AudioComp);
 	}
-	else if (UAudioVolumeComponent* AudioVolumeComp = Cast<UAudioVolumeComponent>(SelectedComponent))
-	{
-		RenderAudioVolumeControls(AudioVolumeComp);
-	}
 
 	bool bAnyChanged = false;
 	const bool bIsLuaScriptComponent = SelectedComponent->IsA<ULuaScriptComponent>();
 	const bool bIsAudioComponent = SelectedComponent->IsA<UAudioComponent>();
-	const bool bIsAudioVolumeComponent = SelectedComponent->IsA<UAudioVolumeComponent>();
 	for (auto& Prop : Props)
 	{
 		if (bIsLuaScriptComponent && strcmp(Prop.Name, "Script Path") == 0)
@@ -599,10 +593,6 @@ void FEditorPropertyWidget::RenderComponentProperties()
 			continue;
 		}
 		if (bIsAudioComponent && strcmp(Prop.Name, "Sound Path") == 0)
-		{
-			continue;
-		}
-		if (bIsAudioVolumeComponent && strcmp(Prop.Name, "Sound Path") == 0)
 		{
 			continue;
 		}
@@ -858,174 +848,6 @@ void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
 	{
 		float SeekTime = bAudioTimelineDragging ? AudioTimelineDragTime : std::max(0.0f, PendingAudioPreviewStartTime);
 		const bool bChanged = ImGui::SliderFloat("##AudioTimeline", &SeekTime, 0.0f, 1.0f, "");
-		if (ImGui::IsItemActivated())
-		{
-			bAudioTimelineDragging = true;
-			AudioTimelineDragTime = SeekTime;
-		}
-		if (bChanged)
-		{
-			PendingAudioPreviewStartTime = SeekTime;
-			AudioTimelineDragTime = SeekTime;
-		}
-		if (ImGui::IsItemDeactivatedAfterEdit())
-		{
-			bAudioTimelineDragging = false;
-		}
-		ImGui::Text("00:00 / 00:00");
-	}
-}
-
-void FEditorPropertyWidget::RenderAudioVolumeControls(UAudioVolumeComponent* Comp)
-{
-	if (!Comp)
-	{
-		return;
-	}
-
-	ImGui::Spacing();
-
-	const FString& SoundPath = Comp->GetSoundPath();
-	const bool bHasPath = !SoundPath.empty();
-	const bool bFileExists = bHasPath && DoesRelativeAssetFileExist(SoundPath);
-	const bool bHasPlayback = Comp->HasPreviewPlayback();
-	const bool bIsPlaying = Comp->IsPreviewPlaying();
-	const float Duration = Comp->GetPreviewDuration();
-	if (PreviewAudioObject != Comp)
-	{
-		PreviewAudioObject = Comp;
-		PendingAudioPreviewStartTime = 0.0f;
-		bAudioTimelineDragging = false;
-		AudioTimelineDragTime = 0.0f;
-	}
-
-	float CurrentTime = bHasPlayback ? Comp->GetPreviewPlaybackTime() : PendingAudioPreviewStartTime;
-	if (Duration > 0.0f)
-	{
-		CurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
-		PendingAudioPreviewStartTime = std::clamp(PendingAudioPreviewStartTime, 0.0f, Duration);
-	}
-
-	ImGui::TextWrapped("Selected Audio: %s", bHasPath ? SoundPath.c_str() : "(none)");
-	if (bHasPath && !bFileExists)
-	{
-		ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.2f, 1.0f), "Audio file does not exist.");
-	}
-
-	if (ImGui::Button("Select Audio", ImVec2(-1, 0)))
-	{
-		FString SelectedAudioPath;
-		if (OpenAudioFileDialog(SelectedAudioPath))
-		{
-			Comp->SetSoundPath(SelectedAudioPath);
-			Comp->PostEditProperty("Sound Path");
-			UE_LOG("AudioVolumeComponent: selected audio '%s'.", Comp->GetSoundPath().c_str());
-		}
-	}
-
-	const float ContentWidth = ImGui::GetContentRegionAvail().x;
-	const float ButtonWidth = (ContentWidth - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-	const char* PlayPauseLabel = bIsPlaying ? "Pause" : (bHasPlayback ? "Resume" : "Play");
-	if (ImGui::Button(PlayPauseLabel, ImVec2(ButtonWidth, 0)))
-	{
-		if (!bHasPath)
-		{
-			UE_LOG("AudioVolumeComponent: no audio file selected.");
-		}
-		else if (bIsPlaying)
-		{
-			Comp->PausePreview();
-		}
-		else if (bHasPlayback)
-		{
-			Comp->ResumePreview();
-		}
-		else
-		{
-			Comp->PlayPreview();
-			if (PendingAudioPreviewStartTime > 0.0f)
-			{
-				Comp->SetPreviewPlaybackTime(PendingAudioPreviewStartTime);
-			}
-		}
-	}
-
-	ImGui::SameLine();
-	if (ImGui::Button("Stop", ImVec2(ButtonWidth, 0)))
-	{
-		Comp->StopPreview();
-		PendingAudioPreviewStartTime = 0.0f;
-		bAudioTimelineDragging = false;
-		AudioTimelineDragTime = 0.0f;
-	}
-
-	ImGui::SameLine();
-	if (ImGui::Button("Restart", ImVec2(ButtonWidth, 0)))
-	{
-		if (bHasPath)
-		{
-			PendingAudioPreviewStartTime = 0.0f;
-			bAudioTimelineDragging = false;
-			AudioTimelineDragTime = 0.0f;
-			if (bHasPlayback)
-			{
-				Comp->RestartPreview();
-			}
-			else
-			{
-				Comp->PlayPreview();
-			}
-		}
-		else
-		{
-			UE_LOG("AudioVolumeComponent: no audio file selected.");
-		}
-	}
-
-	const char* StatusText = bIsPlaying ? "Playing" : (bHasPlayback ? "Paused" : "Stopped");
-	ImGui::Text("Status: %s", StatusText);
-
-	ImGui::SetNextItemWidth(-1.0f);
-	if (Duration > 0.0f)
-	{
-		float SeekTime = bAudioTimelineDragging ? AudioTimelineDragTime : CurrentTime;
-		const bool bChanged = ImGui::SliderFloat("##AudioVolumeTimeline", &SeekTime, 0.0f, Duration, "");
-		if (ImGui::IsItemActivated())
-		{
-			bAudioTimelineDragging = true;
-			AudioTimelineDragTime = CurrentTime;
-		}
-		if (bChanged)
-		{
-			PendingAudioPreviewStartTime = SeekTime;
-			AudioTimelineDragTime = SeekTime;
-		}
-		if (ImGui::IsItemDeactivatedAfterEdit())
-		{
-			bAudioTimelineDragging = false;
-			PendingAudioPreviewStartTime = SeekTime;
-			if (bHasPlayback)
-			{
-				const bool bShouldResume = Comp->IsPreviewPlaying();
-				if (bShouldResume)
-				{
-					Comp->PausePreview();
-				}
-				Comp->SetPreviewPlaybackTime(SeekTime);
-				if (bShouldResume)
-				{
-					Comp->ResumePreview();
-				}
-			}
-		}
-
-		const float DisplayTime = bAudioTimelineDragging ? AudioTimelineDragTime : CurrentTime;
-		ImGui::Text("%s / %s", FormatAudioTime(DisplayTime).c_str(), FormatAudioTime(Duration).c_str());
-	}
-	else
-	{
-		float SeekTime = bAudioTimelineDragging ? AudioTimelineDragTime : std::max(0.0f, PendingAudioPreviewStartTime);
-		const bool bChanged = ImGui::SliderFloat("##AudioVolumeTimeline", &SeekTime, 0.0f, 1.0f, "");
 		if (ImGui::IsItemActivated())
 		{
 			bAudioTimelineDragging = true;

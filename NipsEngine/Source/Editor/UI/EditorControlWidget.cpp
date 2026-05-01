@@ -51,7 +51,7 @@ namespace
         { "Spot Light", SpawnActor<ASpotLightActor> },
         { "Sky Atmosphere", SpawnActor<ASkyAtmosphereActor> },
         { "Height Fog", SpawnActor<AHeightFogActor> },
-        { "Audio Volume", SpawnActor<AAudioVolumeActor> },
+        { "Audio Zone", SpawnActor<AAudioZoneActor> },
     };
 }
 
