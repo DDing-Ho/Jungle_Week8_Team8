@@ -4,6 +4,7 @@
 #include <vector>
 
 bool IsUObjectAlive(const void* Ptr);
+class UObject;
 
 #define DECLARE_DELEGATE(Name, ...) using Name = TDelegate<__VA_ARGS__>
 
@@ -18,35 +19,37 @@ public:
         Handlers.push_back(handler);
 	}
 
-	template <typename T> 
-	void AddRaw(T* Instance, void (T::* Func)(Args...))
-	{
-        Handlers.push_back([Instance, Func](Args... args)
-        { 
-			(Instance->*Func)(args...);
-	    });
-	}
-
 	template <typename T>
 	void AddDynamic(T* Instance, void (T::* Func)(Args...))
 	{
+        static_assert(std::is_base_of<UObject, T>::value, "T must be a UObject.");
+
         const void* ObjPtr = static_cast<const void*>(Instance);
-        Handlers.push_back([ObjPtr, Instance, Func](Args... args)
-        { 
-			if (IsUObjectAlive(ObjPtr))
-				(Instance->*Func)(args...);
-	    });
+        
+		FDelegateEntry NewEntry;
+        NewEntry.Callback = [Instance, Func](Args... args)
+        { (Instance->*Func)(args...); };
+        NewEntry.IsAlive = [ObjPtr]() { return IsUObjectAlive(ObjPtr); };
+
+        Handlers.push_back(NewEntry);
 	}
 
 	void Broadcast(Args... args)
 	{
-		for (auto& handler : Handlers)
+        auto HandlersCopy = Handlers;
+		
+		for (auto& Entry : HandlersCopy)
 		{
-			if (handler)
-			{
-                handler(args...);
-			}
+            if (Entry.IsAlive())
+                Entry.Callback(args...);
 		}
+
+		Handlers.erase(
+            std::remove_if(Handlers.begin(), Handlers.end(),
+                           [](const FDelegateEntry& E)
+                           { return !E.IsAlive(); }),
+            Handlers.end()
+		);
 	}
 
 	void Clear()
@@ -55,5 +58,11 @@ public:
     }
 
 	private:
-		std::vector<HandlerType> Handlers;
+		struct FDelegateEntry
+		{
+            HandlerType Callback;
+            std::function<bool()> IsAlive;
+		};
+
+		std::vector<FDelegateEntry> Handlers;
 };
