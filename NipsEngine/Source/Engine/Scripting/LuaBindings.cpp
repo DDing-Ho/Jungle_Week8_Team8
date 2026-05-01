@@ -7,12 +7,28 @@
 #include "Object/Object.h"
 #include "Core/CollisionTypes.h"
 #include "UI/EditorConsoleWidget.h"
+#include "Audio/AudioSystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
 	Lua.set_function("Log", [](const FString& Message)
 	{
 		UE_LOG("[Lua] %s", Message.c_str());
+	});
+
+	Lua.set_function("PlaySound", [](const FString& SoundPath)
+	{
+		return static_cast<int32>(FAudioSystem::Get().Play2D(SoundPath).Id);
+	});
+
+	Lua.set_function("PlaySoundAt", [](const FString& SoundPath, const FVector& Location)
+	{
+		return static_cast<int32>(FAudioSystem::Get().PlayAtLocation(SoundPath, Location).Id);
+	});
+
+	Lua.set_function("StopSound", [](int32 HandleId)
+	{
+		FAudioSystem::Get().Stop(FAudioHandle{ static_cast<uint32>(HandleId) });
 	});
 
 	Lua.new_usertype<FVector>(

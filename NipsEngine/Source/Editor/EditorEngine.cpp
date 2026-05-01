@@ -11,6 +11,7 @@
 #include "Component/SceneComponent.h"
 #include "GameFramework/World.h"
 #include "Editor/EditorRenderPipeline.h"
+#include "Audio/AudioSystem.h"
 #include "Core/Logging/Stats.h"
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
@@ -343,6 +344,8 @@ void UEditorEngine::WorldTick(float DeltaTime)
             continue;
         Ctx.World->Tick(DeltaTime);
     }
+
+    FAudioSystem::Get().Tick(DeltaTime);
 }
 
 void UEditorEngine::RenderUI(float DeltaTime)

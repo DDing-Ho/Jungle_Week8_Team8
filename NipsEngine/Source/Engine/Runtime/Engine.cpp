@@ -9,6 +9,7 @@
 #include "Core/ResourceManager.h"
 #include "Render/Renderer/DefaultRenderPipeline.h"
 #include "GameFramework/World.h"
+#include "Audio/AudioSystem.h"
 
 DEFINE_CLASS(UEngine, UObject)
 
@@ -28,12 +29,14 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	FResourceManager::Get().LoadFromAssetDirectory(FPaths::ToUtf8(FPaths::AssetDirectoryPath()));
 
 	Renderer.CreateResources();
+	FAudioSystem::Get().Init();
 
 	SetRenderPipeline(std::make_unique<FDefaultRenderPipeline>(this, Renderer));
 }
 
 void UEngine::Shutdown()
 {
+	FAudioSystem::Get().Shutdown();
 	RenderPipeline.reset();
 	FResourceManager::Get().ReleaseGPUResources();
 	Renderer.Release();
@@ -55,6 +58,7 @@ void UEngine::Tick(float DeltaTime)
 {
 	InputSystem::Get().Tick();
 	WorldTick(DeltaTime);
+	FAudioSystem::Get().Tick(DeltaTime);
 	Render(DeltaTime);
 }
 

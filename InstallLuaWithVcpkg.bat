@@ -6,7 +6,7 @@ set "PROJECT_ROOT=%~dp0"
 set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
 
 echo ============================================
-echo  Lua 5.4.8 vcpkg install
+echo  NipsEngine vcpkg dependency install
 echo ============================================
 echo.
 echo Project root:
@@ -139,21 +139,23 @@ if not "%INSTALL_RESULT%"=="0" (
 )
 
 echo.
-echo Checking expected Lua files...
-echo 설치된 Lua 파일을 확인합니다...
+echo Checking expected dependency files...
+echo 설치된 의존성 파일을 확인합니다...
 
-set "LUA_HPP=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\lua.hpp"
-set "LUA_LIB=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\lib\lua.lib"
-set "LUA_DLL=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\bin\lua.dll"
+set "LUAJIT_HPP=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\luajit\lua.hpp"
+set "LUAJIT_LIB=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\lib\lua51.lib"
+set "LUAJIT_DLL=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\bin\lua51.dll"
+set "MINIAUDIO_H=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\miniaudio.h"
 
-if not exist "%LUA_HPP%" echo WARNING: Missing / 경고: 파일 없음 %LUA_HPP%
-if not exist "%LUA_LIB%" echo WARNING: Missing / 경고: 파일 없음 %LUA_LIB%
-if not exist "%LUA_DLL%" echo WARNING: Missing / 경고: 파일 없음 %LUA_DLL%
+if not exist "%LUAJIT_HPP%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_HPP%
+if not exist "%LUAJIT_LIB%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_LIB%
+if not exist "%LUAJIT_DLL%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_DLL%
+if not exist "%MINIAUDIO_H%" echo WARNING: Missing / 경고: 파일 없음 %MINIAUDIO_H%
 
-if exist "%LUA_HPP%" if exist "%LUA_LIB%" if exist "%LUA_DLL%" (
+if exist "%LUAJIT_HPP%" if exist "%LUAJIT_LIB%" if exist "%LUAJIT_DLL%" if exist "%MINIAUDIO_H%" (
     echo.
-    echo Lua 5.4.8 install completed successfully.
-    echo Lua 5.4.8 설치가 완료되었습니다.
+    echo NipsEngine dependencies install completed successfully.
+    echo NipsEngine 의존성 설치가 완료되었습니다.
 )
 
 echo.
