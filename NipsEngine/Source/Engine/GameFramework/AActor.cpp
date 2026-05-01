@@ -285,7 +285,6 @@ void AActor::BeginPlay()
 		if (Component)
 		{
 			Component->BeginPlay();
-			Component->OnRegister();
 		}
 	}
 }

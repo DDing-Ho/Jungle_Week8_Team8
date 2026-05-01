@@ -20,6 +20,13 @@ using BVHDetail::GetAxisValue;
 
 namespace
 {
+	bool IntersectsAABB(const FAABB& A, const FAABB& B)
+	{
+		return A.Min.X <= B.Max.X && A.Max.X >= B.Min.X &&
+			   A.Min.Y <= B.Max.Y && A.Max.Y >= B.Min.Y &&
+			   A.Min.Z <= B.Max.Z && A.Max.Z >= B.Min.Z;
+	}
+
 	// AABB와 world-space bounding sphere가 겹치는지 판정합니다.
 	bool IntersectsSphere(const FAABB& Bounds, const FVector& Center, float RadiusSquared)
 	{
@@ -1153,6 +1160,50 @@ void FBVH::SphereQuery(const TArray<FAABB>& ObjectBounds, const FVector& Center,
 
 		const FNode& Node = Nodes[NodeIndex];
 		if (!IntersectsSphere(Node.Bounds, Center, RadiusSquared))
+		{
+			continue;
+		}
+
+		if (Node.IsLeaf())
+		{
+			if (Node.ObjectIndex != INDEX_NONE && Node.ObjectIndex >= 0 && Node.ObjectIndex < static_cast<int32>(ObjectBounds.size()))
+			{
+				OutIndices.push_back(Node.ObjectIndex);
+			}
+			continue;
+		}
+
+		if (Node.Left != INDEX_NONE)
+		{
+			Scratch.TraversalStack.push_back({ Node.Left });
+		}
+		if (Node.Right != INDEX_NONE)
+		{
+			Scratch.TraversalStack.push_back({ Node.Right });
+		}
+	}
+}
+
+// Query AABB와 겹치는 BVH leaf object index를 수집합니다.
+void FBVH::AABBQuery(const TArray<FAABB>& ObjectBounds, const FAABB& QueryBounds, TArray<int32>& OutIndices, FAABBQueryScratch& Scratch) const
+{
+	OutIndices.clear();
+	if (RootNodeIndex == INDEX_NONE || !QueryBounds.IsValid())
+	{
+		return;
+	}
+
+	Scratch.TraversalStack.clear();
+	Scratch.TraversalStack.reserve(Nodes.size());
+	Scratch.TraversalStack.push_back({ RootNodeIndex });
+
+	while (!Scratch.TraversalStack.empty())
+	{
+		const int32 NodeIndex = Scratch.TraversalStack.back().NodeIndex;
+		Scratch.TraversalStack.pop_back();
+
+		const FNode& Node = Nodes[NodeIndex];
+		if (!IntersectsAABB(Node.Bounds, QueryBounds))
 		{
 			continue;
 		}
