@@ -18,6 +18,7 @@
 #include "Editor/Utility/EditorComponentFactory.h"
 
 #include "GameFramework/AActor.h"
+#include "Component/LuaScriptComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -50,10 +51,11 @@ namespace
 
 	// ─────────────────── Helper ───────────────────────────
 	int32 ExtractActorID(const AActor* Actor);
-	bool IsLuaScriptComponent(const UActorComponent* Component);
 	FString GetEditorScriptSceneName(UEditorEngine* EditorEngine);
 	FString GetEditorScriptActorName(const AActor* Actor);
-	void RenderLuaScriptComponentActions(UActorComponent* Component, UEditorEngine* EditorEngine);
+	FString MakeEditorLuaScriptPath(ULuaScriptComponent* Component, UEditorEngine* EditorEngine);
+	FString GetLuaScriptDisplayPath(ULuaScriptComponent* Component);
+	void RenderLuaScriptComponentActions(ULuaScriptComponent* Component, UEditorEngine* EditorEngine);
 	bool OpenLuaScriptFileDialog(FString& OutFilePath);
 }
 
@@ -546,8 +548,14 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	AActor* Owner = SelectedComponent->GetOwner();
 
 	bool bAnyChanged = false;
+	const bool bIsLuaScriptComponent = SelectedComponent->IsA<ULuaScriptComponent>();
 	for (auto& Prop : Props)
 	{
+		if (bIsLuaScriptComponent && strcmp(Prop.Name, "Script Path") == 0)
+		{
+			continue;
+		}
+
 		if (Prop.Type == EPropertyType::SceneComponentRef)
 		{
 			RenderSceneComponentRefWidget(Prop, Owner);
@@ -563,11 +571,9 @@ void FEditorPropertyWidget::RenderComponentProperties()
 		RenderInterpControlPoints(InterpComp);
 	}
 
-	// Todo: LuaScriptComponent가 생기면 바꿀부분.
-    // if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(SelectedComponent))
-	if (true)
+	if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(SelectedComponent))
 	{
-		RenderLuaScriptComponentActions(SelectedComponent, EditorEngine);
+		RenderLuaScriptComponentActions(LuaComp, EditorEngine);
 	}
 
 	// Special: Light component — override camera with light's perspective
@@ -830,6 +836,13 @@ void FEditorPropertyWidget::AttachAndSelectNewComponent(AActor* PrimaryActor, UA
 			MoveComp->SetUpdatedComponent(AttachTarget);
 	}
 
+	if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(NewComp))
+	{
+		LuaComp->SetScriptPath(FScriptUtils::MakeActorScriptPath(
+			GetEditorScriptSceneName(EditorEngine),
+			GetEditorScriptActorName(PrimaryActor)));
+	}
+
 	SelectedComponent = NewComp;
 	bActorSelected = false;
 }
@@ -1066,14 +1079,35 @@ namespace
 		return ActorName;
 	}
 
-	void RenderLuaScriptComponentActions(UActorComponent* Component, UEditorEngine* EditorEngine)
+	FString MakeEditorLuaScriptPath(ULuaScriptComponent* Component, UEditorEngine* EditorEngine)
 	{
 		AActor* Owner = Component ? Component->GetOwner() : nullptr;
-		const FString SceneName = GetEditorScriptSceneName(EditorEngine);
-		const FString ActorName = GetEditorScriptActorName(Owner);
-		// TODO: LuaScriptComponent가 생기면 생성 후 계산 경로 대신 Component의 ScriptPath를 저장/표시
-		// TODO: 현재 Edit Script는 SceneName + ActorName으로 매번 재계산한 경로여는 중. Browse Script 선택값은 ScriptPath 저장 연결 전까지 반영되지 않음.
-		const FString ScriptPath = FScriptUtils::MakeActorScriptPath(SceneName, ActorName);
+		return FScriptUtils::MakeActorScriptPath(GetEditorScriptSceneName(EditorEngine), GetEditorScriptActorName(Owner));
+	}
+
+	FString GetLuaScriptDisplayPath(ULuaScriptComponent* Component)
+	{
+		if (Component != nullptr && !Component->GetScriptPath().empty())
+		{
+			return Component->GetScriptPath();
+		}
+
+		return "";
+	}
+
+	void RenderLuaScriptComponentActions(ULuaScriptComponent* Component, UEditorEngine* EditorEngine)
+	{
+		if (Component == nullptr)
+		{
+			return;
+		}
+
+		if (Component->GetScriptPath().empty())
+		{
+			Component->SetScriptPath(MakeEditorLuaScriptPath(Component, EditorEngine));
+		}
+
+		FString ScriptPath = GetLuaScriptDisplayPath(Component);
 
 		ImGui::Spacing();
 		ImGui::Separator();
@@ -1099,10 +1133,17 @@ namespace
 		{
 			if (ImGui::Button("Create Script", ImVec2(-1, 0)))
 			{
-				const FScriptCreateResult Result = FScriptUtils::CreateScriptFromTemplate(SceneName, ActorName);
-				if (!Result.bSuccess)
+				if (!Component->EnsureScriptFile())
 				{
-					UE_LOG("%s", Result.ErrorMessage.c_str());
+					const FString& LastError = Component->GetLastScriptError();
+					if (!LastError.empty())
+					{
+						UE_LOG("%s", LastError.c_str());
+					}
+				}
+				else
+				{
+					ScriptPath = Component->GetScriptPath();
 				}
 			}
 		}
@@ -1122,18 +1163,22 @@ namespace
 			FString PickedPath;
 			if (OpenLuaScriptFileDialog(PickedPath))
 			{
-				// TODO: LuaScriptComponent가 생기면 PickedPath를 Component의 ScriptPath에 저장해야.
-				UE_LOG("Selected Lua script: %s", PickedPath.c_str());
+				const FString RelativePath = FPaths::ToRelativeString(FPaths::ToWide(PickedPath));
+				Component->SetScriptPath(RelativePath);
+				ScriptPath = RelativePath;
 			}
 		}
 
-		ImGui::BeginDisabled();
-		ImGui::Button("Reload Script", ImVec2(-1, 0));
-		ImGui::EndDisabled();
-
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		if (ImGui::Button("Reload Script", ImVec2(-1, 0)))
 		{
-			ImGui::SetTooltip("Lua runtime reload is not connected yet.");
+			if (!Component->ReloadScript())
+			{
+				const FString& LastError = Component->GetLastScriptError();
+				if (!LastError.empty())
+				{
+					UE_LOG("%s", LastError.c_str());
+				}
+			}
 		}
 	}
 

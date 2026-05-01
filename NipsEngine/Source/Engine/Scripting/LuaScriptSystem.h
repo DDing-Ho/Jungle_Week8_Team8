@@ -3,6 +3,7 @@
 #include "Core/CoreMinimal.h"
 #include "Core/CollisionTypes.h"
 #include "Core/Singleton.h"
+#include "Scripting/LuaCoroutineScheduler.h"
 
 #ifndef WITH_LUA
 #define WITH_LUA 0
@@ -43,9 +44,16 @@ private:
 	{
 		std::unique_ptr<sol::state> Lua;
 		FString ScriptPath;
+		FLuaCoroutineScheduler CoroutineScheduler;
+		sol::function NativeCoroutineCreate;
+		sol::function NativeCoroutineResume;
 	};
 
 	FScriptState* FindScript(ULuaScriptComponent* Component);
+	void BindCoroutineAPI(ULuaScriptComponent* Component, FScriptState& State);
+	FLuaCoroutineHandle CreateCoroutine(ULuaScriptComponent* Component, sol::function Function, bool bStartPaused);
+	FLuaCoroutineHandle StartCoroutine(ULuaScriptComponent* Component, sol::function Function);
+	bool ResumeCoroutine(ULuaScriptComponent* Component, FLuaCoroutineHandle Handle);
 	bool CallFunction(ULuaScriptComponent* Component, const char* FunctionName);
 	bool CallFunction(ULuaScriptComponent* Component, const char* FunctionName, AActor* Owner);
 	bool CallFunction(ULuaScriptComponent* Component, const char* FunctionName, AActor* Owner, float DeltaTime);
