@@ -6,10 +6,14 @@
 #include "Core/PropertyTypes.h"
 #include "Math/Color.h"
 #include "Core/ResourceManager.h"
+#include "Core/Paths.h"
 #include "Object/FName.h"
 #include <cctype>
 #include <cstring>
 #include <functional>
+#include <Windows.h>
+#include <commdlg.h>
+#include <filesystem>
 
 #include "Editor/Utility/EditorComponentFactory.h"
 
@@ -47,9 +51,10 @@ namespace
 	// ─────────────────── Helper ───────────────────────────
 	int32 ExtractActorID(const AActor* Actor);
 	bool IsLuaScriptComponent(const UActorComponent* Component);
-	FString GetEditorScriptSceneName();
+	FString GetEditorScriptSceneName(UEditorEngine* EditorEngine);
 	FString GetEditorScriptActorName(const AActor* Actor);
-	void RenderLuaScriptComponentActions(UActorComponent* Component);
+	void RenderLuaScriptComponentActions(UActorComponent* Component, UEditorEngine* EditorEngine);
+	bool OpenLuaScriptFileDialog(FString& OutFilePath);
 }
 
 void FEditorPropertyWidget::Initialize(UEditorEngine* InEditorEngine)
@@ -558,9 +563,11 @@ void FEditorPropertyWidget::RenderComponentProperties()
 		RenderInterpControlPoints(InterpComp);
 	}
 
-	if (IsLuaScriptComponent(SelectedComponent))
+	// Todo: LuaScriptComponent가 생기면 바꿀부분.
+    // if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(SelectedComponent))
+	if (true)
 	{
-		RenderLuaScriptComponentActions(SelectedComponent);
+		RenderLuaScriptComponentActions(SelectedComponent, EditorEngine);
 	}
 
 	// Special: Light component — override camera with light's perspective
@@ -1033,21 +1040,15 @@ namespace
 		return Result;
 	}
 
-	bool IsLuaScriptComponent(const UActorComponent* Component)
+	FString GetEditorScriptSceneName(UEditorEngine* EditorEngine)
 	{
-		if (Component == nullptr || Component->GetTypeInfo() == nullptr)
+		if (EditorEngine == nullptr)
 		{
-			return false;
+			return "DefaultScene";
 		}
 
-		const char* TypeName = Component->GetTypeInfo()->name;
-		return strcmp(TypeName, "LuaScriptComponent") == 0 ||
-			   strcmp(TypeName, "ULuaScriptComponent") == 0;
-	}
-
-	FString GetEditorScriptSceneName()
-	{
-		return "EditorScene";
+		const char* SceneName = EditorEngine->GetMainPanel().GetSceneWidget().GetCurrentSceneName();
+		return (SceneName && SceneName[0] != '\0') ? FString(SceneName) : FString("DefaultScene");
 	}
 
 	FString GetEditorScriptActorName(const AActor* Actor)
@@ -1065,34 +1066,64 @@ namespace
 		return ActorName;
 	}
 
-	void RenderLuaScriptComponentActions(UActorComponent* Component)
+	void RenderLuaScriptComponentActions(UActorComponent* Component, UEditorEngine* EditorEngine)
 	{
 		AActor* Owner = Component ? Component->GetOwner() : nullptr;
-		const FString SceneName = GetEditorScriptSceneName();
+		const FString SceneName = GetEditorScriptSceneName(EditorEngine);
 		const FString ActorName = GetEditorScriptActorName(Owner);
+		// TODO: LuaScriptComponent가 생기면 생성 후 계산 경로 대신 Component의 ScriptPath를 저장/표시
+		// TODO: 현재 Edit Script는 SceneName + ActorName으로 매번 재계산한 경로여는 중. Browse Script 선택값은 ScriptPath 저장 연결 전까지 반영되지 않음.
 		const FString ScriptPath = FScriptUtils::MakeActorScriptPath(SceneName, ActorName);
 
 		ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Text("Lua Script");
 		ImGui::Spacing();
-		ImGui::TextDisabled("%s", ScriptPath.c_str());
+
+		const FString ScriptFileName = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(ScriptPath)).filename().wstring());
+        char ScriptFileNameBuffer[MAX_PATH] = {};
+        strncpy_s(ScriptFileNameBuffer, sizeof(ScriptFileNameBuffer), ScriptFileName.c_str(), _TRUNCATE);
+
+        ImGui::BeginDisabled();
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputText("##ScriptFileName", ScriptFileNameBuffer, sizeof(ScriptFileNameBuffer), ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip("%s", ScriptPath.c_str());
+        }
 
 		FString Error;
-		if (ImGui::Button("Create Script", ImVec2(-1, 0)))
+		const bool bScriptExists = FScriptUtils::DoesFileExist(ScriptPath);
+		if (!bScriptExists)
 		{
-			const FScriptCreateResult Result = FScriptUtils::CreateScriptFromTemplate(SceneName, ActorName);
-			if (!Result.bSuccess)
+			if (ImGui::Button("Create Script", ImVec2(-1, 0)))
 			{
-				UE_LOG("%s", Result.ErrorMessage.c_str());
+				const FScriptCreateResult Result = FScriptUtils::CreateScriptFromTemplate(SceneName, ActorName);
+				if (!Result.bSuccess)
+				{
+					UE_LOG("%s", Result.ErrorMessage.c_str());
+				}
+			}
+		}
+		else
+		{
+			if (ImGui::Button("Edit Script", ImVec2(-1, 0)))
+			{
+				if (!FScriptUtils::OpenScript(ScriptPath, &Error))
+				{
+					UE_LOG("%s", Error.c_str());
+				}
 			}
 		}
 
-		if (ImGui::Button("Edit Script", ImVec2(-1, 0)))
+		if (ImGui::Button("Browse Script", ImVec2(-1, 0)))
 		{
-			if (!FScriptUtils::OpenScript(ScriptPath, &Error))
+			FString PickedPath;
+			if (OpenLuaScriptFileDialog(PickedPath))
 			{
-				UE_LOG("%s", Error.c_str());
+				// TODO: LuaScriptComponent가 생기면 PickedPath를 Component의 ScriptPath에 저장해야.
+				UE_LOG("Selected Lua script: %s", PickedPath.c_str());
 			}
 		}
 
@@ -1104,6 +1135,50 @@ namespace
 		{
 			ImGui::SetTooltip("Lua runtime reload is not connected yet.");
 		}
+	}
+
+	bool OpenLuaScriptFileDialog(FString& OutFilePath)
+	{
+		OutFilePath.clear();
+
+		std::filesystem::path ScriptDir(FPaths::ToAbsolute(FPaths::ToWide(FScriptUtils::GetScriptDirectory())));
+		ScriptDir = ScriptDir.lexically_normal();
+		ScriptDir.make_preferred();
+
+		std::error_code Ec;
+		std::filesystem::create_directories(ScriptDir, Ec);
+
+		WCHAR FileBuffer[MAX_PATH] = { 0 };
+		const std::filesystem::path OpenPattern = ScriptDir / L"*.lua";
+		wcsncpy_s(FileBuffer, MAX_PATH, OpenPattern.wstring().c_str(), _TRUNCATE);
+		const std::wstring InitialDir = ScriptDir.wstring();
+
+		const std::filesystem::path PrevCwd = std::filesystem::current_path();
+		std::error_code ChdirEc;
+		std::filesystem::current_path(ScriptDir, ChdirEc);
+
+		OPENFILENAMEW DialogDesc = {};
+		DialogDesc.lStructSize = sizeof(DialogDesc);
+		DialogDesc.hwndOwner = static_cast<HWND>(ImGui::GetMainViewport()->PlatformHandleRaw);
+		DialogDesc.lpstrFilter = L"Lua Scripts (*.lua)\0*.lua\0All Files (*.*)\0*.*\0";
+		DialogDesc.lpstrFile = FileBuffer;
+		DialogDesc.nMaxFile = MAX_PATH;
+		DialogDesc.lpstrInitialDir = InitialDir.c_str();
+		DialogDesc.lpstrDefExt = L"lua";
+		DialogDesc.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+		const BOOL bPicked = GetOpenFileNameW(&DialogDesc);
+
+		std::error_code RestoreEc;
+		std::filesystem::current_path(PrevCwd, RestoreEc);
+
+		if (!bPicked)
+		{
+			return false;
+		}
+
+		OutFilePath = FPaths::ToUtf8(FileBuffer);
+		return true;
 	}
 }
 

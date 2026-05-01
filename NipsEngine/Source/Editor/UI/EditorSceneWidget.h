@@ -14,6 +14,7 @@ public:
 	void SaveSceneToFilePath(const FString& FilePath);
 	void LoadSceneFromFilePath(const FString& FilePath);
 	void RefreshSceneAndAssets();
+	const char* GetCurrentSceneName() const { return SceneName; }
 
 private:
 	void RefreshSceneFileList();
