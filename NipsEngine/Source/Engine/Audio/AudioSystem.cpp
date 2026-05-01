@@ -7,7 +7,10 @@
 #if __has_include(<miniaudio.h>)
 	#define NIPS_WITH_MINIAUDIO 1
 	#define MINIAUDIO_IMPLEMENTATION
+	#pragma warning(push)
+	#pragma warning(disable: 4244)
 	#include <miniaudio.h>
+	#pragma warning(pop)
 	#include "Core/Paths.h"
 	#include <algorithm>
 	#include <filesystem>
@@ -19,11 +22,16 @@
 #if NIPS_WITH_MINIAUDIO
 namespace
 {
-	float Clamp01(float Value)
+	float ClampVolume(float Value)
 	{
 		if (Value < 0.0f) return 0.0f;
-		if (Value > 1.0f) return 1.0f;
+		if (Value > 2.0f) return 2.0f;
 		return Value;
+	}
+
+	FVector ToAudioVector(const FVector& WorldVector)
+	{
+		return FVector(WorldVector.X, -WorldVector.Y, WorldVector.Z);
 	}
 
 	FString ResolveAudioPath(const FString& SoundPath)
@@ -39,7 +47,7 @@ namespace
 			return FPaths::ToUtf8(Path.wstring());
 		}
 
-    return FPaths::ToAbsoluteString(FPaths::ToWide(SoundPath));
+		return FPaths::ToAbsoluteString(FPaths::ToWide(SoundPath));
 	}
 }
 
@@ -206,7 +214,7 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 		return {};
 	}
 
-	ma_sound_set_volume(Sound.get(), Clamp01(Params.Volume));
+	ma_sound_set_volume(Sound.get(), ClampVolume(Params.Volume));
 	ma_sound_set_looping(Sound.get(), Params.bLoop ? MA_TRUE : MA_FALSE);
 	ma_sound_set_spatialization_enabled(Sound.get(), Params.bSpatial ? MA_TRUE : MA_FALSE);
 
@@ -214,7 +222,8 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 	{
 		const float MinDistance = std::max(0.01f, Params.MinDistance);
 		const float MaxDistance = std::max(MinDistance, Params.MaxDistance);
-		ma_sound_set_position(Sound.get(), Params.Location.X, Params.Location.Y, Params.Location.Z);
+		const FVector AudioLocation = ToAudioVector(Params.Location);
+		ma_sound_set_position(Sound.get(), AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
 		ma_sound_set_attenuation_model(Sound.get(), ma_attenuation_model_linear);
 		ma_sound_set_min_distance(Sound.get(), MinDistance);
 		ma_sound_set_max_distance(Sound.get(), MaxDistance);
@@ -272,6 +281,67 @@ void FAudioSystem::Stop(FAudioHandle Handle)
 #endif
 }
 
+void FAudioSystem::Pause(FAudioHandle Handle)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return;
+	}
+
+	ma_sound_stop(It->second.Sound.get());
+#else
+	(void)Handle;
+#endif
+}
+
+void FAudioSystem::Resume(FAudioHandle Handle)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return;
+	}
+
+	ma_sound_start(It->second.Sound.get());
+#else
+	(void)Handle;
+#endif
+}
+
+void FAudioSystem::Restart(FAudioHandle Handle)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return;
+	}
+
+	ma_sound_seek_to_pcm_frame(It->second.Sound.get(), 0);
+	ma_sound_start(It->second.Sound.get());
+#else
+	(void)Handle;
+#endif
+}
+
 void FAudioSystem::StopAll()
 {
 #if NIPS_WITH_MINIAUDIO
@@ -315,6 +385,117 @@ bool FAudioSystem::IsPlaying(FAudioHandle Handle) const
 #endif
 }
 
+void FAudioSystem::SetPlaybackTime(FAudioHandle Handle, float TimeSeconds)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return;
+	}
+
+	const float Duration = GetDuration(Handle);
+	if (Duration > 0.0f)
+	{
+		TimeSeconds = std::clamp(TimeSeconds, 0.0f, Duration);
+	}
+	else
+	{
+		TimeSeconds = std::max(0.0f, TimeSeconds);
+	}
+
+	ma_sound_seek_to_second(It->second.Sound.get(), TimeSeconds);
+#else
+	(void)Handle;
+	(void)TimeSeconds;
+#endif
+}
+
+float FAudioSystem::GetPlaybackTime(FAudioHandle Handle) const
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return 0.0f;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return 0.0f;
+	}
+
+	float Cursor = 0.0f;
+	if (ma_sound_get_cursor_in_seconds(It->second.Sound.get(), &Cursor) != MA_SUCCESS)
+	{
+		return 0.0f;
+	}
+	return Cursor;
+#else
+	(void)Handle;
+	return 0.0f;
+#endif
+}
+
+float FAudioSystem::GetDuration(FAudioHandle Handle) const
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return 0.0f;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return 0.0f;
+	}
+
+	float Duration = 0.0f;
+	if (ma_sound_get_length_in_seconds(It->second.Sound.get(), &Duration) != MA_SUCCESS)
+	{
+		return 0.0f;
+	}
+	return Duration;
+#else
+	(void)Handle;
+	return 0.0f;
+#endif
+}
+
+float FAudioSystem::GetSoundDuration(const FString& SoundPath) const
+{
+#if NIPS_WITH_MINIAUDIO
+	const FString AbsolutePath = ResolveAudioPath(SoundPath);
+	if (AbsolutePath.empty() || !std::filesystem::exists(std::filesystem::path(FPaths::ToWide(AbsolutePath))))
+	{
+		return 0.0f;
+	}
+
+	ma_decoder Decoder{};
+	if (ma_decoder_init_file(AbsolutePath.c_str(), nullptr, &Decoder) != MA_SUCCESS)
+	{
+		return 0.0f;
+	}
+
+	ma_uint64 LengthInFrames = 0;
+	const ma_result Result = ma_decoder_get_length_in_pcm_frames(&Decoder, &LengthInFrames);
+	const float Duration = (Result == MA_SUCCESS && Decoder.outputSampleRate > 0)
+		? static_cast<float>(static_cast<double>(LengthInFrames) / static_cast<double>(Decoder.outputSampleRate))
+		: 0.0f;
+	ma_decoder_uninit(&Decoder);
+	return Duration;
+#else
+	(void)SoundPath;
+	return 0.0f;
+#endif
+}
+
 void FAudioSystem::SetSoundPosition(FAudioHandle Handle, const FVector& Location)
 {
 #if NIPS_WITH_MINIAUDIO
@@ -329,7 +510,8 @@ void FAudioSystem::SetSoundPosition(FAudioHandle Handle, const FVector& Location
 		return;
 	}
 
-	ma_sound_set_position(It->second.Sound.get(), Location.X, Location.Y, Location.Z);
+	const FVector AudioLocation = ToAudioVector(Location);
+	ma_sound_set_position(It->second.Sound.get(), AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
 #else
 	(void)Handle;
 	(void)Location;
@@ -344,9 +526,10 @@ void FAudioSystem::SetListenerTransform(const FVector& Location, const FVector& 
 		return;
 	}
 
-	const FVector SafeForward = Forward.GetSafeNormal();
-	const FVector SafeUp = Up.GetSafeNormal();
-	ma_engine_listener_set_position(&Impl->Engine, 0, Location.X, Location.Y, Location.Z);
+	const FVector AudioLocation = ToAudioVector(Location);
+	const FVector SafeForward = ToAudioVector(Forward).GetSafeNormal();
+	const FVector SafeUp = ToAudioVector(Up).GetSafeNormal();
+	ma_engine_listener_set_position(&Impl->Engine, 0, AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
 	ma_engine_listener_set_direction(&Impl->Engine, 0, SafeForward.X, SafeForward.Y, SafeForward.Z);
 	ma_engine_listener_set_world_up(&Impl->Engine, 0, SafeUp.X, SafeUp.Y, SafeUp.Z);
 #else
