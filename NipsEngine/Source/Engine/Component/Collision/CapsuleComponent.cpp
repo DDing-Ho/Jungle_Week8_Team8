@@ -7,6 +7,7 @@
 #include "Engine/Serialization/Archive.h"
 
 DEFINE_CLASS(UCapsuleComponent, UShapeComponent)
+REGISTER_FACTORY(UCapsuleComponent)
 
 UCapsuleComponent::UCapsuleComponent()
 {

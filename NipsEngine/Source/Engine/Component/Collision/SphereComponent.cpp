@@ -4,6 +4,7 @@
 #include "Engine/Serialization/Archive.h"
 
 DEFINE_CLASS(USphereComponent, UShapeComponent)
+REGISTER_FACTORY(USphereComponent)
 
 USphereComponent::USphereComponent()
 {

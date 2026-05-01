@@ -4,6 +4,7 @@
 #include "Engine/Serialization/Archive.h"
 
 DEFINE_CLASS(UBoxComponent, UShapeComponent)
+REGISTER_FACTORY(UBoxComponent)
 
 UBoxComponent::UBoxComponent()
 {
