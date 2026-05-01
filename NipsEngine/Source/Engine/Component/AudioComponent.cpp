@@ -113,10 +113,12 @@ void UAudioComponent::PostEditProperty(const char* PropertyName)
 	if (PlaybackHandle.IsValid())
 	{
 		FAudioSystem::Get().SetVolume(PlaybackHandle, Volume);
+		FAudioSystem::Get().SetLooping(PlaybackHandle, bLoop);
 	}
 	if (PreviewPlaybackHandle.IsValid())
 	{
 		FAudioSystem::Get().SetVolume(PreviewPlaybackHandle, Volume);
+		FAudioSystem::Get().SetLooping(PreviewPlaybackHandle, bLoop);
 	}
 }
 

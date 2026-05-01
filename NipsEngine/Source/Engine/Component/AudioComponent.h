@@ -25,7 +25,7 @@ public:
 	void Restart();
 	void Stop();
 	bool IsPlaying() const;
-	bool HasPlayback() const { return PlaybackHandle.IsValid(); }
+	bool HasPlayback() const { return FAudioSystem::Get().IsHandleActive(PlaybackHandle); }
 	void SetPlaybackTime(float TimeSeconds);
 	float GetPlaybackTime() const;
 	float GetDuration() const;
@@ -35,7 +35,7 @@ public:
 	void RestartPreview();
 	void StopPreview();
 	bool IsPreviewPlaying() const;
-	bool HasPreviewPlayback() const { return PreviewPlaybackHandle.IsValid(); }
+	bool HasPreviewPlayback() const { return FAudioSystem::Get().IsHandleActive(PreviewPlaybackHandle); }
 	void SetPreviewPlaybackTime(float TimeSeconds);
 	float GetPreviewPlaybackTime() const;
 	float GetPreviewDuration() const;

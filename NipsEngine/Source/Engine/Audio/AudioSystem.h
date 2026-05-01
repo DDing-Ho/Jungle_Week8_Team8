@@ -72,8 +72,10 @@ public:
 	void Resume(FAudioHandle Handle);
 	void Restart(FAudioHandle Handle);
 	void StopAll();
+	bool IsHandleActive(FAudioHandle Handle) const;
 	bool IsPlaying(FAudioHandle Handle) const;
 	void SetVolume(FAudioHandle Handle, float Volume);
+	void SetLooping(FAudioHandle Handle, bool bLoop);
 
 	void SetPlaybackTime(FAudioHandle Handle, float TimeSeconds);
 	float GetPlaybackTime(FAudioHandle Handle) const;

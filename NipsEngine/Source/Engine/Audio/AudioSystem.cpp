@@ -1,4 +1,4 @@
-#include "Audio/AudioSystem.h"
+﻿#include "Audio/AudioSystem.h"
 
 #include "UI/EditorConsoleWidget.h"
 
@@ -483,6 +483,22 @@ bool FAudioSystem::IsPlaying(FAudioHandle Handle) const
 #endif
 }
 
+bool FAudioSystem::IsHandleActive(FAudioHandle Handle) const
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return false;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	return It != Impl->ActiveSounds.end() && It->second.Sound != nullptr;
+#else
+	(void)Handle;
+	return false;
+#endif
+}
+
 void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 {
 #if NIPS_WITH_MINIAUDIO
@@ -502,6 +518,34 @@ void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 #else
 	(void)Handle;
 	(void)Volume;
+#endif
+}
+
+void FAudioSystem::SetLooping(FAudioHandle Handle, bool bLoop)
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return;
+	}
+
+	It->second.bLoop = bLoop;
+	ma_sound_set_looping(It->second.Sound.get(), bLoop ? MA_TRUE : MA_FALSE);
+
+	if (bLoop && ma_sound_at_end(It->second.Sound.get()))
+	{
+		ma_sound_seek_to_pcm_frame(It->second.Sound.get(), 0);
+		ma_sound_start(It->second.Sound.get());
+	}
+#else
+	(void)Handle;
+	(void)bLoop;
 #endif
 }
 
