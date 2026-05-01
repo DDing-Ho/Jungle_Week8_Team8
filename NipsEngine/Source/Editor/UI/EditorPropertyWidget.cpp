@@ -60,6 +60,9 @@ namespace
 
 	// ─────────────────── Helper ───────────────────────────
 	int32 ExtractActorID(const AActor* Actor);
+	FString GetEditorScriptSceneName(UEditorEngine* EditorEngine);
+	FString GetEditorScriptActorName(const AActor* Actor);
+	FString GetEditorLuaScriptName(UEditorEngine* EditorEngine, const AActor* Actor);
 	bool OpenLuaScriptFileDialog(FString& OutFilePath);
 }
 
@@ -641,7 +644,8 @@ void FEditorPropertyWidget::RenderLuaScriptControls(ULuaScriptComponent* Comp)
 		bRequestOpenCreateLuaScriptPopup = true;
 		PendingOverwriteScriptName.clear();
 		bCloseCreateLuaScriptPopup = false;
-		strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName), Comp->GetActorNameScriptName().c_str(), _TRUNCATE);
+		strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName),
+			GetEditorLuaScriptName(EditorEngine, Comp->GetOwner()).c_str(), _TRUNCATE);
 	}
 
 	ImGui::SameLine();
@@ -707,15 +711,17 @@ void FEditorPropertyWidget::RenderLuaScriptCreatePopup()
 		{
 			if (bPendingUseActorNameScript)
 			{
-				strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName), TargetComp->GetActorNameScriptName().c_str(), _TRUNCATE);
+				strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName),
+					GetEditorLuaScriptName(EditorEngine, TargetComp->GetOwner()).c_str(), _TRUNCATE);
 			}
 		}
 
-		ImGui::TextDisabled("Actor name will be used as the script name when enabled.");
+		ImGui::TextDisabled("Scene name and actor name will be used as the script name when enabled.");
 
 		if (bPendingUseActorNameScript)
 		{
-			strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName), TargetComp->GetActorNameScriptName().c_str(), _TRUNCATE);
+			strncpy_s(PendingLuaScriptName, sizeof(PendingLuaScriptName),
+				GetEditorLuaScriptName(EditorEngine, TargetComp->GetOwner()).c_str(), _TRUNCATE);
 			ImGui::BeginDisabled();
 		}
 
@@ -1028,6 +1034,13 @@ void FEditorPropertyWidget::AttachAndSelectNewComponent(AActor* PrimaryActor, UA
 			MoveComp->SetUpdatedComponent(AttachTarget);
 	}
 
+	if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(NewComp))
+	{
+		const FString ScriptName = GetEditorLuaScriptName(EditorEngine, PrimaryActor);
+		LuaComp->SetScriptPath(LuaComp->GetScriptPathForName(ScriptName));
+		LuaComp->SetEditorScriptName(ScriptName);
+	}
+
 	SelectedComponent = NewComp;
 	bActorSelected = false;
 }
@@ -1236,6 +1249,40 @@ namespace
 		}
 
 		return Result;
+	}
+
+	FString GetEditorScriptSceneName(UEditorEngine* EditorEngine)
+	{
+		if (EditorEngine == nullptr)
+		{
+			return "DefaultScene";
+		}
+
+		const char* SceneName = EditorEngine->GetMainPanel().GetSceneWidget().GetCurrentSceneName();
+		return (SceneName && SceneName[0] != '\0') ? FString(SceneName) : FString("DefaultScene");
+	}
+
+	FString GetEditorScriptActorName(const AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return "Actor";
+		}
+
+		FString ActorName = Actor->GetFName().ToString();
+		if (ActorName.empty() && Actor->GetTypeInfo())
+		{
+			ActorName = Actor->GetTypeInfo()->name;
+		}
+
+		return ActorName.empty() ? FString("Actor") : ActorName;
+	}
+
+	FString GetEditorLuaScriptName(UEditorEngine* EditorEngine, const AActor* Actor)
+	{
+		return FScriptUtils::MakeScriptFileName(
+			GetEditorScriptSceneName(EditorEngine),
+			GetEditorScriptActorName(Actor));
 	}
 
 	bool OpenLuaScriptFileDialog(FString& OutFilePath)
