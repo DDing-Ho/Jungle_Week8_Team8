@@ -219,20 +219,6 @@ void FEditorPropertyWidget::RenderMultiSelectionHeader(AActor* PrimaryActor, con
 		SelectedComponent = nullptr;
 	}
 
-	ImGui::SameLine();
-	char RemoveLabel[64];
-	snprintf(RemoveLabel, sizeof(RemoveLabel), "Remove %d Objects", SelectionCount);
-	if (ImGui::SmallButton(RemoveLabel))
-	{
-		for (AActor* Actor : SelectedActors)
-		{
-			if (Actor && Actor->GetFocusedWorld())
-				Actor->GetFocusedWorld()->DestroyActor(Actor);
-		}
-		SelectionManager->ClearSelection();
-		SelectedComponent = nullptr;
-		LastSelectedActor = nullptr;
-	}
 }
 
 // 단일 액터의 이름 표시와 새로운 컴포넌트를 추가할 수 있는 버튼을 렌더링합니다.
@@ -253,16 +239,6 @@ void FEditorPropertyWidget::RenderSingleSelectionHeader(AActor* PrimaryActor)
 	}
 	
 	ImGui::Text("Component: %s", SelectedComponent ? SelectedComponent->GetTypeInfo()->name : "None");
-
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Remove"))
-	{
-		if (PrimaryActor->GetFocusedWorld())
-			PrimaryActor->GetFocusedWorld()->DestroyActor(PrimaryActor);
-		SelectionManager->ClearSelection();
-		SelectedComponent = nullptr;
-		LastSelectedActor = nullptr;
-	}
 
 	ImGui::Spacing();
 	RenderAddComponentPopup(PrimaryActor);
