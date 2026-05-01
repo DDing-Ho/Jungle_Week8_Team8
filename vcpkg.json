@@ -1,12 +1,7 @@
 {
   "builtin-baseline": "4ff4b6bb22fad8afcc0e88ca6970c423bf3f7bfd",
   "dependencies": [
-    "lua"
-  ],
-  "overrides": [
-    {
-      "name": "lua",
-      "version": "5.4.8"
-    }
+    "luajit",
+    "miniaudio"
   ]
 }

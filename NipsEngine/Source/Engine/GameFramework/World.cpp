@@ -1,6 +1,8 @@
 ﻿#include "GameFramework/World.h"
 #include "Collision/CollisionSystem.h"
 #include "Component/Light/LightComponent.h"
+#include "Audio/AudioSystem.h"
+#include "Editor/Viewport/ViewportCamera.h"
 
 DEFINE_CLASS(UWorld, UObject)
 REGISTER_FACTORY(UWorld)
@@ -73,6 +75,14 @@ void UWorld::Tick(float DeltaTime)
 {
     if (!PersistentLevel)
         return;
+
+    if (ActiveCamera && WorldType != EWorldType::Editor)
+    {
+        FAudioSystem::Get().SetListenerTransform(
+            ActiveCamera->GetLocation(),
+            ActiveCamera->GetForwardVector(),
+            ActiveCamera->GetUpVector());
+    }
 
     if (WorldType == EWorldType::Editor)
         PersistentLevel->TickEditor(DeltaTime);
