@@ -19,6 +19,7 @@ public:
 
     // ─────────────── Getter ─────────────────────────────────────
     EPrimitiveType GetPrimitiveType() const override { return EPrimitiveType::EPT_Line; }
+    bool IsRaycastTarget() const override { return false; }
     const FColor& GetShapeColor() const { return ShapeColor; }
     float GetLineThickness() const { return LineThickness; }
     bool GetDrawOnlyIfSelected() const { return bDrawOnlyIfSelected; }

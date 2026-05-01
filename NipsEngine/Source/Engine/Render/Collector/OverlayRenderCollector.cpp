@@ -2,6 +2,10 @@
 
 #include "Component/ActorComponent.h"
 #include "Component/BillboardComponent.h"
+#include "Component/Collision/BoxComponent.h"
+#include "Component/Collision/CapsuleComponent.h"
+#include "Component/Collision/ShapeComponent.h"
+#include "Component/Collision/SphereComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
@@ -94,6 +98,73 @@ namespace
 		}
 		default:
 			return PrimitiveComponent->GetWorldAABB();
+		}
+	}
+
+	bool DrawShapeComponent(const UPrimitiveComponent* PrimitiveComponent, FLineBatcher* LineBatcher)
+	{
+		const UShapeComponent* ShapeComponent = Cast<UShapeComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+		if (ShapeComponent == nullptr || LineBatcher == nullptr)
+		{
+			return false;
+		}
+
+		const FColor& ShapeColor = ShapeComponent->GetShapeColor();
+
+		switch (ShapeComponent->GetCollisionType())
+		{
+		case ECollisionType::Box:
+		{
+			const UBoxComponent* BoxComponent = Cast<UBoxComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+			if (BoxComponent == nullptr)
+			{
+				return true;
+			}
+
+			const FVector BoxExtent = BoxComponent->GetBoxExtent();
+			const FVector WorldExtent(std::fabs(BoxExtent.X), std::fabs(BoxExtent.Y), std::fabs(BoxExtent.Z));
+			const FOBB BoxOBB(BoxComponent->GetWorldLocation(), WorldExtent, BoxComponent->GetWorldMatrix().GetRotationMatrix());
+			LineBatcher->AddOBB(BoxOBB, ShapeColor);
+			return true;
+		}
+		case ECollisionType::Sphere:
+		{
+			const USphereComponent* SphereComponent = Cast<USphereComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+			if (SphereComponent == nullptr)
+			{
+				return true;
+			}
+
+			LineBatcher->AddSphere(
+				SphereComponent->GetWorldLocation(),
+				std::fabs(SphereComponent->GetSphereRadius()),
+				SphereComponent->GetRightVector(),
+				SphereComponent->GetUpVector(),
+				ShapeColor);
+			return true;
+		}
+		case ECollisionType::Capsule:
+		{
+			const UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+			if (CapsuleComponent == nullptr)
+			{
+				return true;
+			}
+
+			const float Radius = std::fabs(CapsuleComponent->GetCapsuleRadius());
+			const float HalfHeight = std::max(std::fabs(CapsuleComponent->GetCapsuleHalfHeight()), Radius);
+			LineBatcher->AddCapsule(
+				CapsuleComponent->GetWorldLocation(),
+				HalfHeight,
+				Radius,
+				CapsuleComponent->GetUpVector(),
+				CapsuleComponent->GetRightVector(),
+				CapsuleComponent->GetForwardVector(),
+				ShapeColor);
+			return true;
+		}
+		default:
+			return true;
 		}
 	}
 }
@@ -222,6 +293,12 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 				continue;
 		}
 
+		if (DrawShapeComponent(primitiveComponent, LineBatcher))
+		{
+			CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, LineBatcher, SeenBVHNodeIndices);
+			continue;
+		}
+
 		FMeshBuffer* MeshBuffer = nullptr;
 		if (primitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_StaticMesh)
 		{
@@ -324,7 +401,8 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 		case ELightType::LightType_Point:
 		{
 			const UPointLightComponent* Light = Cast<UPointLightComponent>(LightComponent);
-			LineBatcher->AddPointLight(Light->GetWorldLocation(), Light->GetAttenuationRadius(), Light->GetRightVector(), Light->GetUpVector());
+			const FColor LineColor = FColor(255, 220, 100);
+			LineBatcher->AddSphere(Light->GetWorldLocation(), Light->GetAttenuationRadius(), Light->GetRightVector(), Light->GetUpVector(), LineColor);
 			break;
 		}
 		case ELightType::LightType_Spot:

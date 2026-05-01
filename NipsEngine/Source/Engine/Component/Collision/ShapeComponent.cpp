@@ -3,7 +3,18 @@
 #include "Core/PropertyTypes.h"
 #include "Engine/Serialization/Archive.h"
 
+#include <algorithm>
+#include <cstring>
+
 DEFINE_CLASS(UShapeComponent, UPrimitiveComponent)
+
+namespace
+{
+	bool IsScaleProperty(const FPropertyDescriptor& Prop)
+	{
+		return Prop.Name != nullptr && std::strcmp(Prop.Name, "Scale") == 0;
+	}
+}
 
 UShapeComponent::UShapeComponent()
 {
@@ -16,6 +27,8 @@ UShapeComponent::UShapeComponent()
 void UShapeComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     UPrimitiveComponent::GetEditableProperties(OutProps);
+
+    OutProps.erase(std::remove_if(OutProps.begin(), OutProps.end(), IsScaleProperty), OutProps.end());
 
     OutProps.push_back({ "Shape Color", EPropertyType::Color, &ShapeColor });
     OutProps.push_back({ "Line Thickness", EPropertyType::Float, &LineThickness, 1.0f, 8.0f, 0.1f });

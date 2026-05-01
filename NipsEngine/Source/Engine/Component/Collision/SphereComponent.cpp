@@ -4,6 +4,7 @@
 #include "Engine/Serialization/Archive.h"
 
 DEFINE_CLASS(USphereComponent, UShapeComponent)
+REGISTER_FACTORY(USphereComponent)
 
 USphereComponent::USphereComponent()
 {
@@ -13,7 +14,7 @@ USphereComponent::USphereComponent()
 void USphereComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
     UShapeComponent::GetEditableProperties(OutProps);
-    OutProps.push_back({ "Sphere Radius", EPropertyType::Float, &SphereRadius, 0.0f, FLT_MAX, 1.0f });
+    OutProps.push_back({ "Sphere Radius", EPropertyType::Float, &SphereRadius, 0.0f, FLT_MAX, 0.05f });
 }
 
 void USphereComponent::PostEditProperty(const char* PropertyName)
@@ -36,9 +37,9 @@ void USphereComponent::Serialize(FArchive& Ar)
 void USphereComponent::UpdateWorldAABB() const
 {
     const float SafeRadius = std::fabs(SphereRadius);
-    const FVector LocalExtent(SafeRadius, SafeRadius, SafeRadius);
-    const FAABB LocalAABB(-LocalExtent, LocalExtent);
-    WorldAABB = FAABB::TransformAABB(LocalAABB, GetWorldMatrix());
+    const FVector WorldExtent(SafeRadius, SafeRadius, SafeRadius);
+    const FVector WorldLocation = GetWorldLocation();
+    WorldAABB = FAABB(WorldLocation - WorldExtent, WorldLocation + WorldExtent);
 }
 
 bool USphereComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)

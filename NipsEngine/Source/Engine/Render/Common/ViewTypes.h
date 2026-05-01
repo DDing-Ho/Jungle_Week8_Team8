@@ -8,12 +8,13 @@
 enum class EViewMode : int32
 {
 	Lit = 0,
-	Unlit,
-	Wireframe,
-	SceneDepth,
-	WorldNormal,
-	CascadeShadow,
-	Count
+	Unlit = 1,
+	Wireframe = 2,
+	SceneDepth = 3,
+	WorldNormal = 4,
+	CascadeShadow = 5,
+	DebugCollision = 6,
+	Count = 7
 };
 
 // 버퍼 기반 시각화 모드 분기는 여기로 모아둔다.
@@ -27,8 +28,7 @@ inline bool IsBufferVisualizationViewMode(EViewMode ViewMode)
 // 새 view mode가 decal/fog/fxaa를 건너뛰어야 하면 각 패스를 따로 늘리지 말고 여기서 정의한다.
 inline bool ShouldBypassSceneCompositePasses(EViewMode ViewMode)
 {
-	return ViewMode == EViewMode::Wireframe ||
-		IsBufferVisualizationViewMode(ViewMode);
+	return ViewMode == EViewMode::Wireframe || IsBufferVisualizationViewMode(ViewMode);
 }
 
 struct FShowFlags

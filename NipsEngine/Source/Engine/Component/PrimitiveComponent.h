@@ -42,6 +42,7 @@ public:
 
     /* For Collision(Ray-casting) */
     virtual void UpdateWorldAABB() const = 0;
+    virtual bool IsRaycastTarget() const { return true; }
     bool Raycast(const FRay& Ray, FHitResult& OutHitResult);
     bool IntersectTriangle(const FVector& RayOrigin, const FVector& RayDir, const FVector& V0, const FVector& V1,
                            const FVector& V2, float& OutT);
@@ -88,6 +89,7 @@ public:
 protected:
     void OnTransformDirty() override;
     void NotifySpatialIndexDirty() const;
+    void ClearCollisionReferences();
 
 protected:
     mutable FAABB WorldAABB;

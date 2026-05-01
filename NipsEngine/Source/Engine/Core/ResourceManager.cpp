@@ -968,6 +968,25 @@ void FResourceManager::InitializeDefaultResources(ID3D11Device* Device)
 	DefaultMat->MaterialParams["bHasBumpMap"] = FMaterialParamValue(DefaultMat->MaterialData.bHasBumpTexture);
 
 	DefaultMat->MaterialParams["ScrollUV"] = FMaterialParamValue(FVector2(0.0f, 0.0f));
+
+	const FColor DefaultRedColor(uint32(255), uint32(50), uint32(150), uint32(255));
+	UMaterial* DefaultRedMat = GetOrCreateMaterial("DefaultRed", DefaultUberLitShaderPath);
+	DefaultRedMat->MaterialData.BaseColor = FVector(DefaultRedColor.R, DefaultRedColor.G, DefaultRedColor.B);
+	DefaultRedMat->MaterialData.Opacity = DefaultRedColor.A;
+	DefaultRedMat->MaterialParams["BaseColor"] = FMaterialParamValue(DefaultRedMat->MaterialData.BaseColor);
+	DefaultRedMat->MaterialParams["SpecularColor"] = FMaterialParamValue(DefaultRedMat->MaterialData.SpecularColor);
+	DefaultRedMat->MaterialParams["EmissiveColor"] = FMaterialParamValue(DefaultRedMat->MaterialData.EmissiveColor);
+	DefaultRedMat->MaterialParams["Shininess"] = FMaterialParamValue(DefaultRedMat->MaterialData.Shininess);
+	DefaultRedMat->MaterialParams["Opacity"] = FMaterialParamValue(DefaultRedMat->MaterialData.Opacity);
+	DefaultRedMat->MaterialParams["DiffuseMap"] = FMaterialParamValue(DefaultWhite);
+	DefaultRedMat->MaterialParams["SpecularMap"] = FMaterialParamValue(DefaultWhite);
+	DefaultRedMat->MaterialParams["NormalMap"] = FMaterialParamValue(DefaultNormal);
+	DefaultRedMat->MaterialParams["BumpMap"] = FMaterialParamValue(DefaultWhite);
+	DefaultRedMat->MaterialParams["bHasDiffuseMap"] = FMaterialParamValue(false);
+	DefaultRedMat->MaterialParams["bHasSpecularMap"] = FMaterialParamValue(false);
+	DefaultRedMat->MaterialParams["bHasNormalMap"] = FMaterialParamValue(false);
+	DefaultRedMat->MaterialParams["bHasBumpMap"] = FMaterialParamValue(false);
+	DefaultRedMat->MaterialParams["ScrollUV"] = FMaterialParamValue(FVector2(0.0f, 0.0f));
 	
 	// Outline Material
 	UMaterial* OutlineMat = GetOrCreateMaterial("OutlineMaterial", "Shaders/OutlinePostProcess.hlsl");
@@ -2161,7 +2180,7 @@ UStaticMesh* FResourceManager::LoadStaticMeshWithOptions(const FString& Path, co
 	}
 	else
 	{
-		UE_LOG("[StaticMeshLoad] LOD generation skipped for %s (Enable LOD is off)", Path.c_str());
+		UE_LOG("[StaticMeshLoad] LOD generation skipped for %s (LOD is off)", Path.c_str());
 	}
 
 	StaticMeshes.insert({CacheKey, LoadedMesh});
@@ -2263,6 +2282,12 @@ ID3D11DepthStencilState* FResourceManager::GetOrCreateDepthStencilState(EDepthSt
 		Desc.DepthEnable = TRUE;
 		Desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 		Desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+		Desc.StencilEnable = FALSE;
+		break;
+	case EDepthStencilType::DepthAlways:
+		Desc.DepthEnable = TRUE;
+		Desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+		Desc.DepthFunc = D3D11_COMPARISON_ALWAYS;
 		Desc.StencilEnable = FALSE;
 		break;
 	case EDepthStencilType::StencilWrite:

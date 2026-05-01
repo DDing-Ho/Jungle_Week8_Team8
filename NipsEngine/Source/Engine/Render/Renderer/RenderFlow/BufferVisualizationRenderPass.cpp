@@ -89,7 +89,9 @@ bool FBufferVisualizationRenderPass::Begin(const FRenderPassContext* Context)
 
     // fullscreen 시각화 셰이더에 현재 모드와 입력 버퍼를 넘긴다.
     // 새 buffer visualization view mode는 필요한 입력 리소스를 여기서 추가 바인딩하는 방식으로 확장한다.
-    ShaderBinding->ApplyFrameParameters(*Context->RenderBus);
+	if (Context->RenderBus)
+		ShaderBinding->ApplyFrameParameters(*Context->RenderBus);
+
     ShaderBinding->SetUInt("VisualizationMode", VisualizationMode);
     ShaderBinding->SetSRV("SceneDepth", Context->RenderTargets->SceneDepthSRV);
     ShaderBinding->SetSRV("SceneNormal", Context->RenderTargets->SceneNormalSRV);

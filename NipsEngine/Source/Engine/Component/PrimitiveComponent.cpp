@@ -47,7 +47,7 @@ void UPrimitiveComponent::SetVisibility(bool bVisible)
 
 bool UPrimitiveComponent::Raycast(const FRay& Ray, FHitResult& OutHitResult)
 {
-    if (!bIsVisible)
+    if (!bIsVisible || !IsRaycastTarget())
     {
         return false;
     }
@@ -136,6 +136,7 @@ void UPrimitiveComponent::OnUnregister()
     UWorld* World = Owner->GetFocusedWorld();
     if (!World) { return; }
 
+    ClearCollisionReferences();
     World->GetSpatialIndex().UnregisterPrimitive(this);
     bRegistered = false;
 }
@@ -155,6 +156,50 @@ void UPrimitiveComponent::NotifySpatialIndexDirty() const
     }
 
     World->GetSpatialIndex().MarkPrimitiveDirty(const_cast<UPrimitiveComponent*>(this));
+}
+
+// UPrimitiveComponent가 삭제되기 전에 Actor들을 돌면서 컴포넌트를 삭제합니다.
+void UPrimitiveComponent::ClearCollisionReferences()
+{
+    AActor* ThisOwner = GetOwner();
+    UWorld* World = ThisOwner ? ThisOwner->GetFocusedWorld() : nullptr;
+    if (World == nullptr)
+    {
+        OverlapInfos.clear();
+        BlockingInfos.clear();
+        return;
+    }
+
+    for (AActor* Actor : World->GetActors())
+    {
+        if (Actor == nullptr)
+        {
+            continue;
+        }
+
+        for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+        {
+            if (Primitive == nullptr || Primitive == this)
+            {
+                continue;
+            }
+
+            if (Primitive->HasOverlapInfo(ThisOwner, this))
+            {
+                FOverlapResult EndOverlapInfo{ ThisOwner, this };
+                Primitive->RemoveOverlapInfo(ThisOwner, this);
+                Primitive->OnComponentEndOverlap.Broadcast(EndOverlapInfo);
+            }
+
+            if (Primitive->HasBlockingInfo(ThisOwner, this))
+            {
+                Primitive->RemoveBlockingInfo(ThisOwner, this);
+            }
+        }
+    }
+
+    OverlapInfos.clear();
+    BlockingInfos.clear();
 }
 
 // 저장된 overlap 목록에 대상 Actor가 포함되어 있는지 확인한다.

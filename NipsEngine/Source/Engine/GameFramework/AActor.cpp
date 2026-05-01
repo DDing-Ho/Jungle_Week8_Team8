@@ -10,6 +10,14 @@ REGISTER_FACTORY(AActor)
 
 AActor::~AActor()
 {
+	for (auto* Comp : OwnedComponents)
+	{
+		if (Comp && Comp->IsRegistered())
+		{
+			Comp->OnUnregister();
+		}
+	}
+
 	if (OwningWorld != nullptr)
 	{
 		OwningWorld->GetSpatialIndex().UnregisterActor(this);

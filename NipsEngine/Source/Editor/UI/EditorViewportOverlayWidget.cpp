@@ -155,7 +155,7 @@ void FEditorViewportOverlayWidget::RenderViewportSettings(float DeltaTime)
 		ImGui::Checkbox("BVH Bounding Volume", &Settings.ShowFlags.bBVHBoundingVolume);
 		ImGui::Unindent();
 	}
-	ImGui::Checkbox("Enable LOD", &Settings.ShowFlags.bEnableLOD);
+	ImGui::Checkbox("LOD", &Settings.ShowFlags.bEnableLOD);
 	ImGui::Checkbox("Decals", &Settings.ShowFlags.bDecals);
 	ImGui::Checkbox("Fog", &Settings.ShowFlags.bFog);
 	ImGui::Checkbox("Shadow", &Settings.ShowFlags.bShadow);
@@ -1050,6 +1050,7 @@ namespace
 		case EViewMode::SceneDepth:  return "Scene Depth";
 		case EViewMode::WorldNormal: return "World Normal";
 		case EViewMode::CascadeShadow: return "Cascade Shadow";
+		case EViewMode::DebugCollision: return "Collision";
 		default:                     return "Lit";
 		}
 	}

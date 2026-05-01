@@ -20,5 +20,5 @@ public:
     void SetBoxExtent(const FVector& InBoxExtent);
 
 protected:
-    FVector BoxExtent = FVector::OneVector;
+    FVector BoxExtent = FVector(0.5f, 0.5f, 0.5f);
 };

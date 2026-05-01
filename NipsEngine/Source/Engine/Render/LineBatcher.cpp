@@ -181,7 +181,6 @@ void FLineBatcher::Create(ID3D11Device* InDevice)
 	}
 
 	UMaterial* LineMaterial = FResourceManager::Get().GetMaterial("LineMat");
-	LineMaterial->DepthStencilType = EDepthStencilType::Default;
 	LineMaterial->BlendType = EBlendType::AlphaBlend;
 	LineMaterial->RasterizerType = ERasterizerType::SolidBackCull;
 	LineMaterial->SamplerType = ESamplerType::EST_Linear;
@@ -461,6 +460,10 @@ void FLineBatcher::Flush(ID3D11DeviceContext* Context, const FRenderBus* RenderB
 	memcpy(MappedResource.pData, Indices.data(), sizeof(uint32) * RequiredIndexCount);
 	Context->Unmap(IndexBuffer.Get(), 0);
 
+	if (UMaterial* LineMaterial = Cast<UMaterial>(Material))
+	{
+		LineMaterial->DepthStencilType = DepthStencilType;
+	}
 	Material->Bind(Context, RenderBus);
 
 	UINT Stride = sizeof(FLineVertex);
@@ -515,9 +518,9 @@ void FLineBatcher::AddCircle(const FVector& Center, const FVector& AxisA, const 
 	}
 }
 
-void FLineBatcher::AddPointLight(const FVector& Position, float AttenuationRadius, const FVector& Right, const FVector& Up)
+void FLineBatcher::AddSphere(const FVector& Position, float AttenuationRadius, const FVector& Right, const FVector& Up, FColor LineColor)
 {
-	const FVector4 LineColor = FColor(255, 220, 100).ToVector4();
+	FVector4 LineColor4 = LineColor.ToVector4();
 	constexpr int32 GridCircleCount = 8;
 	constexpr float GridAngleStep = MathUtil::PI * 0.125f;
 
@@ -525,15 +528,15 @@ void FLineBatcher::AddPointLight(const FVector& Position, float AttenuationRadiu
 	FVector AxisY = FVector(0.0f, 1.0f, 0.0f);
 	FVector AxisZ = FVector(0.0f, 0.0f, 1.0f);
 
-	AddCircle(Position, AxisX, AxisZ, AttenuationRadius, LineColor);
-	AddCircle(Position, AxisY, AxisZ, AttenuationRadius, LineColor);
-	AddCircle(Position, AxisX, AxisY, AttenuationRadius, LineColor);
+	AddCircle(Position, AxisX, AxisZ, AttenuationRadius, LineColor4);
+	AddCircle(Position, AxisY, AxisZ, AttenuationRadius, LineColor4);
+	AddCircle(Position, AxisX, AxisY, AttenuationRadius, LineColor4);
 
 	for (int32 i = 1; i <= GridCircleCount; ++i)
 	{
 		const float Angle = GridAngleStep * static_cast<float>(i);
 		const FVector MeridianAxis = AxisX * -std::sin(Angle) + AxisY * std::cos(Angle);
-		AddCircle(Position, MeridianAxis, AxisZ, AttenuationRadius, LineColor);
+		AddCircle(Position, MeridianAxis, AxisZ, AttenuationRadius, LineColor.ToVector4());
 	}
 
 	for (int32 i = 1; i <= GridCircleCount; ++i)
@@ -541,7 +544,7 @@ void FLineBatcher::AddPointLight(const FVector& Position, float AttenuationRadiu
 		const float Angle = -MathUtil::HalfPI + GridAngleStep * static_cast<float>(i);
 		const FVector LatitudeCenter = Position + AxisZ * (AttenuationRadius * std::sin(Angle));
 		const float LatitudeRadius = AttenuationRadius * std::cos(Angle);
-		AddCircle(LatitudeCenter, AxisX, AxisY, LatitudeRadius, LineColor);
+		AddCircle(LatitudeCenter, AxisX, AxisY, LatitudeRadius, LineColor.ToVector4());
 	}
 }
 
@@ -620,4 +623,52 @@ void FLineBatcher::AddSingleCone(const FVector& Position, const FVector& Forward
 
 	AddArc(Position, Forward, Up,    ConeAngle, Radius, TipIdx, Color);
 	AddArc(Position, Forward, Right, ConeAngle, Radius, TipIdx, Color);
+}
+
+void FLineBatcher::AddCapsule(const FVector& Position, float HalfHeight, float Radius, const FVector& UpVector, const FVector& RightVector, const FVector& ForwardVector, const FColor& InColor)
+{
+    const FVector4 CapsuleColor = InColor.ToVector4();
+    const float CylinderHalfHeight = (std::max)(0.0f, HalfHeight - Radius);
+    const FVector Up = UpVector.GetSafeNormal();
+    const FVector Right = RightVector.GetSafeNormal();
+    const FVector Forward = ForwardVector.GetSafeNormal();
+    const FVector TopCenter = Position + (Up * CylinderHalfHeight);
+    const FVector BottomCenter = Position - (Up * CylinderHalfHeight);
+
+    AddCircle(TopCenter, Right, Forward, Radius, CapsuleColor);
+    AddCircle(BottomCenter, Right, Forward, Radius, CapsuleColor);
+
+    constexpr int32 VerticalLineCount = 8;
+    FVector SideAxes[VerticalLineCount];
+    for (int32 i = 0; i < VerticalLineCount; ++i)
+    {
+        const float Angle = (static_cast<float>(i) / VerticalLineCount) * MathUtil::TwoPi;
+        SideAxes[i] = Right * std::cos(Angle) + Forward * std::sin(Angle);
+        AddLine(TopCenter + SideAxes[i] * Radius, BottomCenter + SideAxes[i] * Radius, CapsuleColor);
+    }
+
+    auto AddHalfCircle = [&](const FVector& Base, const FVector& AxisA, const FVector& AxisB)
+    {
+        constexpr int32 Segments = 16;
+        const uint32 BaseIdx = static_cast<uint32>(IndexedVertices.size());
+
+        for (int32 i = 0; i <= Segments; ++i)
+        {
+            float Angle = (static_cast<float>(i) / Segments) * MathUtil::PI;
+            FVector VertexPos = Base + (AxisA * std::cos(Angle) + AxisB * std::sin(Angle)) * Radius;
+            IndexedVertices.emplace_back(VertexPos, CapsuleColor);
+        }
+
+        for (int32 i = 0; i < Segments; ++i)
+        {
+            Indices.push_back(BaseIdx + i);
+            Indices.push_back(BaseIdx + i + 1);
+        }
+    };
+
+    for (const FVector& Axis : SideAxes)
+    {
+        AddHalfCircle(TopCenter, Axis, Up);
+        AddHalfCircle(BottomCenter, Axis, -Up);
+    }
 }

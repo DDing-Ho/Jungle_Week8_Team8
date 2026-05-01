@@ -58,6 +58,8 @@ void FRenderer::CreateResources()
 
 	EditorLineBatcher.Create(Device.GetDevice());
 	GridLineBatcher.Create(Device.GetDevice());
+	EditorLineBatcher.SetDepthStencilType(EDepthStencilType::DepthAlways);
+	GridLineBatcher.SetDepthStencilType(EDepthStencilType::Default);
 
 	// 텍스처는 ResourceManager가 소유 — Batcher 는 셰이더/버퍼만 초기화
 	FontBatcher.Create(Device.GetDevice());

@@ -24,4 +24,5 @@ private:
 	static void GatherCandidates(UWorld* World, TArray<FCollisionCandidate>& OutCandidates);
 	static void ProcessBroadCollision(UWorld* World, const FCollisionCandidate& Candidate);
 	static void ProcessNarrowCollision(const FCollisionCandidate& A, const FCollisionCandidate& B);
+	static void ClearStaleCollisions(const TArray<FCollisionCandidate>& Candidates);
 };

@@ -63,6 +63,8 @@ const char* GetViewModeName(EViewMode Mode)
 		return "World Normal";
 	case EViewMode::CascadeShadow:
 		return "Cascade Shadow";
+	case EViewMode::DebugCollision:
+		return "Debug Collision";
 	default:
 		return "Lit";
 	}
@@ -424,31 +426,47 @@ void FEditorMainPanel::RenderViewportMenuBarForIndex(int32 Index)
 
 	if (ImGui::BeginMenu("View"))
 	{
-		// View 메뉴 노출 순서는 EViewMode와 1:1로 맞춘다.
+		// View 메뉴 노출 순서는 일반 렌더 모드와 디버그 모드를 구분해서 관리한다.
 		// 새 view mode를 에디터에서 선택 가능하게 하려면 여기와 GetViewModeName을 함께 확장한다.
-		static constexpr EViewMode Modes[] = {
+		static constexpr EViewMode MainModes[] = {
 			EViewMode::Lit,
 			EViewMode::Unlit,
 			EViewMode::Wireframe,
 			EViewMode::SceneDepth,
 			EViewMode::WorldNormal,
-			EViewMode::CascadeShadow,
 		};
-		static constexpr const char* Labels[] = {
+		static constexpr const char* MainLabels[] = {
 			"Lit",
 			"Unlit",
 			"Wireframe",
 			"Scene Depth",
 			"World Normal",
+		};
+		static constexpr EViewMode DebugModes[] = {
+			EViewMode::CascadeShadow,
+			EViewMode::DebugCollision,
+		};
+		static constexpr const char* DebugLabels[] = {
 			"Cascade Shadow",
+			"Collision",
 		};
 
-		static_assert(IM_ARRAYSIZE(Modes) == IM_ARRAYSIZE(Labels));
-		for (int32 j = 0; j < static_cast<int32>(IM_ARRAYSIZE(Modes)); ++j)
+		static_assert(IM_ARRAYSIZE(MainModes) == IM_ARRAYSIZE(MainLabels));
+		for (int32 j = 0; j < static_cast<int32>(IM_ARRAYSIZE(MainModes)); ++j)
 		{
-			const bool bSel = (State.ViewMode == Modes[j]);
-			if (ImGui::MenuItem(Labels[j], nullptr, bSel))
-				State.ViewMode = Modes[j];
+			const bool bSel = (State.ViewMode == MainModes[j]);
+			if (ImGui::MenuItem(MainLabels[j], nullptr, bSel))
+				State.ViewMode = MainModes[j];
+		}
+
+		ImGui::Separator();
+
+		static_assert(IM_ARRAYSIZE(DebugModes) == IM_ARRAYSIZE(DebugLabels));
+		for (int32 j = 0; j < static_cast<int32>(IM_ARRAYSIZE(DebugModes)); ++j)
+		{
+			const bool bSel = (State.ViewMode == DebugModes[j]);
+			if (ImGui::MenuItem(DebugLabels[j], nullptr, bSel))
+				State.ViewMode = DebugModes[j];
 		}
 		ImGui::EndMenu();
 	}

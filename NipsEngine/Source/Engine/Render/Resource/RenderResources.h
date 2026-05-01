@@ -22,6 +22,7 @@ enum class EDepthStencilType
 {
 	Default,
 	DepthReadOnly,
+	DepthAlways,
 	StencilWrite,
 	StencilWriteOnlyEqual,
 
