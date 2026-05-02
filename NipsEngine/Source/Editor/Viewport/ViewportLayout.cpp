@@ -25,12 +25,12 @@ void FEditorViewportLayout::Init(FWindowsWindow* InWindow, UWorld* World, FSelec
 	Window = InWindow;
 	Editor = EditorEngine;
 
-    // Client 포인터 소유/생성 주체는 Layout입니다.
-    // 각 SceneViewport는 Layout이 소유한 Client 인스턴스를 참조만 합니다.
-    for (int32 i = 0; i < MaxViewports; ++i)
-    {
-        ViewportWidgets[i].GetSceneViewport().SetClient(&ViewportClients[i]);
-    }
+	// Client 포인터 소유/생성 주체는 Layout입니다.
+	// 각 SceneViewport는 Layout이 소유한 Client 인스턴스를 참조만 합니다.
+	for (int32 i = 0; i < MaxViewports; ++i)
+	{
+		SceneViewports[i].SetClient(&ViewportClients[i]);
+	}
 
 	// Settings 에서 레이아웃 상태 복원
 	const FEditorSettings& S = FEditorSettings::Get();
@@ -44,21 +44,21 @@ void FEditorViewportLayout::Init(FWindowsWindow* InWindow, UWorld* World, FSelec
 	// 4개 뷰포트 클라이언트 초기화
 	for (int32 i = 0; i < MaxViewports; ++i)
 	{
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetSettings(&FEditorSettings::Get());
-		ViewportWidgets[i].GetSceneViewport().GetClient()->Initialize(Window, EditorEngine);
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetWorld(World);
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetGizmo(SelectionManager->GetGizmo());
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetSelectionManager(SelectionManager);
+		SceneViewports[i].GetClient()->SetSettings(&FEditorSettings::Get());
+		SceneViewports[i].GetClient()->Initialize(Window, EditorEngine);
+		SceneViewports[i].GetClient()->SetWorld(World);
+		SceneViewports[i].GetClient()->SetGizmo(SelectionManager->GetGizmo());
+		SceneViewports[i].GetClient()->SetSelectionManager(SelectionManager);
 		
 		// 상호 참조 연결
-        ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewport(&ViewportWidgets[i].GetSceneViewport());
-        ViewportWidgets[i].GetSceneViewport().GetClient()->SetState(&ViewportWidgets[i].GetSceneViewport().GetState());
+		SceneViewports[i].GetClient()->SetViewport(&SceneViewports[i]);
+		SceneViewports[i].GetClient()->SetState(&SceneViewports[i].GetState());
 
 		// 뷰포트 타입 설정 후 카메라 생성
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportType(kViewportTypes[i]);
-		ViewportWidgets[i].GetSceneViewport().GetClient()->CreateCamera();
-		ViewportWidgets[i].GetSceneViewport().GetClient()->ApplyCameraMode();
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetMoveSpeed(S.CameraZoomSpeed);
+		SceneViewports[i].GetClient()->SetViewportType(kViewportTypes[i]);
+		SceneViewports[i].GetClient()->CreateCamera();
+		SceneViewports[i].GetClient()->ApplyCameraMode();
+		SceneViewports[i].GetClient()->SetMoveSpeed(S.CameraZoomSpeed);
 	}
 }
 
@@ -79,7 +79,7 @@ void FEditorViewportLayout::UpdateHoverStates()
 	// 1 - 1. 특정 뷰포트에서 기즈모 홀딩중이라면 스킵합니다.
 	for (int i = 0; i < MaxViewports; ++i)
 	{
-		if (ViewportWidgets[i].GetSceneViewport().GetClient()->GetGizmo()->IsHolding())
+		if (SceneViewports[i].GetClient()->GetGizmo()->IsHolding())
 			return;
 	}
 
@@ -134,8 +134,8 @@ void FEditorViewportLayout::UpdateHoverStates()
 		for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
 		{
 			FEditorViewportState& ViewportState = GetViewportState(i);
-            FViewportRect ViewportRect = GetSceneViewport(i).GetRect();
-            if (!bFoundHover && ViewportRect.Contains(MouseX, MouseY))
+			FViewportRect ViewportRect = GetSceneViewport(i).GetRect();
+			if (!bFoundHover && ViewportRect.Contains(MouseX, MouseY))
 			{
 				ViewportState.bHovered = true;
 				bFoundHover = true;
@@ -215,17 +215,17 @@ void FEditorViewportLayout::InitViewportRect(uint32 Width, uint32 Height)
 	const int32 HalfH = H / 2;
 
 	FViewportRect Rects[4] = {
-        { 0, 0, HalfW, HalfH },
-        { HalfW, 0, W - HalfW, HalfH },
-        { 0, HalfH, HalfW, H - HalfH },
-        { HalfW, HalfH, W - HalfW, H - HalfH }
-    };
+		{ 0, 0, HalfW, HalfH },
+		{ HalfW, 0, W - HalfW, HalfH },
+		{ 0, HalfH, HalfW, H - HalfH },
+		{ HalfW, HalfH, W - HalfW, H - HalfH }
+	};
 
-    for (int32 i = 0; i < MaxViewports; ++i)
-    {
-        ViewportWidgets[i].GetSceneViewport().SetRect(Rects[i]);
-        ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportSize(static_cast<float>(Rects[i].Width), static_cast<float>(Rects[i].Height));
-    }
+	for (int32 i = 0; i < MaxViewports; ++i)
+	{
+		SceneViewports[i].SetRect(Rects[i]);
+		SceneViewports[i].GetClient()->SetViewportSize(static_cast<float>(Rects[i].Width), static_cast<float>(Rects[i].Height));
+	}
 }
 
 //  Viewport Layout 생성 (2 x 2)
@@ -236,18 +236,18 @@ void FEditorViewportLayout::BuildViewportLayout(int32 Width, int32 Height)
 	// 4개 SViewport 생성 + ISlateViewport(FSceneViewport) 연결
 	for (int32 i = 0; i < MaxViewports; ++i)
 	{
-        FSceneViewport& VP = ViewportWidgets[i].GetSceneViewport();
-        // Build 시 DestroyViewportLayout()에서 끊어진 Client-Viewport-State 연결을 복구한다.
-        VP.SetClient(&ViewportClients[i]);
-        if (FEditorViewportClient* VC = ViewportWidgets[i].GetSceneViewport().GetClient())
-        {
-            VC->SetViewport(&ViewportWidgets[i].GetSceneViewport());
-            VC->SetState(&ViewportWidgets[i].GetSceneViewport().GetState());
-        }
+		FSceneViewport& VP = SceneViewports[i];
+		// Build 시 DestroyViewportLayout()에서 끊어진 Client-Viewport-State 연결을 복구한다.
+		VP.SetClient(&ViewportClients[i]);
+		if (FEditorViewportClient* VC = SceneViewports[i].GetClient())
+		{
+			VC->SetViewport(&SceneViewports[i]);
+			VC->SetState(&SceneViewports[i].GetState());
+		}
 
-		FViewportRenderResource RenderResource = Editor->GetRenderer().AcquireViewportResource(&VP, VP.GetRect().Width, VP.GetRect().Height, i);
-        VP.SetRenderTargetSet(&RenderResource.GetView());
-        ViewportWidgets[i].SetViewportInterface(&VP);
+		FViewportRenderResource RenderResource = Editor->GetRenderer().AcquireViewportResource(VP.GetRect().Width, VP.GetRect().Height, i);
+		VP.SetRenderTargetSet(&RenderResource.GetView());
+		ViewportWidgets[i].SetViewportInterface(&VP);
 	}
 
 	// 스플리터 트리 구성
@@ -344,13 +344,13 @@ void FEditorViewportLayout::SyncViewportRects()
 					static_cast<int32>(Full.Y),
 					static_cast<int32>(Full.Width),
 					static_cast<int32>(Full.Height));
-				ViewportWidgets[i].GetSceneViewport().SetRect(VR);
-				ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportSize(Full.Width, Full.Height);
+				SceneViewports[i].SetRect(VR);
+				SceneViewports[i].GetClient()->SetViewportSize(Full.Width, Full.Height);
 			}
 			else
 			{
 				const FViewportRect ZeroVR(0, 0, 0, 0);
-				ViewportWidgets[i].GetSceneViewport().SetRect(ZeroVR);
+				SceneViewports[i].SetRect(ZeroVR);
 			}
 		}
 		return;
@@ -371,8 +371,8 @@ void FEditorViewportLayout::SyncViewportRects()
 
 		// 스플리터 드래그로 바뀐 크기를 ViewportState, SceneViewport,
 		// ViewportClient 카메라 종횡비에 모두 반영합니다.
-		ViewportWidgets[i].GetSceneViewport().SetRect(VR);
-		ViewportWidgets[i].GetSceneViewport().GetClient()->SetViewportSize(R.Width, R.Height);
+		SceneViewports[i].SetRect(VR);
+		SceneViewports[i].GetClient()->SetViewportSize(R.Width, R.Height);
 	}
 }
 
@@ -402,15 +402,15 @@ void FEditorViewportLayout::DestroyViewportLayout()
 	{
 		// delete ViewportWidgets[i];
 		// ViewportWidgets[i] = nullptr;
-        if (FEditorViewportClient* VC = ViewportWidgets[i].GetSceneViewport().GetClient())
-        {
-            VC->SetViewport(nullptr);
-            VC->SetState(nullptr);
-        }
+		if (FEditorViewportClient* VC = SceneViewports[i].GetClient())
+		{
+			VC->SetViewport(nullptr);
+			VC->SetState(nullptr);
+		}
 
-		FSceneViewport& VP = ViewportWidgets[i].GetSceneViewport();
-        Editor->GetRenderer().ReleaseViewportResource(&VP, i);
-        VP.SetClient(nullptr);
+		FSceneViewport& VP = SceneViewports[i];
+		Editor->GetRenderer().ReleaseViewportResource(i);
+		VP.SetClient(nullptr);
 
 	}
 	delete TopSplitterH; TopSplitterH = nullptr;
