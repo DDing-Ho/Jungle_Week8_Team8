@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -224,10 +225,20 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	bGroundPushOutSinceLastTick = false;
 	const bool bHasGroundContact = HasGroundContact();
 	const bool bCanKeepRestingSupport = bWasGrounded || bWasPushedOntoGround || bHasGroundContact;
-	bGrounded = bWasPushedOntoGround || bHasGroundContact || (bCanKeepRestingSupport && HasRestingSupport(GroundSupportTolerance));
+	float RestingSnapDeltaZ = 0.0f;
+	const bool bHasRestingSupport = bCanKeepRestingSupport && FindRestingSupport(GroundSupportTolerance, RestingSnapDeltaZ);
+	bGrounded = bHasRestingSupport;
 	if (bGrounded && Velocity.Z < 0.0f)
 	{
 		Velocity.Z = 0.0f;
+	}
+
+	if (bGrounded && std::fabs(RestingSnapDeltaZ) > 0.0001f)
+	{
+		if (AActor* OwnerActor = Owner)
+		{
+			OwnerActor->AddActorWorldOffset(FVector(0.0f, 0.0f, RestingSnapDeltaZ));
+		}
 	}
 
 	if (bUseGravity && !(bGrounded && Velocity.Z <= 0.0f))
@@ -368,8 +379,9 @@ bool URigidBodyComponent::HasGroundContact() const
 	return false;
 }
 
-bool URigidBodyComponent::HasRestingSupport(float Tolerance) const
+bool URigidBodyComponent::FindRestingSupport(float Tolerance, float& OutSnapDeltaZ) const
 {
+	OutSnapDeltaZ = 0.0f;
 	if (Owner == nullptr)
 	{
 		return false;
@@ -380,6 +392,9 @@ bool URigidBodyComponent::HasRestingSupport(float Tolerance) const
 	{
 		return false;
 	}
+
+	bool bFoundSupport = false;
+	float BestAbsDeltaZ = std::numeric_limits<float>::max();
 
 	for (UPrimitiveComponent* Primitive : Owner->GetPrimitiveComponents())
 	{
@@ -404,26 +419,31 @@ bool URigidBodyComponent::HasRestingSupport(float Tolerance) const
 				}
 
 				const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
-				const bool bOverlapsX =
-					OwnBounds.Max.X > OtherBounds.Min.X + GroundSupportHorizontalSlop &&
-					OwnBounds.Min.X < OtherBounds.Max.X - GroundSupportHorizontalSlop;
-				const bool bOverlapsY =
-					OwnBounds.Max.Y > OtherBounds.Min.Y + GroundSupportHorizontalSlop &&
-					OwnBounds.Min.Y < OtherBounds.Max.Y - GroundSupportHorizontalSlop;
-				if (!bOverlapsX || !bOverlapsY)
+				const FVector OwnCenter = OwnBounds.GetCenter();
+				const bool bCenterSupportedX =
+					OwnCenter.X >= OtherBounds.Min.X - GroundSupportHorizontalSlop &&
+					OwnCenter.X <= OtherBounds.Max.X + GroundSupportHorizontalSlop;
+				const bool bCenterSupportedY =
+					OwnCenter.Y >= OtherBounds.Min.Y - GroundSupportHorizontalSlop &&
+					OwnCenter.Y <= OtherBounds.Max.Y + GroundSupportHorizontalSlop;
+				if (!bCenterSupportedX || !bCenterSupportedY)
 				{
 					continue;
 				}
 
 				const float BottomZ = OwnBounds.Min.Z;
 				const float SupportTopZ = OtherBounds.Max.Z;
-				if (BottomZ >= SupportTopZ - Tolerance && BottomZ <= SupportTopZ + Tolerance)
+				const float SnapDeltaZ = SupportTopZ - BottomZ;
+				const float AbsDeltaZ = std::fabs(SnapDeltaZ);
+				if (AbsDeltaZ <= Tolerance && AbsDeltaZ < BestAbsDeltaZ)
 				{
-					return true;
+					BestAbsDeltaZ = AbsDeltaZ;
+					OutSnapDeltaZ = SnapDeltaZ;
+					bFoundSupport = true;
 				}
 			}
 		}
 	}
 
-	return false;
+	return bFoundSupport;
 }

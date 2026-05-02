@@ -55,7 +55,7 @@ private:
 	void ApplyBlockingResponse();
 	bool HasBlockingContact() const;
 	bool HasGroundContact() const;
-	bool HasRestingSupport(float Tolerance) const;
+	bool FindRestingSupport(float Tolerance, float& OutSnapDeltaZ) const;
 
 private:
 	USceneComponent* UpdatedComponent = nullptr;

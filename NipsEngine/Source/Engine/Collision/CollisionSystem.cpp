@@ -300,7 +300,7 @@ void FCollisionSystem::ProcessBlocking(UPrimitiveComponent* A, UPrimitiveCompone
 		return;
 	}
 
-	constexpr float PushOutEpsilon = 0.01f;
+	constexpr float PushOutEpsilon = 0.005f;
 	const float PushDistance = Depth + PushOutEpsilon;
 	const bool bABlocks = A->IsBlockComponent();
 	const bool bBBlocks = B->IsBlockComponent();
