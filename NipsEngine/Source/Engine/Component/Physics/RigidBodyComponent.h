@@ -59,29 +59,10 @@ protected:
 	void TickComponent(float DeltaTime) override;
 
 private:
-	struct FSupportState
-	{
-		bool bHasSupport = false;
-		bool bStable = true;
-		float SnapDeltaZ = 0.0f;
-		FVector PivotWorld = FVector::ZeroVector;
-		FVector CenterWorld = FVector::ZeroVector;
-		FVector Torque = FVector::ZeroVector;
-	};
-
 	void ClampEditableValues();
 	void ApplyBlockingResponse();
-	bool ApplyTipTorque(const FSupportState& Support, float DeltaTime, const FVector* AxisWorld = nullptr);
-	void ConstrainAngularVelocityToAxis(const FVector& AxisWorld);
-	void ClearTippingState();
 	void CacheInitialRotationIfNeeded();
 	void ResetRotationToInitial();
-	void SnapRestingRotationToStableFace(const FSupportState& Support);
-	void ApplyAngularMotion(float DeltaTime, bool bAllowSleep, const FVector* PivotWorld = nullptr);
-	float ComputeRotationalInertia(const FVector& Axis) const;
-	bool HasBlockingContact() const;
-	bool HasGroundContact() const;
-	bool FindSupportState(float Tolerance, FSupportState& OutSupport) const;
 
 private:
 	static constexpr uint32 InvalidJoltBodyHandle = 0xffffffffu;
@@ -98,14 +79,8 @@ private:
 	bool bWasSimulatingBeforeHold = true;
 	bool bGrounded = false;
 	bool bGroundPushOutSinceLastTick = false;
-	bool bTipping = false;
 	bool bHasInitialRelativeRotation = false;
-	float StableRestTime = 0.0f;
-	float RestingContactTime = 0.0f;
-	float TippingTimeWithoutSupport = 0.0f;
 	FVector InitialRelativeRotation = FVector::ZeroVector;
-	FVector TippingPivotWorld = FVector::ZeroVector;
-	FVector TippingAxisWorld = FVector::ZeroVector;
 
 	float Mass = 1.0f;
 	float GravityScale = 1.0f;
@@ -113,10 +88,7 @@ private:
 	float MaxSpeed = 50.0f;
 	float SleepSpeed = 0.03f;
 	float AngularDamping = 1.5f;
-	float TipTorqueStrength = 1.0f;
 	float MaxAngularSpeed = 180.0f;
-	float TipOverAngle = 12.0f;
-	float TippingSupportGraceTime = 0.25f;
 
 	FString PickupSoundPath;
 	FString DropSoundPath;
