@@ -325,6 +325,12 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(link, "SubSystem").text = "Windows" if is_x64 else "Console"
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
 
+        if is_game:
+            pre_build = ET.SubElement(idg, "PreBuildEvent")
+            ET.SubElement(pre_build, "Command").text = (
+                'powershell -NoProfile -ExecutionPolicy Bypass -File "..\\Scripts\\CheckDependencyBoundaries.ps1"'
+            )
+
     # ClCompile items
     ig = ET.SubElement(proj, "ItemGroup")
     for f in files["ClCompile"]:

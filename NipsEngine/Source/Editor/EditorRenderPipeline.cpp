@@ -112,7 +112,7 @@ bool FEditorRenderPipeline::PrepareViewport(FRenderer& Renderer, int32 ViewportI
 	}
 
 	FSceneViewport& SceneViewport = Editor->GetViewportLayout().GetSceneViewport(ViewportIndex);
-	FViewportRenderResource& ViewportResource = Editor->GetRenderer().AcquireViewportResource(&SceneViewport, Rect.Width, Rect.Height, ViewportIndex);
+	FViewportRenderResource& ViewportResource = Editor->GetRenderer().AcquireViewportResource(Rect.Width, Rect.Height, ViewportIndex);
 	SceneViewport.SetRenderTargetSet(&ViewportResource.GetView());
 
 	Renderer.BeginViewportFrame(SceneViewport.GetViewportRenderTargets());
@@ -125,7 +125,7 @@ bool FEditorRenderPipeline::PrepareViewport(FRenderer& Renderer, int32 ViewportI
 	Bus.SetViewportSize(FVector2(static_cast<float>(Rect.Width), static_cast<float>(Rect.Height)));
 	Bus.SetViewportOrigin(FVector2(0.0f, 0.0f));
 	Bus.SetFXAAEnabled(Settings.bEnableFXAA && !OutSceneView.bOrthographic);
-    Bus.SetShadowFilterType(Settings.ShadowFilterType);
+	Bus.SetShadowFilterType(Settings.ShadowFilterType);
 
 	return true;
 }
