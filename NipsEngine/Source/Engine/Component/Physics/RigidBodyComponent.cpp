@@ -419,14 +419,13 @@ bool URigidBodyComponent::FindRestingSupport(float Tolerance, float& OutSnapDelt
 				}
 
 				const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
-				const FVector OwnCenter = OwnBounds.GetCenter();
-				const bool bCenterSupportedX =
-					OwnCenter.X >= OtherBounds.Min.X - GroundSupportHorizontalSlop &&
-					OwnCenter.X <= OtherBounds.Max.X + GroundSupportHorizontalSlop;
-				const bool bCenterSupportedY =
-					OwnCenter.Y >= OtherBounds.Min.Y - GroundSupportHorizontalSlop &&
-					OwnCenter.Y <= OtherBounds.Max.Y + GroundSupportHorizontalSlop;
-				if (!bCenterSupportedX || !bCenterSupportedY)
+				const bool bOverlapsX =
+					OwnBounds.Max.X > OtherBounds.Min.X + GroundSupportHorizontalSlop &&
+					OwnBounds.Min.X < OtherBounds.Max.X - GroundSupportHorizontalSlop;
+				const bool bOverlapsY =
+					OwnBounds.Max.Y > OtherBounds.Min.Y + GroundSupportHorizontalSlop &&
+					OwnBounds.Min.Y < OtherBounds.Max.Y - GroundSupportHorizontalSlop;
+				if (!bOverlapsX || !bOverlapsY)
 				{
 					continue;
 				}
