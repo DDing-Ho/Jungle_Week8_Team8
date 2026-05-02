@@ -121,20 +121,12 @@ public:
 	POINT GetPendingActorPlacementPopupPos() const { return PendingActorPlacementPopupPos; }
 	void  ClearPendingActorPlacement() { bPendingActorPlacement = false; }
 
-	void LockCursorToViewport();
 	void SetEndPIECallback(std::function<void()> Callback) { PIEController.SetEndPIECallback(std::move(Callback)); }
 	void ClearEndPIECallback()                             { PIEController.ClearEndPIECallback(); }
 
 private:
 	// ── Tick sub-steps ───────────────────────────────────────────────────────
-	void TickInput(float DeltaTime);          // top-level input tick (renamed from TickRouter)
-	void TickCursorCapture();                 // hide/lock cursor on editor-world drag begin/end
-	void TickKeyboardInput();                 // poll watched keys -> route to active controller
-	void TickEditorShortcuts();               // editor-only hotkeys (gizmo toggle, delete, select all)
-	void TickPIEShortCuts();				  // PIE-only hotkeys
-	void TickMouseInput(float VX, float VY);  // poll mouse state -> route to active controller
 	void TogglePIEInputCapture();
-
 	void TickInteraction(float DeltaTime);    // box selection + gizmo screen-scaling
 
 	// ── Selection helpers ────────────────────────────────────────────────────

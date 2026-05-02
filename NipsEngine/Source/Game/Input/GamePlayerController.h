@@ -4,6 +4,8 @@
 #include "Math/Vector.h"
 #include "Render/Common/ViewTypes.h"
 
+#include <functional>
+
 class AActor;
 struct FSceneView;
 class FViewportCamera;
@@ -45,6 +47,8 @@ public:
 
 	void SetMoveSpeed(float InMoveSpeed) { MoveSpeed = InMoveSpeed; }
 	void SetRotateSensitivity(float InSensitivity) { RotateSensitivity = InSensitivity; }
+	void SetToggleInputCaptureCallback(std::function<void()> Callback) { OnRequestToggleInputCapture = std::move(Callback); }
+	void ClearToggleInputCaptureCallback() { OnRequestToggleInputCapture = nullptr; }
 
 	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 
@@ -64,4 +68,5 @@ private:
 	float FreeCameraYaw = 0.0f;
 	float FreeCameraPitch = 0.0f;
 	bool bFreeCameraInitialized = false;
+	std::function<void()> OnRequestToggleInputCapture;
 };

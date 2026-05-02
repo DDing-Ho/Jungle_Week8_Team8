@@ -11,8 +11,9 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include "Render/Renderer/Renderer.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Game/UI/GameUISystem.h"
+
 namespace
 {
 void SetOpaqueBlendStateCallback(const ImDrawList*, const ImDrawCmd* Cmd)
@@ -222,13 +223,13 @@ void FEditorMainPanel::Update()
 	}
 
 	const bool bPropertyModalBlockingInput = PropertyWidget.IsModalInputBlocking();
-	FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 	GuiState.bBlockViewportInput = bPropertyModalBlockingInput;
 	GuiState.bUsingMouse = bPropertyModalBlockingInput || (bViewportOperationActive ? false : IO.WantCaptureMouse);
 	GuiState.bUsingKeyboard = bPropertyModalBlockingInput || IO.WantCaptureKeyboard;
 
 	//	Focus는 MainPanel에서 입력 받음
-	if (EditorEngine && InputSystem::Get().GetKeyUp('F') && !IO.WantTextInput && !bPropertyModalBlockingInput)
+	if (EditorEngine && FInputRouter::GetKeyUp('F') && !IO.WantTextInput && !bPropertyModalBlockingInput)
 	{
 		FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
 		const int32 FocusedIdx = Layout.GetLastFocusedViewportIndex();
@@ -260,7 +261,7 @@ void FEditorMainPanel::RenderViewportHostWindow()
 	if (!EditorEngine)
 		return;
 	constexpr ImGuiWindowFlags WindowFlags = 0;
-	FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 
 	if (!ImGui::Begin("Viewport", nullptr, WindowFlags))
 	{

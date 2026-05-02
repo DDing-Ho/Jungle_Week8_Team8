@@ -1,4 +1,4 @@
-﻿#include "Editor/UI/EditorPropertyWidget.h"
+#include "Editor/UI/EditorPropertyWidget.h"
 
 #include "Editor/EditorEngine.h"
 #include "ImGui/imgui.h"
@@ -30,7 +30,7 @@
 #include "Editor/Viewport/ViewportLayout.h"
 #include "Editor/Utility/EditorUIUtils.h"
 #include "Engine/Render/Renderer/RenderFlow/ShadowAtlasManager.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Scripting/ScriptUtils.h"
 #include "Editor/UI/EditorConsoleWidget.h"
 
@@ -114,7 +114,7 @@ namespace
 {
 	void BlockViewportInputForLuaScriptPopup()
 	{
-		FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+		FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 		GuiState.bUsingMouse = true;
 		GuiState.bUsingKeyboard = true;
 		GuiState.bBlockViewportInput = true;

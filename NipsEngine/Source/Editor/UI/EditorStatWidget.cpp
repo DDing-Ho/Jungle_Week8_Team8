@@ -1,4 +1,4 @@
-﻿#include "Editor/UI/EditorStatWidget.h"
+#include "Editor/UI/EditorStatWidget.h"
 
 #include "Core/Logging/Stats.h"
 #include "Core/Logging/GPUProfiler.h"

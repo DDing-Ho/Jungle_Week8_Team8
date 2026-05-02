@@ -87,7 +87,10 @@ void FGamePlayerController::OnMiddleMouseDrag(float DeltaX, float DeltaY)
 
 void FGamePlayerController::OnKeyPressed(int VK)
 {
-	(void)VK;
+	if (VK == VK_F4 && !Camera && OnRequestToggleInputCapture)
+	{
+		OnRequestToggleInputCapture();
+	}
 }
 
 void FGamePlayerController::OnKeyDown(int VK)

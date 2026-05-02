@@ -4,7 +4,7 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Game/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Viewport/ViewportRect.h"
 #include "Component/GizmoComponent.h"
 #include "Component/CameraComponent.h"
@@ -333,7 +333,7 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEditorEngine::Tick(float DeltaTime)
 {
-	InputSystem::Get().Tick();
+	FInputRouter::TickInputSystem();
 	ViewportLayout.Tick(DeltaTime);
 	MainPanel.Update();
 	WorldTick(DeltaTime);
@@ -434,8 +434,7 @@ void UEditorEngine::StartPlaySession()
 		}
 	}
 
-	FocusedClient->LockCursorToViewport();
-	InputSystem::Get().SetCursorVisibility(false);
+	FInputRouter::SetCursorVisibility(false);
 
 	// PIE 진입마다 시작화면부터 (커서/마우스 상태는 SetState 내부에서 처리)
 	GameUISystem::Get().ResetGameData();
@@ -684,7 +683,7 @@ void UEditorEngine::StopPlaySession()
 
 	if (ViewportPIEHandles.empty())
 	{
-		InputSystem::Get().SetCursorVisibility(true);
+		FInputRouter::SetCursorVisibility(true);
 	}
 
 	SelectionManager.ClearSelection();

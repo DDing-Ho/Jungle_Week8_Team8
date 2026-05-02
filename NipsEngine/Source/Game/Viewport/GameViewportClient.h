@@ -34,16 +34,6 @@ public:
 	const FGamePlayerController& GetPlayerController() const { return PlayerController; }
 
 private:
-	void TickKeyboardInput();
-	void TickMouseInput();
-	void UpdateControllerViewportDim();
-	void UpdateCursorCapture();
-	void HideMouseCursor();
-	void ShowMouseCursor();
-	void ConfineMouseCursorToWindow();
-	void LockMouseCursor();
-	void ReleaseMouseCursor();
-
 	void ToggleInteractionMode();
 
 private:
@@ -53,6 +43,4 @@ private:
 	FGamePlayerController PlayerController;
 	FInputRouter InputRouter;
 	bool bInputActive = true;
-	bool bCursorVisible = true;
-	bool bCursorConfined = false;
 };

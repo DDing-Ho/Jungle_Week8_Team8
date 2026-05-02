@@ -4,7 +4,7 @@
 #include "Core/Paths.h"
 #include "Core/Logging/Stats.h"
 #include "Core/Logging/GPUProfiler.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Core/ResourceManager.h"
 #include "Render/Renderer/DefaultRenderPipeline.h"
@@ -23,7 +23,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	FNamePool::Get();
 	FObjectFactory::Get();
 
-	InputSystem::Get().SetOwnerWindow(Window->GetHWND());
+	FInputRouter::SetOwnerWindow(Window->GetHWND());
 	Renderer.Create(Window->GetHWND());
 
 	FResourceManager::Get().LoadFromAssetDirectory(FPaths::ToUtf8(FPaths::AssetDirectoryPath()));
@@ -56,7 +56,7 @@ void UEngine::BeginPlay()
 
 void UEngine::Tick(float DeltaTime)
 {
-	InputSystem::Get().Tick();
+	FInputRouter::TickInputSystem();
 	WorldTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);
 	Render(DeltaTime);

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Render/Common/RenderTypes.h"
-#include "Viewport/CursorOverlayState.h"
+#include "Editor/Viewport/CursorOverlayState.h"
 #include "Core/CollisionTypes.h"
 
 #include "Engine/Math/Quat.h"

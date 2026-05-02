@@ -5,7 +5,7 @@
 #include "Game/Viewport/GameViewportClient.h"
 #include "Game/Render/GameRenderPipeline.h"
 #include "Engine/Audio/AudioSystem.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Engine/Core/Paths.h"
 #include "Engine/Settings/EngineSettings.h"
@@ -81,17 +81,17 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 {
 	UEngine::Init(InWindow);
 
-    // DefaultRenderPipeline → GameRenderPipeline 교체 (UI 렌더 포함)
-    SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, GetRenderer()));
+	// DefaultRenderPipeline → GameRenderPipeline 교체 (UI 렌더 포함)
+	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, GetRenderer()));
 
-    // GameUISystem 초기화 (ImGui 컨텍스트)
-    GameUISystem::Get().Init(
-        InWindow->GetHWND(),
-        GetRenderer().GetFD3DDevice().GetDevice(),
-        GetRenderer().GetFD3DDevice().GetDeviceContext()
-    );
+	// GameUISystem 초기화 (ImGui 컨텍스트)
+	GameUISystem::Get().Init(
+		InWindow->GetHWND(),
+		GetRenderer().GetFD3DDevice().GetDevice(),
+		GetRenderer().GetFD3DDevice().GetDeviceContext()
+	);
 
-    Game::RegisterGameTypes();
+	Game::RegisterGameTypes();
 
 	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, Renderer));
 
@@ -128,7 +128,7 @@ void UGameEngine::LoadStartupScene()
 
 void UGameEngine::Tick(float DeltaTime)
 {
-	InputSystem::Get().Tick();
+	FInputRouter::TickInputSystem();
 	GameViewport->Tick(DeltaTime);
 	WorldTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);
@@ -137,9 +137,9 @@ void UGameEngine::Tick(float DeltaTime)
 
 void UGameEngine::Shutdown()
 {
-    GameUISystem::Get().Shutdown();
+	GameUISystem::Get().Shutdown();
 	GameViewport.reset();
-    UEngine::Shutdown();
+	UEngine::Shutdown();
 }
 
 void UGameEngine::OnWindowResized(uint32 Width, uint32 Height)

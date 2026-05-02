@@ -5,5 +5,5 @@
 class StartMenuPanel
 {
 public:
-    static void Render(EUIRenderMode Mode);
+	static void Render(EUIRenderMode Mode);
 };
