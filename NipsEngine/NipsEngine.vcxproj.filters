@@ -139,14 +139,14 @@
     <Filter Include="Source\Game">
       <UniqueIdentifier>{b0f12202-8166-2d7c-6172-74953c0e3746}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Game\Config">
-      <UniqueIdentifier>{a3929a5a-080e-0852-993b-c234bd37d546}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Game\Input">
       <UniqueIdentifier>{f2e7fd60-3e77-b205-87c9-f5c1786fd722}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Game\Render">
       <UniqueIdentifier>{5dede70c-07db-6ec4-171c-2a255059b2b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Settings">
+      <UniqueIdentifier>{01fbe95f-106d-f15c-9519-d37eb877a7df}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Game\Viewport">
       <UniqueIdentifier>{24b40836-3894-0777-eac4-651121dc7f81}</UniqueIdentifier>
@@ -1526,9 +1526,6 @@
     <ClInclude Include="Source\Game\GameTypes.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Game\Settings\GameSettings.h">
-      <Filter>Source\Game\Config</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Game\Input\BaseGameController.h">
       <Filter>Source\Game\Input</Filter>
     </ClInclude>
@@ -1540,6 +1537,9 @@
     </ClInclude>
     <ClInclude Include="Source\Game\Render\GameRenderPipeline.h">
       <Filter>Source\Game\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Settings\GameSettings.h">
+      <Filter>Source\Game\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h">
       <Filter>Source\Game\Viewport</Filter>

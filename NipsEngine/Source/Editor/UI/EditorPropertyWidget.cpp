@@ -22,6 +22,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
+#include "Component/AudioZoneComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -586,6 +587,7 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	bool bAnyChanged = false;
 	const bool bIsLuaScriptComponent = SelectedComponent->IsA<ULuaScriptComponent>();
 	const bool bIsAudioComponent = SelectedComponent->IsA<UAudioComponent>();
+	const bool bIsAudioZoneComponent = SelectedComponent->IsA<UAudioZoneComponent>();
 	for (auto& Prop : Props)
 	{
 		if (bIsLuaScriptComponent && strcmp(Prop.Name, "Script Path") == 0)
@@ -595,6 +597,15 @@ void FEditorPropertyWidget::RenderComponentProperties()
 		if (bIsAudioComponent && strcmp(Prop.Name, "Sound Path") == 0)
 		{
 			continue;
+		}
+
+		if (bIsAudioZoneComponent && strcmp(Prop.Name, "Interior Master Volume") == 0)
+		{
+			ImGui::SeparatorText("Volume");
+		}
+		else if (bIsAudioZoneComponent && strcmp(Prop.Name, "Interior LowPass Cutoff") == 0)
+		{
+			ImGui::SeparatorText("Effects");
 		}
 
 		if (Prop.Type == EPropertyType::SceneComponentRef)

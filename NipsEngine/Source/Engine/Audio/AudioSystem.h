@@ -86,13 +86,16 @@ public:
 
 	void SetSoundPosition(FAudioHandle Handle, const FVector& Location);
 	void SetListenerTransform(const FVector& Location, const FVector& Forward, const FVector& Up);
-	void SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime, float FadeOutTime,
+	void SubmitZoneMix(uint32 ZoneId, int32 Priority,
 		const FVector& Location, const FVector& Forward, const FVector& Right, const FVector& Up, const FVector& Extent,
 		float InteriorMasterVolume, float InteriorSFXVolume, float InteriorMusicVolume, float InteriorAmbientVolume,
-		float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume);
+		float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume,
+		float InteriorLowPassCutoff, float ExteriorLowPassCutoff,
+		float InteriorReverbWet, float InteriorReverbDecay,
+		float ExteriorReverbWet, float ExteriorReverbDecay);
 	void RemoveZoneMix(uint32 ZoneId);
 
-private:
+private:      
 	FAudioSystem();
 	~FAudioSystem();
 

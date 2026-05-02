@@ -758,11 +758,11 @@
     <ClInclude Include="Source\Engine\Viewport\ViewportRect.h" />
     <ClInclude Include="Source\Game\GameEngine.h" />
     <ClInclude Include="Source\Game\GameTypes.h" />
-    <ClInclude Include="Source\Game\Settings\GameSettings.h" />
     <ClInclude Include="Source\Game\Input\BaseGameController.h" />
     <ClInclude Include="Source\Game\Input\GameInputRouter.h" />
     <ClInclude Include="Source\Game\Input\GamePlayerController.h" />
     <ClInclude Include="Source\Game\Render\GameRenderPipeline.h" />
+    <ClInclude Include="Source\Game\Settings\GameSettings.h" />
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h" />
     <ClInclude Include="Source\Misc\ObjViewer\ObjViewerEngine.h" />
     <ClInclude Include="Source\Misc\ObjViewer\ObjViewerRenderPipeline.h" />
