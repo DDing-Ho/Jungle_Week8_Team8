@@ -1,4 +1,4 @@
-﻿#include "EditorInputRouter.h"
+#include "EditorInputRouter.h"
 
 void FEditorInputRouter::SetActiveController(EActiveEditorController Controller)
 {

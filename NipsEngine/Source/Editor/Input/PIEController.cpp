@@ -1,11 +1,12 @@
-﻿#include "PIEController.h"
+#include "PIEController.h"
 #include "Editor/Viewport/ViewportCamera.h"
 #include "Engine/Input/InputSystem.h"
 
 #include <windows.h>
 
-void FPIEController::Tick(float InDeltaTime) {
-	DeltaTime = InDeltaTime;
+void FPIEController::Tick(float InDeltaTime)
+{
+    DeltaTime = InDeltaTime;
     if (!Camera)
         return;
     if (!bTargetLocationInitialized)
@@ -21,7 +22,7 @@ void FPIEController::Tick(float InDeltaTime) {
 
 void FPIEController::OnMouseMove(float DeltaX, float DeltaY)
 {
-	if (!Camera)
+    if (!Camera)
         return;
 
     if (Camera->IsOrthographic())
@@ -97,57 +98,18 @@ void FPIEController::OnKeyDown(int VK)
 
     const float MoveSpeed = 10.f;
     FVector     Move = FVector(0, 0, 0);
-    //switch (VK)
-    //{
-    //case 'W':
-    //    Move.X += MoveSpeed;
-    //    break;
-    //case 'A':
-    //    Move.Y -= MoveSpeed;
-    //    break;
-    //case 'S':
-    //    Move.X -= MoveSpeed;
-    //    break;
-    //case 'D':
-    //    Move.Y += MoveSpeed;
-    //    break;
-    //}
 
-    //if (Move.X != 0.f || Move.Y != 0.f)
-    //{
-    //    // Constrain movement to the horizontal plane (no flying)
-    //    Move *= DeltaTime;
-    //    FVector Forward = Camera->GetForwardVector();
-    //    Forward.Z = 0.f;
-    //    if (Forward.Size() > 1e-4f)
-    //        Forward.Normalize();
-    //    FVector Right = Camera->GetRightVector();
-    //    Right.Z = 0.f;
-    //    if (Right.Size() > 1e-4f)
-    //        Right.Normalize();
-    //    TargetLocation += Forward * Move.X + Right * Move.Y;
-    //}
-
-	// Allow flying
-	switch (VK)
+    // Allow flying
+    switch (VK)
     {
-    case 'W':
-        Move += Camera->GetForwardVector() * MoveSpeed;
-        break;
-    case 'S':
-        Move += Camera->GetForwardVector() * -MoveSpeed;
-        break;
-    case 'D':
-        Move += Camera->GetRightVector() * MoveSpeed;
-        break;
-    case 'A':
-        Move += Camera->GetRightVector() * -MoveSpeed;
-        break;
-	}
+    case 'W': Move += Camera->GetForwardVector() *  MoveSpeed; break;
+    case 'S': Move += Camera->GetForwardVector() * -MoveSpeed; break;
+    case 'D': Move += Camera->GetRightVector()   *  MoveSpeed; break;
+    case 'A': Move += Camera->GetRightVector()   * -MoveSpeed; break;
+    }
 
     if (Move.X != 0.f || Move.Y != 0.f)
     {
-        // Constrain movement to the horizontal plane (no flying)
         Move *= DeltaTime;
         TargetLocation += Move;
     }
@@ -157,22 +119,10 @@ void FPIEController::OnKeyDown(int VK)
     bool            bRotationChanged = false;
     switch (VK)
     {
-    case VK_LEFT:
-        Yaw -= AngleVelocity * DeltaTime;
-        bRotationChanged = true;
-        break;
-    case VK_RIGHT:
-        Yaw += AngleVelocity * DeltaTime;
-        bRotationChanged = true;
-        break;
-    case VK_UP:
-        Pitch += AngleVelocity * DeltaTime;
-        bRotationChanged = true;
-        break;
-    case VK_DOWN:
-        Pitch -= AngleVelocity * DeltaTime;
-        bRotationChanged = true;
-        break;
+    case VK_LEFT:  Yaw   -= AngleVelocity * DeltaTime; bRotationChanged = true; break;
+    case VK_RIGHT: Yaw   += AngleVelocity * DeltaTime; bRotationChanged = true; break;
+    case VK_UP:    Pitch += AngleVelocity * DeltaTime; bRotationChanged = true; break;
+    case VK_DOWN:  Pitch -= AngleVelocity * DeltaTime; bRotationChanged = true; break;
     }
     if (bRotationChanged)
     {
@@ -180,7 +130,6 @@ void FPIEController::OnKeyDown(int VK)
         UpdateCameraRotation();
     }
 }
-
 
 void FPIEController::OnKeyReleased(int VK)
 {
@@ -198,7 +147,7 @@ void FPIEController::SetCamera(FViewportCamera* InCamera)
         return;
     Camera = InCamera;
 
-	TargetLocation = Camera->GetLocation();
+    TargetLocation = Camera->GetLocation();
     bTargetLocationInitialized = true;
 
     // Initialize Yaw/Pitch from camera's current orientation so the first
@@ -216,9 +165,12 @@ void FPIEController::UpdateCameraRotation()
         return;
 
     const float PitchRad = MathUtil::DegreesToRadians(Pitch);
-    const float YawRad = MathUtil::DegreesToRadians(Yaw);
+    const float YawRad   = MathUtil::DegreesToRadians(Yaw);
 
-    FVector Forward(std::cos(PitchRad) * std::cos(YawRad), std::cos(PitchRad) * std::sin(YawRad), std::sin(PitchRad));
+    FVector Forward(
+        std::cos(PitchRad) * std::cos(YawRad),
+        std::cos(PitchRad) * std::sin(YawRad),
+        std::sin(PitchRad));
     Forward = Forward.GetSafeNormal();
 
     FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();

@@ -13,6 +13,9 @@
     <Filter Include="Source\Editor">
       <UniqueIdentifier>{01c06a87-3b33-f1be-c238-04f144aa4c78}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Input">
+      <UniqueIdentifier>{31909b73-9f17-7a2d-92bc-5d16be3d4d7a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Selection">
       <UniqueIdentifier>{33d96653-88d6-d5dc-f0fa-d752c20ed9ed}</UniqueIdentifier>
     </Filter>
@@ -75,9 +78,6 @@
     </Filter>
     <Filter Include="Source\Engine\Input\Controller">
       <UniqueIdentifier>{06afad98-66f8-abab-e678-aa97a77e0066}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Engine\Input\Controller\EditorController">
-      <UniqueIdentifier>{91ce1396-52b5-8f7a-ca50-e7701f87b985}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Math">
       <UniqueIdentifier>{1f95424e-78f3-3176-c345-9ebb635ae099}</UniqueIdentifier>
@@ -271,6 +271,15 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp">
       <Filter>Source\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorInputRouter.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\EditorWorldController.cpp">
+      <Filter>Source\Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Input\PIEController.cpp">
+      <Filter>Source\Editor\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Selection\SelectionManager.cpp">
       <Filter>Source\Editor\Selection</Filter>
@@ -511,18 +520,6 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Engine\Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Input\Controller\EditorController\BaseEditorController.cpp">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Input\Controller\EditorController\EditorInputRouter.cpp">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Input\Controller\EditorController\EditorWorldController.cpp">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Input\Controller\EditorController\PIEController.cpp">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\Color.cpp">
       <Filter>Source\Engine\Math</Filter>
@@ -823,6 +820,18 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h">
       <Filter>Source\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\BaseEditorController.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorInputRouter.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\EditorWorldController.h">
+      <Filter>Source\Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Input\PIEController.h">
+      <Filter>Source\Editor\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Selection\SelectionManager.h">
       <Filter>Source\Editor\Selection</Filter>
@@ -1147,18 +1156,6 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
       <Filter>Source\Engine\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Controller\EditorController\BaseEditorController.h">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Controller\EditorController\EditorInputRouter.h">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Controller\EditorController\EditorWorldController.h">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Controller\EditorController\PIEController.h">
-      <Filter>Source\Engine\Input\Controller\EditorController</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\Color.h">
       <Filter>Source\Engine\Math</Filter>
@@ -1861,6 +1858,9 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\IInputController.h">
+      <Filter>Source\Engine\Input</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

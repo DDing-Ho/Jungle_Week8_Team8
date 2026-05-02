@@ -1,5 +1,5 @@
-﻿#pragma once
-#include "BaseEditorController.h"
+#pragma once
+#include "Editor/Input/BaseEditorController.h"
 #include "Editor/Viewport/ViewportCamera.h"
 
 class FSelectionManager;

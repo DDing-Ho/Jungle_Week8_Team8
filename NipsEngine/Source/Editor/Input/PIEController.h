@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include "BaseEditorController.h"
+#include "Editor/Input/BaseEditorController.h"
+#include "Core/CoreMinimal.h"
 #include <functional>
 
 class FViewportCamera;
@@ -29,18 +30,19 @@ class FPIEController : public IBaseEditorController
     void SetEndPIECallback(std::function<void()> Callback) { OnRequestEndPIE = std::move(Callback); }
     void ClearEndPIECallback() { OnRequestEndPIE = nullptr; }
 
-	FVector GetTargetLocation() const { return TargetLocation; }
-	void SetTargetLocation(FVector InTargetLoc) { TargetLocation = InTargetLoc; }
+    FVector GetTargetLocation() const { return TargetLocation; }
+    void SetTargetLocation(FVector InTargetLoc) { TargetLocation = InTargetLoc; }
 
   private:
-	void UpdateCameraRotation();
+    void UpdateCameraRotation();
+
   private:
     FViewportCamera*      Camera = nullptr;
     std::function<void()> OnRequestEndPIE;
 
-    float                 Yaw = 0.f;
-    float                 Pitch = 0.f;
-    float                 MoveSpeed = 15.f;
-    FVector               TargetLocation;
-    bool                  bTargetLocationInitialized = false;
+    float   Yaw = 0.f;
+    float   Pitch = 0.f;
+    float   MoveSpeed = 15.f;
+    FVector TargetLocation;
+    bool    bTargetLocationInitialized = false;
 };
