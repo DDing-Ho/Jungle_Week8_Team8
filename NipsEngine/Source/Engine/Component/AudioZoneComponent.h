@@ -34,8 +34,6 @@ private:
 
 	FVector BoxExtent = FVector(8.0f, 8.0f, 3.0f);
 	int32 Priority = 0;
-	float FadeInTime = 1.0f;
-	float FadeOutTime = 1.0f;
 	float MasterVolume = 1.0f;
 	float SFXVolume = 1.0f;
 	float MusicVolume = 1.0f;

@@ -88,8 +88,6 @@ struct FAudioSystemImpl
 	struct FZoneMix
 	{
 		int32 Priority = 0;
-		float FadeInTime = 1.0f;
-		float FadeOutTime = 1.0f;
 		float Weight = 0.0f;
 		FVector Location = FVector::ZeroVector;
 		FVector Forward = FVector(1.0f, 0.0f, 0.0f);
@@ -1208,7 +1206,7 @@ void FAudioSystem::SetListenerTransform(const FVector& Location, const FVector& 
 #endif
 }
 
-void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime, float FadeOutTime,
+void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority,
 	const FVector& Location, const FVector& Forward, const FVector& Right, const FVector& Up, const FVector& Extent,
 	float InteriorMasterVolume, float InteriorSFXVolume, float InteriorMusicVolume, float InteriorAmbientVolume,
 	float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume,
@@ -1224,8 +1222,6 @@ void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime
 
 	FAudioSystemImpl::FZoneMix& Zone = Impl->ZoneMixes[ZoneId];
 	Zone.Priority = Priority;
-	Zone.FadeInTime = std::max(0.0f, FadeInTime);
-	Zone.FadeOutTime = std::max(0.0f, FadeOutTime);
 	Zone.Location = Location;
 	Zone.Forward = Forward.GetSafeNormal();
 	Zone.Right = Right.GetSafeNormal();
@@ -1248,8 +1244,6 @@ void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime
 #else
 	(void)ZoneId;
 	(void)Priority;
-	(void)FadeInTime;
-	(void)FadeOutTime;
 	(void)Location;
 	(void)Forward;
 	(void)Right;
