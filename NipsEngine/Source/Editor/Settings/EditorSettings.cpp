@@ -41,6 +41,8 @@ namespace EditorKey
 	constexpr const char* bAudioComponentRange = "bAudioComponentRange";
 	constexpr const char* bAudioZoneRange = "bAudioZoneRange";
 	constexpr const char* bAudioVolumeRange = "bAudioVolumeRange"; // Backward compatibility
+	constexpr const char* bDecals = "bDecals";
+	constexpr const char* bFog = "bFog";
 	constexpr const char* bShadow = "bShadow";
 	constexpr const char* bCascadeDebug = "bCascadeDebug";
 	constexpr const char* FXAAEnabled = "FXAAEnabled";
@@ -105,6 +107,8 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 	ViewObj[EditorKey::bAudioRange] = ShowFlags.bAudioRange;
 	ViewObj[EditorKey::bAudioComponentRange] = ShowFlags.bAudioComponentRange;
 	ViewObj[EditorKey::bAudioZoneRange] = ShowFlags.bAudioZoneRange;
+	ViewObj[EditorKey::bDecals] = ShowFlags.bDecals;
+	ViewObj[EditorKey::bFog] = ShowFlags.bFog;
 	ViewObj[EditorKey::bShadow] = ShowFlags.bShadow;
 	ViewObj[EditorKey::FXAAEnabled] = bEnableFXAA;
 	ViewObj[EditorKey::ShadowFilterType] = static_cast<int32>(ShadowFilterType);
@@ -245,6 +249,10 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 			ShowFlags.bAudioZoneRange = ViewObj[EditorKey::bAudioZoneRange].ToBool();
 		else if (ViewObj.hasKey(EditorKey::bAudioVolumeRange))
 			ShowFlags.bAudioZoneRange = ViewObj[EditorKey::bAudioVolumeRange].ToBool();
+		if (ViewObj.hasKey(EditorKey::bDecals))
+			ShowFlags.bDecals = ViewObj[EditorKey::bDecals].ToBool();
+		if (ViewObj.hasKey(EditorKey::bFog))
+			ShowFlags.bFog = ViewObj[EditorKey::bFog].ToBool();
 		if (ViewObj.hasKey(EditorKey::bShadow))
 			ShowFlags.bShadow = ViewObj[EditorKey::bShadow].ToBool();
 		if (ViewObj.hasKey(EditorKey::bCascadeDebug) && ViewObj[EditorKey::bCascadeDebug].ToBool())

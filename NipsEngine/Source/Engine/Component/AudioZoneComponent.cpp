@@ -1,5 +1,8 @@
 #include "Component/AudioZoneComponent.h"
 
+#include "Engine/Viewport/ViewportCamera.h"
+#include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 #include "Object/ObjectFactory.h"
 #include "Serialization/Archive.h"
 

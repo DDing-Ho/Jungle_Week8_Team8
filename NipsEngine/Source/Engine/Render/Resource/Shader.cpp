@@ -3,7 +3,7 @@
 #include "Texture.h"
 #include "Render/Scene/RenderBus.h"
 #include "Render/Scene/RenderCommand.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 #include <vector>
 

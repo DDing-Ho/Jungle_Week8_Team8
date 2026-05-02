@@ -28,7 +28,6 @@ enum EEditorViewportType
 	LVT_MAX = 7,
 };
 
-
 class UEditorEngine;
 class UWorld;
 class UGizmoComponent;

@@ -76,9 +76,6 @@
     <Filter Include="Source\Engine\Input">
       <UniqueIdentifier>{8c6fa399-133c-c7dc-8f7f-aef811a985ad}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Engine\Input\Controller">
-      <UniqueIdentifier>{06afad98-66f8-abab-e678-aa97a77e0066}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Engine\Math">
       <UniqueIdentifier>{1f95424e-78f3-3176-c345-9ebb635ae099}</UniqueIdentifier>
     </Filter>
@@ -127,11 +124,23 @@
     <Filter Include="Source\Engine\Serialization">
       <UniqueIdentifier>{2da23669-dc56-0f8c-0400-ac456128f1fa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Settings">
+      <UniqueIdentifier>{0d2e7727-0064-c686-05fd-418d2f293266}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Slate">
       <UniqueIdentifier>{d41c747e-d34e-c539-1e9a-c8df44ae034e}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Spatial">
       <UniqueIdentifier>{f8334c36-7f14-c751-7bba-2157775fd0eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Engine\Viewport">
+      <UniqueIdentifier>{267a334b-b2ac-5fd7-67a5-5bdb67375b74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game">
+      <UniqueIdentifier>{b0f12202-8166-2d7c-6172-74953c0e3746}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Config">
+      <UniqueIdentifier>{a3929a5a-080e-0852-993b-c234bd37d546}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Misc">
       <UniqueIdentifier>{80bb3fb1-78dd-ab3e-b9d5-e1cee5602ed0}</UniqueIdentifier>
@@ -332,9 +341,6 @@
     <ClCompile Include="Source\Editor\Viewport\FSceneViewport.cpp">
       <Filter>Source\Editor\Viewport</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Viewport\ViewportCamera.cpp">
-      <Filter>Source\Editor\Viewport</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\Viewport\ViewportLayout.cpp">
       <Filter>Source\Editor\Viewport</Filter>
     </ClCompile>
@@ -468,6 +474,9 @@
       <Filter>Source\Engine\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\EngineTypes.cpp">
+      <Filter>Source\Engine\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Logger.cpp">
       <Filter>Source\Engine\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\Paths.cpp">
@@ -767,6 +776,15 @@
     <ClCompile Include="Source\Engine\Spatial\WorldSpatialIndex.cpp">
       <Filter>Source\Engine\Spatial</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Viewport\ViewportCamera.cpp">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\GameEngine.cpp">
+      <Filter>Source\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\GameTypes.cpp">
+      <Filter>Source\Game</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Misc\ObjViewer\ObjViewerEngine.cpp">
       <Filter>Source\Misc\ObjViewer</Filter>
     </ClCompile>
@@ -1058,6 +1076,9 @@
     <ClInclude Include="Source\Engine\Core\EngineTypes.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Logger.h">
+      <Filter>Source\Engine\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Core\Paths.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
@@ -1154,7 +1175,13 @@
     <ClInclude Include="Source\Engine\Geometry\Triangle.h">
       <Filter>Source\Engine\Geometry</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Input\IInputController.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputTypes.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\Color.h">
@@ -1430,6 +1457,9 @@
     <ClInclude Include="Source\Engine\Serialization\SceneSaveManager.h">
       <Filter>Source\Engine\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Settings\EngineSettings.h">
+      <Filter>Source\Engine\Settings</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Slate\ISlateViewport.h">
       <Filter>Source\Engine\Slate</Filter>
     </ClInclude>
@@ -1468,6 +1498,18 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Spatial\WorldSpatialIndex.h">
       <Filter>Source\Engine\Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Viewport\ViewportCamera.h">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\GameEngine.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\GameTypes.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Config\GameConfig.h">
+      <Filter>Source\Game\Config</Filter>
     </ClInclude>
     <ClInclude Include="Source\Misc\ObjViewer\ObjViewerEngine.h">
       <Filter>Source\Misc\ObjViewer</Filter>
@@ -1858,9 +1900,6 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\IInputController.h">
-      <Filter>Source\Engine\Input</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

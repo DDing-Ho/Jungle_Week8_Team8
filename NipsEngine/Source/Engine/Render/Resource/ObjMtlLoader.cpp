@@ -2,7 +2,7 @@
 #include "Asset/FileUtils.h"
 #include "Core/Paths.h"
 #include "Core/ResourceManager.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 #include <algorithm>
 #include <cctype>

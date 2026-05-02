@@ -1,7 +1,7 @@
 #include "ShadowPass.h"
 
 #include "Core/ResourceManager.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 namespace
 {
