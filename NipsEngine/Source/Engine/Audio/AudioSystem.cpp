@@ -30,6 +30,22 @@ namespace
 		return Value;
 	}
 
+	float Clamp01(float Value)
+	{
+		if (Value < 0.0f) return 0.0f;
+		if (Value > 1.0f) return 1.0f;
+		return Value;
+	}
+
+	float ClampLowPassCutoff(float Value)
+	{
+		if (Value < 100.0f) return 100.0f;
+		if (Value > 20000.0f) return 20000.0f;
+		return Value;
+	}
+
+	constexpr float ZoneReverbBypassWetThreshold = 0.001f;
+
 	FVector ToAudioVector(const FVector& WorldVector)
 	{
 		return FVector(WorldVector.X, -WorldVector.Y, WorldVector.Z);
@@ -57,18 +73,21 @@ struct FAudioSystemImpl
 	struct FActiveSound
 	{
 		std::unique_ptr<ma_sound> Sound;
+		FString ResolvedSoundPath;
 		bool bLoop = false;
+		bool bSpatial = false;
 		bool bAffectedByAudioZones = true;
+		bool bUsingZoneEffectBus = false;
 		EAudioBus Bus = EAudioBus::SFX;
 		float BaseVolume = 1.0f;
+		float MinDistance = 1.0f;
+		float MaxDistance = 8.0f;
 		FVector Location = FVector::ZeroVector;
 	};
 
 	struct FZoneMix
 	{
 		int32 Priority = 0;
-		float FadeInTime = 1.0f;
-		float FadeOutTime = 1.0f;
 		float Weight = 0.0f;
 		FVector Location = FVector::ZeroVector;
 		FVector Forward = FVector(1.0f, 0.0f, 0.0f);
@@ -83,14 +102,31 @@ struct FAudioSystemImpl
 		float ExteriorSFXVolume = 1.0f;
 		float ExteriorMusicVolume = 1.0f;
 		float ExteriorAmbientVolume = 1.0f;
+		float InteriorLowPassCutoff = 20000.0f;
+		float ExteriorLowPassCutoff = 20000.0f;
+		float InteriorReverbWet = 0.0f;
+		float InteriorReverbDecay = 0.35f;
+		float ExteriorReverbWet = 0.0f;
+		float ExteriorReverbDecay = 0.35f;
 	};
 
 	ma_engine Engine{};
 	bool bInitialized = false;
+	bool bZoneEffectBusReady = false;
 	uint32 NextHandleId = 1;
+	std::unique_ptr<ma_sound_group> ZoneEffectGroup;
+	std::unique_ptr<ma_lpf_node> ZoneLowPassNode;
+	std::unique_ptr<ma_delay_node> ZoneReverbNode;
+	float CurrentZoneLowPassCutoff = 20000.0f;
+	float CurrentZoneReverbWet = 0.0f;
+	float CurrentZoneReverbDecay = 0.35f;
+	bool bZoneReverbBypassed = true;
+	ma_uint32 EffectChannels = 2;
+	ma_uint32 EffectSampleRate = 48000;
 	std::unordered_map<uint32, FActiveSound> ActiveSounds;
 	std::unordered_map<uint32, FZoneMix> ZoneMixes;
 	FVector ListenerLocation = FVector::ZeroVector;
+	uint32 LastListenerZoneId = 0;
 
 	bool IsPointInsideZone(const FVector& Point, const FZoneMix& Zone) const
 	{
@@ -104,6 +140,18 @@ struct FAudioSystemImpl
 			&& std::abs(LocalZ) <= Zone.Extent.Z;
 	}
 
+	float GetDistanceSqToZone(const FVector& Point, const FZoneMix& Zone) const
+	{
+		const FVector Delta = Point - Zone.Location;
+		const float LocalX = FVector::DotProduct(Delta, Zone.Forward);
+		const float LocalY = FVector::DotProduct(Delta, Zone.Right);
+		const float LocalZ = FVector::DotProduct(Delta, Zone.Up);
+		const float OutsideX = std::max(std::abs(LocalX) - Zone.Extent.X, 0.0f);
+		const float OutsideY = std::max(std::abs(LocalY) - Zone.Extent.Y, 0.0f);
+		const float OutsideZ = std::max(std::abs(LocalZ) - Zone.Extent.Z, 0.0f);
+		return OutsideX * OutsideX + OutsideY * OutsideY + OutsideZ * OutsideZ;
+	}
+
 	const FZoneMix* FindBestListenerZone() const
 	{
 		const FZoneMix* BestZone = nullptr;
@@ -112,7 +160,7 @@ struct FAudioSystemImpl
 			const FZoneMix& Zone = Pair.second;
 			if (Zone.Weight <= 0.0f)
 			{
-				continue;
+				continue;  
 			}
 
 			if (!BestZone ||
@@ -123,6 +171,70 @@ struct FAudioSystemImpl
 			}
 		}
 		return BestZone;
+	}
+
+	uint32 FindBestContainingListenerZoneId() const
+	{
+		uint32 BestZoneId = 0;
+		const FZoneMix* BestZone = nullptr;
+		for (const auto& Pair : ZoneMixes)
+		{
+			const FZoneMix& Zone = Pair.second;
+			if (!IsPointInsideZone(ListenerLocation, Zone))
+			{
+				continue;
+			}
+
+			if (!BestZone ||
+				Zone.Priority > BestZone->Priority ||
+				(Zone.Priority == BestZone->Priority && Pair.first == LastListenerZoneId))
+			{
+				BestZoneId = Pair.first;
+				BestZone = &Zone;
+			}
+		}
+		return BestZoneId;
+	}
+
+	uint32 FindBestExteriorListenerZoneId() const
+	{
+		uint32 BestZoneId = 0;
+		const FZoneMix* BestZone = nullptr;
+		float BestDistanceSq = 0.0f;
+		for (const auto& Pair : ZoneMixes)
+		{
+			const FZoneMix& Zone = Pair.second;
+			const float DistanceSq = GetDistanceSqToZone(ListenerLocation, Zone);
+			if (!BestZone ||
+				Zone.Priority > BestZone->Priority ||
+				(Zone.Priority == BestZone->Priority && DistanceSq < BestDistanceSq))
+			{
+				BestZoneId = Pair.first;
+				BestZone = &Zone;
+				BestDistanceSq = DistanceSq;
+			}
+		}
+		return BestZoneId;
+	}
+
+	bool IsListenerInsideAnyZone() const
+	{
+		for (const auto& Pair : ZoneMixes)
+		{
+			if (IsPointInsideZone(ListenerLocation, Pair.second))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool ShouldUseZoneEffectBus(const FActiveSound& ActiveSound) const
+	{
+		return ActiveSound.bAffectedByAudioZones
+			&& bZoneEffectBusReady
+			&& ZoneEffectGroup
+			&& FindBestListenerZone() != nullptr;
 	}
 
 	float GetZoneBusVolume(const FZoneMix& Zone, EAudioBus Bus, bool bSourceInside) const
@@ -159,14 +271,99 @@ struct FAudioSystemImpl
 		const FZoneMix* BestZone = ActiveSound.bAffectedByAudioZones ? FindBestListenerZone() : nullptr;
 		if (BestZone)
 		{
-			const bool bSourceInside = IsPointInsideZone(ActiveSound.Location, *BestZone);
-			const float Master = bSourceInside ? BestZone->InteriorMasterVolume : BestZone->ExteriorMasterVolume;
-			const float BusVolume = GetZoneBusVolume(*BestZone, ActiveSound.Bus, bSourceInside);
+			const bool bListenerInside = IsPointInsideZone(ListenerLocation, *BestZone);
+			const float Master = bListenerInside ? BestZone->InteriorMasterVolume : BestZone->ExteriorMasterVolume;
+			const float BusVolume = GetZoneBusVolume(*BestZone, ActiveSound.Bus, bListenerInside);
 			const float Weight = std::clamp(BestZone->Weight, 0.0f, 1.0f);
 			Multiplier = 1.0f + ((Master * BusVolume) - 1.0f) * Weight;
 		}
 
 		return ClampVolume(ActiveSound.BaseVolume * Multiplier);
+	}
+
+	float GetEffectiveLowPassCutoff(const FActiveSound& ActiveSound) const
+	{
+		const FZoneMix* BestZone = ActiveSound.bAffectedByAudioZones ? FindBestListenerZone() : nullptr;
+		if (!BestZone)
+		{
+			return 20000.0f;
+		}
+
+		const bool bListenerInside = IsPointInsideZone(ListenerLocation, *BestZone);
+		const float TargetCutoff = bListenerInside ? BestZone->InteriorLowPassCutoff : BestZone->ExteriorLowPassCutoff;
+		const float Weight = std::clamp(BestZone->Weight, 0.0f, 1.0f);
+		return ClampLowPassCutoff(20000.0f + (TargetCutoff - 20000.0f) * Weight);
+	}
+
+	void GetEffectiveReverb(const FActiveSound& ActiveSound, float& OutWet, float& OutDecay) const
+	{
+		OutWet = 0.0f;
+		OutDecay = 0.35f;
+
+		const FZoneMix* BestZone = ActiveSound.bAffectedByAudioZones ? FindBestListenerZone() : nullptr;
+		if (!BestZone)
+		{
+			return;
+		}
+
+		const bool bListenerInside = IsPointInsideZone(ListenerLocation, *BestZone);
+		const float TargetWet = bListenerInside ? BestZone->InteriorReverbWet : BestZone->ExteriorReverbWet;
+		const float TargetDecay = bListenerInside ? BestZone->InteriorReverbDecay : BestZone->ExteriorReverbDecay;
+		const float Weight = std::clamp(BestZone->Weight, 0.0f, 1.0f);
+		OutWet = Clamp01(TargetWet * Weight);
+		OutDecay = Clamp01(TargetDecay);
+	}
+
+	float GetZoneEffectLowPassCutoff() const
+	{
+		const FZoneMix* BestZone = FindBestListenerZone();
+		if (!BestZone)
+		{
+			return 20000.0f;
+		}
+
+		const bool bListenerInside = IsPointInsideZone(ListenerLocation, *BestZone);
+		const float TargetCutoff = bListenerInside ? BestZone->InteriorLowPassCutoff : BestZone->ExteriorLowPassCutoff;
+		const float Weight = std::clamp(BestZone->Weight, 0.0f, 1.0f);
+		return ClampLowPassCutoff(20000.0f + (TargetCutoff - 20000.0f) * Weight);
+	}
+
+	void GetZoneEffectReverb(float& OutWet, float& OutDecay) const
+	{
+		OutWet = 0.0f;
+		OutDecay = 0.35f;
+
+		const FZoneMix* BestZone = FindBestListenerZone();
+		if (!BestZone)
+		{
+			return;
+		}
+
+		const bool bListenerInside = IsPointInsideZone(ListenerLocation, *BestZone);
+		const float TargetWet = bListenerInside ? BestZone->InteriorReverbWet : BestZone->ExteriorReverbWet;
+		const float TargetDecay = bListenerInside ? BestZone->InteriorReverbDecay : BestZone->ExteriorReverbDecay;
+		const float Weight = std::clamp(BestZone->Weight, 0.0f, 1.0f);
+		OutWet = Clamp01(TargetWet * Weight);
+		OutDecay = Clamp01(TargetDecay);
+	}
+
+	bool SetZoneReverbBypassed(bool bBypass)
+	{
+		if (!ZoneLowPassNode || !ZoneReverbNode)
+		{
+			return false;
+		}
+
+		ma_node* TargetNode = bBypass ? ma_engine_get_endpoint(&Engine) : reinterpret_cast<ma_node*>(ZoneReverbNode.get());
+		const ma_result Result = ma_node_attach_output_bus(ZoneLowPassNode.get(), 0, TargetNode, 0);
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to route zone reverb bypass. error=%d", static_cast<int>(Result));
+			return false;
+		}
+
+		bZoneReverbBypassed = bBypass;
+		return true;
 	}
 
 	void ApplyVolume(FActiveSound& ActiveSound)
@@ -177,36 +374,280 @@ struct FAudioSystemImpl
 		}
 	}
 
+	void ApplyEffects(FActiveSound& ActiveSound)
+	{
+		(void)ActiveSound;
+	}
+
+	void ApplyZoneEffectSettings()
+	{
+		if (!bZoneEffectBusReady || !ZoneLowPassNode || !ZoneReverbNode)
+		{
+			return;
+		}
+
+		const float MaxCutoff = std::max(100.0f, static_cast<float>(EffectSampleRate) * 0.45f);
+		const float Cutoff = std::min(GetZoneEffectLowPassCutoff(), MaxCutoff);
+		if (std::fabs(CurrentZoneLowPassCutoff - Cutoff) > 10.0f)
+		{
+			const ma_lpf_config Config = ma_lpf_config_init(ma_format_f32, EffectChannels, EffectSampleRate, Cutoff, 2);
+			if (ma_lpf_node_reinit(&Config, ZoneLowPassNode.get()) == MA_SUCCESS)
+			{
+				CurrentZoneLowPassCutoff = Cutoff;
+			}
+		}
+
+		float ReverbWet = 0.0f;
+		float ReverbDecay = 0.35f;
+		GetZoneEffectReverb(ReverbWet, ReverbDecay);
+		const bool bShouldBypassReverb = ReverbWet <= ZoneReverbBypassWetThreshold;
+		if (bZoneReverbBypassed != bShouldBypassReverb)
+		{
+			SetZoneReverbBypassed(bShouldBypassReverb);
+		}
+
+		if (std::fabs(CurrentZoneReverbWet - ReverbWet) > 0.001f)
+		{
+			ma_delay_node_set_wet(ZoneReverbNode.get(), ReverbWet);
+			ma_delay_node_set_dry(ZoneReverbNode.get(), 1.0f + (ReverbWet * 0.25f));
+			CurrentZoneReverbWet = ReverbWet;
+		}
+		if (std::fabs(CurrentZoneReverbDecay - ReverbDecay) > 0.001f)
+		{
+			ma_delay_node_set_decay(ZoneReverbNode.get(), ReverbDecay);
+			CurrentZoneReverbDecay = ReverbDecay;
+		}
+	}
+
+	void ApplySoundSettings(FActiveSound& ActiveSound)
+	{
+		ApplyVolume(ActiveSound);
+		ApplyEffects(ActiveSound);
+	}
+
 	void ApplyVolumes()
+	{
+		ApplyZoneEffectSettings();
+		UpdateSoundRoutes();
+		for (auto& Pair : ActiveSounds)
+		{
+			ApplySoundSettings(Pair.second);
+		}
+	}
+
+	bool InitSoundInstance(FActiveSound& ActiveSound, bool bUseZoneEffectBus, const FString& LogPath)
+	{
+		ma_sound_group* TargetGroup = bUseZoneEffectBus ? ZoneEffectGroup.get() : nullptr;
+		auto NewSound = std::make_unique<ma_sound>();
+		ma_result Result = ma_sound_init_from_file(&Engine, ActiveSound.ResolvedSoundPath.c_str(), 0, TargetGroup, nullptr, NewSound.get());
+		if (Result != MA_SUCCESS && TargetGroup)
+		{
+			UE_LOG("AudioSystem: failed to load sound through zone effect bus '%s'. Retrying without effects. error=%d", LogPath.c_str(), static_cast<int>(Result));
+			TargetGroup = nullptr;
+			NewSound = std::make_unique<ma_sound>();
+			Result = ma_sound_init_from_file(&Engine, ActiveSound.ResolvedSoundPath.c_str(), 0, nullptr, nullptr, NewSound.get());
+		}
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to load sound '%s'. error=%d", LogPath.c_str(), static_cast<int>(Result));
+			return false;
+		}
+
+		ma_sound_set_looping(NewSound.get(), ActiveSound.bLoop ? MA_TRUE : MA_FALSE);
+		ma_sound_set_spatialization_enabled(NewSound.get(), ActiveSound.bSpatial ? MA_TRUE : MA_FALSE);
+
+		if (ActiveSound.bSpatial)
+		{
+			const float SafeMinDistance = std::max(0.01f, ActiveSound.MinDistance);
+			const float SafeMaxDistance = std::max(SafeMinDistance, ActiveSound.MaxDistance);
+			const FVector AudioLocation = ToAudioVector(ActiveSound.Location);
+			ma_sound_set_position(NewSound.get(), AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
+			ma_sound_set_attenuation_model(NewSound.get(), ma_attenuation_model_linear);
+			ma_sound_set_min_distance(NewSound.get(), SafeMinDistance);
+			ma_sound_set_max_distance(NewSound.get(), SafeMaxDistance);
+		}
+
+		ActiveSound.Sound = std::move(NewSound);
+		ActiveSound.bUsingZoneEffectBus = TargetGroup != nullptr;
+		return true;
+	}
+
+	void UpdateSoundRoutes()
 	{
 		for (auto& Pair : ActiveSounds)
 		{
-			ApplyVolume(Pair.second);
+			FActiveSound& ActiveSound = Pair.second;
+			if (!ActiveSound.Sound || ActiveSound.ResolvedSoundPath.empty())
+			{
+				continue;
+			}
+
+			const bool bShouldUseZoneEffectBus = ShouldUseZoneEffectBus(ActiveSound);
+			if (ActiveSound.bUsingZoneEffectBus == bShouldUseZoneEffectBus)
+			{
+				continue;
+			}
+
+			float CursorSeconds = 0.0f;
+			ma_sound_get_cursor_in_seconds(ActiveSound.Sound.get(), &CursorSeconds);
+			const bool bWasPlaying = ma_sound_is_playing(ActiveSound.Sound.get()) == MA_TRUE;
+			const FString LogPath = ActiveSound.ResolvedSoundPath;
+
+			ma_sound_stop(ActiveSound.Sound.get());
+			ma_sound_uninit(ActiveSound.Sound.get());
+			ActiveSound.Sound.reset();
+
+			if (!InitSoundInstance(ActiveSound, bShouldUseZoneEffectBus, LogPath))
+			{
+				continue;
+			}
+
+			if (CursorSeconds > 0.0f)
+			{
+				ma_sound_seek_to_second(ActiveSound.Sound.get(), CursorSeconds);
+			}
+			ApplySoundSettings(ActiveSound);
+			if (bWasPlaying)
+			{
+				ma_sound_start(ActiveSound.Sound.get());
+			}
 		}
+	}
+
+	void UninitActiveSound(FActiveSound& ActiveSound)
+	{
+		if (ActiveSound.Sound)
+		{
+			ma_sound_stop(ActiveSound.Sound.get());
+			ma_sound_uninit(ActiveSound.Sound.get());
+			ActiveSound.Sound.reset();
+		}
+	}
+
+	void ShutdownZoneEffectBus()
+	{
+		bZoneEffectBusReady = false;
+		if (ZoneEffectGroup)
+		{
+			ma_sound_group_stop(ZoneEffectGroup.get());
+			ma_sound_group_uninit(ZoneEffectGroup.get());
+			ZoneEffectGroup.reset();
+		}
+		if (ZoneLowPassNode)
+		{
+			ma_node_detach_output_bus(ZoneLowPassNode.get(), 0);
+			ma_lpf_node_uninit(ZoneLowPassNode.get(), nullptr);
+			ZoneLowPassNode.reset();
+		}
+		if (ZoneReverbNode)
+		{
+			ma_node_detach_output_bus(ZoneReverbNode.get(), 0);
+			ma_delay_node_uninit(ZoneReverbNode.get(), nullptr);
+			ZoneReverbNode.reset();
+		}
+	}
+
+	bool InitZoneEffectBus()
+	{
+		ShutdownZoneEffectBus();
+
+		EffectChannels = std::max<ma_uint32>(1, ma_engine_get_channels(&Engine));
+		EffectSampleRate = std::max<ma_uint32>(1, ma_engine_get_sample_rate(&Engine));
+		ZoneLowPassNode = std::make_unique<ma_lpf_node>();
+		ZoneReverbNode = std::make_unique<ma_delay_node>();
+		ZoneEffectGroup = std::make_unique<ma_sound_group>();
+
+		ma_node_graph* NodeGraph = ma_engine_get_node_graph(&Engine);
+		ma_lpf_node_config LowPassConfig = ma_lpf_node_config_init(EffectChannels, EffectSampleRate, 20000.0, 2);
+		ma_result Result = ma_lpf_node_init(NodeGraph, &LowPassConfig, nullptr, ZoneLowPassNode.get());
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to initialize zone low pass node. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		const ma_uint32 DelayFrames = std::max<ma_uint32>(1, static_cast<ma_uint32>(static_cast<double>(EffectSampleRate) * 0.085));
+		ma_delay_node_config ReverbConfig = ma_delay_node_config_init(EffectChannels, EffectSampleRate, DelayFrames, 0.35f);
+		Result = ma_delay_node_init(NodeGraph, &ReverbConfig, nullptr, ZoneReverbNode.get());
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to initialize zone reverb node. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		ma_delay_node_set_wet(ZoneReverbNode.get(), 0.0f);
+		ma_delay_node_set_dry(ZoneReverbNode.get(), 1.0f);
+		Result = ma_node_attach_output_bus(ZoneLowPassNode.get(), 0, ma_engine_get_endpoint(&Engine), 0);
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to route zone low pass node. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		Result = ma_node_attach_output_bus(ZoneReverbNode.get(), 0, ma_engine_get_endpoint(&Engine), 0);
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to route zone reverb node. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		ma_sound_group_config GroupConfig = ma_sound_group_config_init_2(&Engine);
+		GroupConfig.pInitialAttachment = ZoneLowPassNode.get();
+		GroupConfig.initialAttachmentInputBusIndex = 0;
+		GroupConfig.channelsOut = EffectChannels;
+		Result = ma_sound_group_init_ex(&Engine, &GroupConfig, ZoneEffectGroup.get());
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to initialize zone effect group. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		Result = ma_sound_group_start(ZoneEffectGroup.get());
+		if (Result != MA_SUCCESS)
+		{
+			UE_LOG("AudioSystem: failed to start zone effect group. Audio zone effects disabled. error=%d", static_cast<int>(Result));
+			ShutdownZoneEffectBus();
+			return false;
+		}
+
+		bZoneEffectBusReady = true;
+		CurrentZoneLowPassCutoff = 20000.0f;
+		CurrentZoneReverbWet = 0.0f;
+		CurrentZoneReverbDecay = 0.35f;
+		bZoneReverbBypassed = true;
+		return true;
 	}
 
 	void UpdateZoneWeights(float DeltaTime)
 	{
+		(void)DeltaTime;
+
+		const uint32 ContainingZoneId = FindBestContainingListenerZoneId();
+		if (ContainingZoneId != 0)
+		{
+			LastListenerZoneId = ContainingZoneId;
+		}
+		else
+		{
+			if (LastListenerZoneId != 0 && ZoneMixes.find(LastListenerZoneId) == ZoneMixes.end())
+			{
+				LastListenerZoneId = 0;
+			}
+			if (LastListenerZoneId == 0)
+			{
+				LastListenerZoneId = FindBestExteriorListenerZoneId();
+			}
+		}
+
 		for (auto& Pair : ZoneMixes)
 		{
 			FZoneMix& Zone = Pair.second;
-			const bool bListenerInside = IsPointInsideZone(ListenerLocation, Zone);
-			const float TargetWeight = bListenerInside ? 1.0f : 0.0f;
-			const float FadeTime = bListenerInside ? Zone.FadeInTime : Zone.FadeOutTime;
-			if (FadeTime <= 0.0f)
-			{
-				Zone.Weight = TargetWeight;
-				continue;
-			}
-			const float Step = DeltaTime / FadeTime;
-			if (Zone.Weight < TargetWeight)
-			{
-				Zone.Weight = std::min(TargetWeight, Zone.Weight + Step);
-			}
-			else if (Zone.Weight > TargetWeight)
-			{
-				Zone.Weight = std::max(TargetWeight, Zone.Weight - Step);
-			}
+			Zone.Weight = Pair.first == LastListenerZoneId ? 1.0f : 0.0f;
 		}
 	}
 };
@@ -244,6 +685,7 @@ bool FAudioSystem::Init()
 	}
 
 	Impl->bInitialized = true;
+	Impl->InitZoneEffectBus();
 	UE_LOG("AudioSystem: initialized.");
 	return true;
 #else
@@ -265,7 +707,9 @@ void FAudioSystem::Shutdown()
 	}
 
 	StopAll();
+	Impl->ShutdownZoneEffectBus();
 	Impl->ZoneMixes.clear();
+	Impl->LastListenerZoneId = 0;
 	ma_engine_uninit(&Impl->Engine);
 	Impl->bInitialized = false;
 	UE_LOG("AudioSystem: shutdown.");
@@ -289,10 +733,7 @@ void FAudioSystem::Tick(float DeltaTime)
 		ma_sound* Sound = It->second.Sound.get();
 		if (!Sound || (!It->second.bLoop && ma_sound_at_end(Sound)))
 		{
-			if (Sound)
-			{
-				ma_sound_uninit(Sound);
-			}
+			Impl->UninitActiveSound(It->second);
 			It = Impl->ActiveSounds.erase(It);
 			continue;
 		}
@@ -356,44 +797,30 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 		return {};
 	}
 
-	auto Sound = std::make_unique<ma_sound>();
-	const ma_uint32 Flags = 0;
-	ma_result Result = ma_sound_init_from_file(&Impl->Engine, AbsolutePath.c_str(), Flags, nullptr, nullptr, Sound.get());
-	if (Result != MA_SUCCESS)
-	{
-		UE_LOG("AudioSystem: failed to load sound '%s'. error=%d", SoundPath.c_str(), static_cast<int>(Result));
-		return {};
-	}
-
 	const float BaseVolume = ClampVolume(Params.Volume);
-	ma_sound_set_looping(Sound.get(), Params.bLoop ? MA_TRUE : MA_FALSE);
-	ma_sound_set_spatialization_enabled(Sound.get(), Params.bSpatial ? MA_TRUE : MA_FALSE);
-
-	if (Params.bSpatial)
-	{
-		const float MinDistance = std::max(0.01f, Params.MinDistance);
-		const float MaxDistance = std::max(MinDistance, Params.MaxDistance);
-		const FVector AudioLocation = ToAudioVector(Params.Location);
-		ma_sound_set_position(Sound.get(), AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
-		ma_sound_set_attenuation_model(Sound.get(), ma_attenuation_model_linear);
-		ma_sound_set_min_distance(Sound.get(), MinDistance);
-		ma_sound_set_max_distance(Sound.get(), MaxDistance);
-	}
-
 	FAudioSystemImpl::FActiveSound ActiveSound;
-	ActiveSound.Sound = std::move(Sound);
+	ActiveSound.ResolvedSoundPath = AbsolutePath;
 	ActiveSound.bLoop = Params.bLoop;
+	ActiveSound.bSpatial = Params.bSpatial;
 	ActiveSound.bAffectedByAudioZones = Params.bAffectedByAudioZones;
 	ActiveSound.Bus = Params.Bus;
 	ActiveSound.BaseVolume = BaseVolume;
+	ActiveSound.MinDistance = Params.MinDistance;
+	ActiveSound.MaxDistance = Params.MaxDistance;
 	ActiveSound.Location = Params.Location;
-	Impl->ApplyVolume(ActiveSound);
 
-	Result = ma_sound_start(ActiveSound.Sound.get());
+	if (!Impl->InitSoundInstance(ActiveSound, Impl->ShouldUseZoneEffectBus(ActiveSound), SoundPath))
+	{
+		return {};
+	}
+
+	Impl->ApplySoundSettings(ActiveSound);
+
+	ma_result Result = ma_sound_start(ActiveSound.Sound.get());
 	if (Result != MA_SUCCESS)
 	{
 		UE_LOG("AudioSystem: failed to start sound '%s'. error=%d", SoundPath.c_str(), static_cast<int>(Result));
-		ma_sound_uninit(ActiveSound.Sound.get());
+		Impl->UninitActiveSound(ActiveSound);
 		return {};
 	}
 
@@ -428,13 +855,7 @@ void FAudioSystem::Stop(FAudioHandle Handle)
 		return;
 	}
 
-	ma_sound* Sound = It->second.Sound.get();
-	if (Sound)
-	{
-		ma_sound_stop(Sound);
-		ma_sound_uninit(Sound);
-	}
-
+	Impl->UninitActiveSound(It->second);
 	Impl->ActiveSounds.erase(It);
 #else
 	(void)Handle;
@@ -512,12 +933,7 @@ void FAudioSystem::StopAll()
 
 	for (auto& Pair : Impl->ActiveSounds)
 	{
-		ma_sound* Sound = Pair.second.Sound.get();
-		if (Sound)
-		{
-			ma_sound_stop(Sound);
-			ma_sound_uninit(Sound);
-		}
+		Impl->UninitActiveSound(Pair.second);
 	}
 
 	Impl->ActiveSounds.clear();
@@ -576,7 +992,7 @@ void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 	}
 
 	It->second.BaseVolume = ClampVolume(Volume);
-	Impl->ApplyVolume(It->second);
+	Impl->ApplySoundSettings(It->second);
 #else
 	(void)Handle;
 	(void)Volume;
@@ -626,7 +1042,7 @@ void FAudioSystem::SetAffectedByAudioZones(FAudioHandle Handle, bool bAffected)
 	}
 
 	It->second.bAffectedByAudioZones = bAffected;
-	Impl->ApplyVolume(It->second);
+	Impl->ApplySoundSettings(It->second);
 #else
 	(void)Handle;
 	(void)bAffected;
@@ -761,7 +1177,7 @@ void FAudioSystem::SetSoundPosition(FAudioHandle Handle, const FVector& Location
 	const FVector AudioLocation = ToAudioVector(Location);
 	It->second.Location = Location;
 	ma_sound_set_position(It->second.Sound.get(), AudioLocation.X, AudioLocation.Y, AudioLocation.Z);
-	Impl->ApplyVolume(It->second);
+	Impl->ApplySoundSettings(It->second);
 #else
 	(void)Handle;
 	(void)Location;
@@ -790,10 +1206,13 @@ void FAudioSystem::SetListenerTransform(const FVector& Location, const FVector& 
 #endif
 }
 
-void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime, float FadeOutTime,
+void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority,
 	const FVector& Location, const FVector& Forward, const FVector& Right, const FVector& Up, const FVector& Extent,
 	float InteriorMasterVolume, float InteriorSFXVolume, float InteriorMusicVolume, float InteriorAmbientVolume,
-	float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume)
+	float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume,
+	float InteriorLowPassCutoff, float ExteriorLowPassCutoff,
+	float InteriorReverbWet, float InteriorReverbDecay,
+	float ExteriorReverbWet, float ExteriorReverbDecay)
 {
 #if NIPS_WITH_MINIAUDIO
 	if (ZoneId == 0)
@@ -803,8 +1222,6 @@ void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime
 
 	FAudioSystemImpl::FZoneMix& Zone = Impl->ZoneMixes[ZoneId];
 	Zone.Priority = Priority;
-	Zone.FadeInTime = std::max(0.0f, FadeInTime);
-	Zone.FadeOutTime = std::max(0.0f, FadeOutTime);
 	Zone.Location = Location;
 	Zone.Forward = Forward.GetSafeNormal();
 	Zone.Right = Right.GetSafeNormal();
@@ -818,11 +1235,15 @@ void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime
 	Zone.ExteriorSFXVolume = ClampVolume(ExteriorSFXVolume);
 	Zone.ExteriorMusicVolume = ClampVolume(ExteriorMusicVolume);
 	Zone.ExteriorAmbientVolume = ClampVolume(ExteriorAmbientVolume);
+	Zone.InteriorLowPassCutoff = ClampLowPassCutoff(InteriorLowPassCutoff);
+	Zone.ExteriorLowPassCutoff = ClampLowPassCutoff(ExteriorLowPassCutoff);
+	Zone.InteriorReverbWet = Clamp01(InteriorReverbWet);
+	Zone.InteriorReverbDecay = Clamp01(InteriorReverbDecay);
+	Zone.ExteriorReverbWet = Clamp01(ExteriorReverbWet);
+	Zone.ExteriorReverbDecay = Clamp01(ExteriorReverbDecay);
 #else
 	(void)ZoneId;
 	(void)Priority;
-	(void)FadeInTime;
-	(void)FadeOutTime;
 	(void)Location;
 	(void)Forward;
 	(void)Right;
@@ -836,6 +1257,12 @@ void FAudioSystem::SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime
 	(void)ExteriorSFXVolume;
 	(void)ExteriorMusicVolume;
 	(void)ExteriorAmbientVolume;
+	(void)InteriorLowPassCutoff;
+	(void)ExteriorLowPassCutoff;
+	(void)InteriorReverbWet;
+	(void)InteriorReverbDecay;
+	(void)ExteriorReverbWet;
+	(void)ExteriorReverbDecay;
 #endif
 }
 
@@ -848,6 +1275,10 @@ void FAudioSystem::RemoveZoneMix(uint32 ZoneId)
 	}
 
 	Impl->ZoneMixes.erase(ZoneId);
+	if (Impl->LastListenerZoneId == ZoneId)
+	{
+		Impl->LastListenerZoneId = 0;
+	}
 	Impl->ApplyVolumes();
 #else
 	(void)ZoneId;
