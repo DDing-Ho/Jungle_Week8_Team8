@@ -20,8 +20,8 @@
 
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
-#include "UI/EditorConsoleWidget.h"
-#include "Settings/EditorSettings.h"
+#include "Core/Logger.h"
+#include "Settings/EngineSettings.h"
 #include "Asset/BinarySerializer.h"
 #include "Asset/StaticMeshTypes.h"
 #include "Asset/StaticMeshSimplifier.h"
@@ -2169,7 +2169,7 @@ UStaticMesh* FResourceManager::LoadStaticMeshWithOptions(const FString& Path, co
 	UStaticMesh* LoadedMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
 	LoadedMesh->SetMeshData(LoadedMeshData);
 
-	if (FEditorSettings::Get().ShowFlags.bEnableLOD)
+	if (FEngineSettings::Get().bEnableStaticMeshLOD)
 	{
 		const auto LodStart = std::chrono::steady_clock::now();
 		FStaticMeshSimplifier::BuildLODs(LoadedMesh);

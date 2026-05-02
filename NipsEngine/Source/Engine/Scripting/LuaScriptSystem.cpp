@@ -1,10 +1,10 @@
-﻿#include "Scripting/LuaScriptSystem.h"
+#include "Scripting/LuaScriptSystem.h"
 
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Scripting/LuaBindings.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 #include <algorithm>
 #include <string>

@@ -1,5 +1,5 @@
 ﻿#include <d3d11.h>
-#include <UI/EditorConsoleWidget.h>
+#include "Core/Logger.h"
 #include "SubUVBatcher.h"
 #include "Core/CoreTypes.h"
 #include "Core/ResourceManager.h"
@@ -62,7 +62,6 @@ void FSubUVBatcher::AddSprite(UTexture* Texture,
                               float Width,
                               float Height)
 {
-	// Batch�� ����ְų� SRV�� 
 	if (Batches.empty() || Batches.back().Texture != Texture)
 	{
 		FSRVBatch batch;
@@ -78,10 +77,10 @@ void FSubUVBatcher::AddSprite(UTexture* Texture,
     const float HalfW = Width  * WorldScale.Y * 0.25f;
     const float HalfH = Height * WorldScale.Z * 0.25f;
 
-    FVector v0 = WorldPos + CamRight * (-HalfW) + CamUp * ( HalfH); // �»�
-    FVector v1 = WorldPos + CamRight * ( HalfW) + CamUp * ( HalfH); // ���
-    FVector v2 = WorldPos + CamRight * (-HalfW) + CamUp * (-HalfH); // ����
-    FVector v3 = WorldPos + CamRight * ( HalfW) + CamUp * (-HalfH); // ����
+    FVector v0 = WorldPos + CamRight * (-HalfW) + CamUp * ( HalfH);
+    FVector v1 = WorldPos + CamRight * ( HalfW) + CamUp * ( HalfH);
+    FVector v2 = WorldPos + CamRight * (-HalfW) + CamUp * (-HalfH);
+    FVector v3 = WorldPos + CamRight * ( HalfW) + CamUp * (-HalfH);
 
 	uint32 LocalBase = static_cast<uint32>(Vertices.size()) 
 		- static_cast<uint32>(Batches.back().BaseVertex);

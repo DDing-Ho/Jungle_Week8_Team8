@@ -1,5 +1,5 @@
-﻿#include "RenderBus.h"
-#include <UI/EditorConsoleWidget.h>
+#include "RenderBus.h"
+#include "Core/Logger.h"
 
 void FRenderBus::Clear()
 {

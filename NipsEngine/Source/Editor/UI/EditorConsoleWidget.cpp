@@ -10,15 +10,18 @@
 // 콘솔 초기화 시점에 입력될 명령어를 등록한다.
 FEditorConsoleWidget::FEditorConsoleWidget() 
 {
+	FLogger::SetMessage(&FEditorConsoleWidget::AddMessage);
+
 	// 임의의 명령어 문자열이 들어왔을 때 뒤의 함수를 실행하도록 분기한다.
 	RegisterCommand("stat", [this](const TArray<FString>& Args) { CmdStat(Args); });
-    RegisterCommand("shadow_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
-    RegisterCommand("shader_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
+	RegisterCommand("shadow_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
+	RegisterCommand("shader_filter", [this](const TArray<FString>& Args) { CmdShadowFilter(Args); });
 }
 
 FEditorConsoleWidget::~FEditorConsoleWidget() 
 {
-    Clear();
+	FLogger::ClearMessage(&FEditorConsoleWidget::AddMessage);
+	Clear();
 	ClearHistory();
 }
 
@@ -28,7 +31,12 @@ void FEditorConsoleWidget::AddLog(const char* fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	Messages.push_back(_strdup(buf));
+	AddMessage(buf);
+}
+
+void FEditorConsoleWidget::AddMessage(const char* Message)
+{
+	Messages.push_back(_strdup(Message));
 	if (AutoScroll) ScrollToBottom = true;
 }
 
@@ -294,38 +302,38 @@ void FEditorConsoleWidget::CmdStat(const TArray<FString>& Args)
 
 void FEditorConsoleWidget::CmdShadowFilter(const TArray<FString>& Args)
 {
-    if (Args.size() < 2)
-    {
-        AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
-        return;
-    }
+	if (Args.size() < 2)
+	{
+		AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
+		return;
+	}
 
-    if (!EditorEngine)
-        return;
+	if (!EditorEngine)
+		return;
    
-    FString Target = Args[1];
-    std::transform(Target.begin(), Target.end(), Target.begin(), ::tolower);
-    FEditorSettings& Settings = EditorEngine->GetSettings();
+	FString Target = Args[1];
+	std::transform(Target.begin(), Target.end(), Target.begin(), ::tolower);
+	FEditorSettings& Settings = EditorEngine->GetSettings();
 
-    if (Target == "pcf")
-    {
-        Settings.ShadowFilterType = EShadowFilterType::PCF;
-        AddLog("Shadow filter set to PCF\n");
-    }
+	if (Target == "pcf")
+	{
+		Settings.ShadowFilterType = EShadowFilterType::PCF;
+		AddLog("Shadow filter set to PCF\n");
+	}
 	else if (Target == "vsm")
-    {
-        Settings.ShadowFilterType = EShadowFilterType::VSM;
-        AddLog("Shadow filter set to VSM\n");
-    }
-    else if (Target == "esm")
-    {
-        Settings.ShadowFilterType = EShadowFilterType::ESM;
-        AddLog("Shadow filter set to ESM\n");
-    }
-    else
-    {
-        AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
-    }
+	{
+		Settings.ShadowFilterType = EShadowFilterType::VSM;
+		AddLog("Shadow filter set to VSM\n");
+	}
+	else if (Target == "esm")
+	{
+		Settings.ShadowFilterType = EShadowFilterType::ESM;
+		AddLog("Shadow filter set to ESM\n");
+	}
+	else
+	{
+		AddLog("[WARN] Usage: shadow_filter <pcf|vsm|esm>\n");
+	}
 }
 
 ImVector<char*> FEditorConsoleWidget::Messages;

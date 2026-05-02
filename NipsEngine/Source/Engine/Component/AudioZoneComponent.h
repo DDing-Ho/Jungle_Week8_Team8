@@ -28,20 +28,25 @@ protected:
 	void TickComponent(float DeltaTime) override;
 
 private:
-	bool IsListenerInside() const;
-	FVector GetListenerLocation() const;
 	void SubmitMix();
 	void RemoveMix();
 	void ClampEditableValues();
 
 	FVector BoxExtent = FVector(8.0f, 8.0f, 3.0f);
 	int32 Priority = 0;
-	float FadeInTime = 1.0f;
-	float FadeOutTime = 1.0f;
 	float MasterVolume = 1.0f;
 	float SFXVolume = 1.0f;
 	float MusicVolume = 1.0f;
 	float AmbientVolume = 1.0f;
+	float ExteriorMasterVolume = 1.0f;
+	float ExteriorSFXVolume = 1.0f;
+	float ExteriorMusicVolume = 1.0f;
+	float ExteriorAmbientVolume = 1.0f;
+	float InteriorLowPassCutoff = 20000.0f;
+	float ExteriorLowPassCutoff = 20000.0f;
+	float InteriorReverbWet = 0.0f;
+	float InteriorReverbDecay = 0.35f;
+	float ExteriorReverbWet = 0.0f;
+	float ExteriorReverbDecay = 0.35f;
 	int32 AudioRangeVisibility = static_cast<int32>(EDebugDrawVisibility::UseGlobal);
-	float CurrentWeight = 0.0f;
 };

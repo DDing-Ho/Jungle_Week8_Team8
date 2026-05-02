@@ -2,7 +2,7 @@
 #include "FileUtils.h"
 #include "Asset/StaticMeshTypes.h"
 #include "Math/Utils.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 #include "Core/PlatformTime.h"
 #include "Core/ResourceManager.h"
 

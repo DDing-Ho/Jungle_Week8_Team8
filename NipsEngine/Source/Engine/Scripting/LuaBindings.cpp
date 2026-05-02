@@ -6,7 +6,7 @@
 #include "Math/Vector.h"
 #include "Object/Object.h"
 #include "Core/CollisionTypes.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 #include "Audio/AudioSystem.h"
 #include "Engine/UI/GameUISystem.h"
 

@@ -7,6 +7,7 @@
 #include "Render/Common/RenderTypes.h"
 #include "Render/Common/ViewTypes.h"
 
+// Editor 폴더 안에 있는 파일들에 대한 세팅을 이 곳에 저장합니다.
 class FEditorSettings : public TSingleton<FEditorSettings>
 {
 	friend class TSingleton<FEditorSettings>;
