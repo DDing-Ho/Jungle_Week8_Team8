@@ -37,9 +37,20 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
+
+	FVector TargetLocation = InputRouter.GetEditorWorldController().GetTargetLocation();
+	if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+	{
+		Camera.SetProjectionType(EViewportProjectionType::Perspective);
+		Camera.ClearCustomLookDir();
+		Camera.SetLocation(PlayerStart->GetActorLocation());
+		Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+		TargetLocation = PlayerStart->GetActorLocation();
+	}
+
     InputRouter.GetPIEController().SetWorld(InWorld);
     InputRouter.GetPIEController().SetCamera(&Camera); // re-sync Yaw/Pitch
-    InputRouter.GetPIEController().SetTargetLocation(InputRouter.GetEditorWorldController().GetTargetLocation());
+    InputRouter.GetPIEController().SetTargetLocation(TargetLocation);
 	InputRouter.SetActiveController(EActiveEditorController::PIEController);
 }
 

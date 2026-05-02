@@ -33,6 +33,12 @@ Build and test with `x64` configurations. `Debug | x64`, `Release | x64`, and `G
 - `Mouse Move`: look around while the PIE cursor is captured.
 - `F4`: toggle PIE cursor capture.
 
+## Player Start
+
+Place a `Player Start` actor in the scene to control the initial player camera position and direction.
+When PIE or Game mode starts, the engine uses the first active `Player Start` actor it finds.
+If no `Player Start` exists, PIE falls back to the current editor camera.
+
 ## Physics Pickup Setup
 
 To make an object pickable during PIE, the actor should have:

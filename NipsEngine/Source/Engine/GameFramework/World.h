@@ -9,6 +9,7 @@ class UCameraComponent;
 class ULineBatchComponent;
 class FViewportCamera;
 class ULightComponentBase;
+class APlayerStartActor;
 
 /**
  * 원래는 데이터 복사본을 넣고 Dirty 여부에 따라 업데이트 해줘야 하지만
@@ -86,6 +87,7 @@ public:
     }
 
 	TArray<AActor*> GetActors() const { return PersistentLevel->GetActors(); }
+	APlayerStartActor* FindPlayerStart() const;
 
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
 

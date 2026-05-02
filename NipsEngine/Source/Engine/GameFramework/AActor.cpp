@@ -325,9 +325,6 @@ void AActor::BeginPlay()
 {
 	for (UActorComponent* Component : OwnedComponents)
 	{
-        GameUISystem::Get().SetState(EGameUIState::InGame);
-        GameUISystem::Get().SetProgress(0.45f); 
-
 		if (Component)
 		{
 			Component->BeginPlay();

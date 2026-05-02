@@ -111,6 +111,7 @@ namespace
 		{ "Point Light", SpawnActorAt<APointLightActor> },
 		{ "Spot Light", SpawnActorAt<ASpotLightActor> },
 		{ "Audio Zone", SpawnActorAt<AAudioZoneActor> },
+		{ "Player Start", SpawnActorAt<APlayerStartActor> },
 	};
 }
 

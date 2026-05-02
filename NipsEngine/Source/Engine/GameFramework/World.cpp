@@ -4,6 +4,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Audio/AudioSystem.h"
 #include "Engine/Viewport/ViewportCamera.h"
+#include "GameFramework/PrimitiveActors.h"
 #include "Physics/JoltPhysicsSystem.h"
 
 DEFINE_CLASS(UWorld, UObject)
@@ -68,6 +69,27 @@ void UWorld::PostDuplicate(UObject* Original)
     }
 
     RebuildSpatialIndex();
+}
+
+APlayerStartActor* UWorld::FindPlayerStart() const
+{
+    if (PersistentLevel == nullptr)
+    {
+        return nullptr;
+    }
+
+    for (AActor* Actor : PersistentLevel->GetActors())
+    {
+        if (APlayerStartActor* PlayerStart = Cast<APlayerStartActor>(Actor))
+        {
+            if (PlayerStart->IsActive())
+            {
+                return PlayerStart;
+            }
+        }
+    }
+
+    return nullptr;
 }
 
 void UWorld::BeginPlay()

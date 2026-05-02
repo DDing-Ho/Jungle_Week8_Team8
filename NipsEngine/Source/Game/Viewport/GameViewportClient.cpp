@@ -5,6 +5,7 @@
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/SceneView.h"
 #include "Engine/Runtime/WindowsWindow.h"
+#include "GameFramework/PrimitiveActors.h"
 #include "Math/Utils.h"
 
 #include <cmath>
@@ -119,6 +120,15 @@ void FGameViewportClient::SetWorld(UWorld* InWorld)
 	World = InWorld;
 	if (World)
 	{
+		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())
+		{
+			FreeCamera.SetProjectionType(EViewportProjectionType::Perspective);
+			FreeCamera.ClearCustomLookDir();
+			FreeCamera.SetLocation(PlayerStart->GetActorLocation());
+			FreeCamera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+			InputRouter.GetPlayerController().SetFreeCamera(&FreeCamera);
+		}
+
 		World->SetActiveCamera(&FreeCamera);
 	}
 }

@@ -59,6 +59,9 @@ REGISTER_FACTORY(AHeightFogActor)
 DEFINE_CLASS(AAudioZoneActor, AActor)
 REGISTER_FACTORY(AAudioZoneActor)
 
+DEFINE_CLASS(APlayerStartActor, AActor)
+REGISTER_FACTORY(APlayerStartActor)
+
 void ASceneActor::InitDefaultComponents()
 {
 	auto SceneRoot = AddComponent<USceneComponent>();
@@ -177,6 +180,18 @@ void AAudioZoneActor::InitDefaultComponents()
 	Billboard->SetEditorOnly(true);
 	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/AudioVolume_64x.png");
+}
+
+void APlayerStartActor::InitDefaultComponents()
+{
+	USceneComponent* SceneRoot = AddComponent<USceneComponent>();
+	SetRootComponent(SceneRoot);
+
+	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
+	Billboard->AttachToComponent(SceneRoot);
+	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
+	Billboard->SetTexturePath("Asset/Texture/Pawn_64x.png");
 }
 
 void ALightActor::PostDuplicate(UObject* Original)

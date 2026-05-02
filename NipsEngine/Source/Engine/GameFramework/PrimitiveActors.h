@@ -125,3 +125,11 @@ public:
 
 	void InitDefaultComponents();
 };
+
+class APlayerStartActor : public AActor {
+public:
+	DECLARE_CLASS(APlayerStartActor, AActor)
+	APlayerStartActor() = default;
+
+	void InitDefaultComponents();
+};

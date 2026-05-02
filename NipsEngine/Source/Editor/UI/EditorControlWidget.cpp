@@ -52,6 +52,7 @@ namespace
         { "Sky Atmosphere", SpawnActor<ASkyAtmosphereActor> },
         { "Height Fog", SpawnActor<AHeightFogActor> },
         { "Audio Zone", SpawnActor<AAudioZoneActor> },
+        { "Player Start", SpawnActor<APlayerStartActor> },
     };
 }
 
