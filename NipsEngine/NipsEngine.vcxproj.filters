@@ -145,6 +145,12 @@
     <Filter Include="Source\Game\Input">
       <UniqueIdentifier>{f2e7fd60-3e77-b205-87c9-f5c1786fd722}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Game\Render">
+      <UniqueIdentifier>{5dede70c-07db-6ec4-171c-2a255059b2b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Viewport">
+      <UniqueIdentifier>{24b40836-3894-0777-eac4-651121dc7f81}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Misc">
       <UniqueIdentifier>{80bb3fb1-78dd-ab3e-b9d5-e1cee5602ed0}</UniqueIdentifier>
     </Filter>
@@ -183,9 +189,6 @@
     </Filter>
     <Filter Include="ThirdParty\sol\stack\detail">
       <UniqueIdentifier>{aeb9ca6d-d808-2f28-06b2-0e9712aeacc7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Game\Viewport">
-      <UniqueIdentifier>{cb264f57-32ae-489e-8d6a-2af791bdbf29}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -716,9 +719,6 @@
     <ClCompile Include="Source\Engine\Runtime\Launch.cpp">
       <Filter>Source\Engine\Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp">
-      <Filter>Source\Engine\Runtime</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Runtime\WindowsApplication.cpp">
       <Filter>Source\Engine\Runtime</Filter>
     </ClCompile>
@@ -785,6 +785,9 @@
     <ClCompile Include="Source\Engine\Viewport\ViewportCamera.cpp">
       <Filter>Source\Engine\Viewport</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Game\GameEngine.cpp">
       <Filter>Source\Game</Filter>
     </ClCompile>
@@ -794,8 +797,14 @@
     <ClCompile Include="Source\Game\Input\GameInputRouter.cpp">
       <Filter>Source\Game\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Game\Input\PlayerConroller.cpp">
+    <ClCompile Include="Source\Game\Input\GamePlayerController.cpp">
       <Filter>Source\Game\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp">
+      <Filter>Source\Game\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
+      <Filter>Source\Game\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Misc\ObjViewer\ObjViewerEngine.cpp">
       <Filter>Source\Misc\ObjViewer</Filter>
@@ -843,9 +852,6 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
-      <Filter>Source\Game\Viewport</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1418,15 +1424,6 @@
     <ClInclude Include="Source\Engine\Runtime\SceneView.h">
       <Filter>Source\Engine\Runtime</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Viewport\Viewport.h">
-      <Filter>Source\Engine\Runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Viewport\ViewportClient.h">
-      <Filter>Source\Engine\Runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Viewport\ViewportRect.h">
-      <Filter>Source\Engine\Runtime</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Runtime\WindowMessageHandler.h">
       <Filter>Source\Engine\Runtime</Filter>
     </ClInclude>
@@ -1511,7 +1508,16 @@
     <ClInclude Include="Source\Engine\Spatial\WorldSpatialIndex.h">
       <Filter>Source\Engine\Spatial</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Viewport\Viewport.h">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Viewport\ViewportCamera.h">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Viewport\ViewportClient.h">
+      <Filter>Source\Engine\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Viewport\ViewportRect.h">
       <Filter>Source\Engine\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\GameEngine.h">
@@ -1520,14 +1526,23 @@
     <ClInclude Include="Source\Game\GameTypes.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Game\Config\GameConfig.h">
+    <ClInclude Include="Source\Game\Settings\GameSettings.h">
       <Filter>Source\Game\Config</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Input\BaseGameController.h">
+      <Filter>Source\Game\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Input\GameInputRouter.h">
       <Filter>Source\Game\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Game\Input\PlayerController.h">
+    <ClInclude Include="Source\Game\Input\GamePlayerController.h">
       <Filter>Source\Game\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Render\GameRenderPipeline.h">
+      <Filter>Source\Game\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Viewport\GameViewportClient.h">
+      <Filter>Source\Game\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Misc\ObjViewer\ObjViewerEngine.h">
       <Filter>Source\Misc\ObjViewer</Filter>
@@ -1918,12 +1933,6 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Game\Input\BaseGameController.h">
-      <Filter>Source\Game\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Game\Viewport\GameViewportClient.h">
-      <Filter>Source\Game\Viewport</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

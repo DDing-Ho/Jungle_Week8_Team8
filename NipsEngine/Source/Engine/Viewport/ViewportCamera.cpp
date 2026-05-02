@@ -20,12 +20,6 @@ void FViewportCamera::SetRotation(const FRotator& InRotation)
     MarkViewDirty();
 }
 
-FVector FViewportCamera::GetForwardVector() const { return Rotation.GetForwardVector(); }
-
-FVector FViewportCamera::GetRightVector() const { return Rotation.GetRightVector(); }
-
-FVector FViewportCamera::GetUpVector() const { return Rotation.GetUpVector(); }
-
 FVector FViewportCamera::GetEffectiveForward() const
 {
     if (bHasCustomLookDir)
@@ -95,8 +89,7 @@ FMatrix FViewportCamera::GetProjectionMatrix() const
         }
         case EViewportProjectionType::Orthographic:
         {
-            CachedProjectionMatrix =
-                FMatrix::MakeOrthographicLH(OrthoHeight * AspectRatio, OrthoHeight, NearPlane, FarPlane);
+            CachedProjectionMatrix = FMatrix::MakeOrthographicLH(OrthoHeight * AspectRatio, OrthoHeight, NearPlane, FarPlane);
             break;
         }
         default:
