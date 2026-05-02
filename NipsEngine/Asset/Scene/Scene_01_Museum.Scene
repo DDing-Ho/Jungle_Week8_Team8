@@ -12,7 +12,7 @@
   "Primitives" : {
     "1041" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [30.900846, -5.413094, -9.883365],
@@ -28,7 +28,7 @@
     },
     "1043" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [11.293653, -5.456213, -9.917982],
@@ -44,7 +44,7 @@
     },
     "1045" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [2.237540, -6.656661, 5.110222],
@@ -60,7 +60,7 @@
     },
     "1049" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-23.322002, -6.656670, 4.985962],
@@ -76,7 +76,7 @@
     },
     "105" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-8.978800, -6.656484, -9.917982],
@@ -92,7 +92,7 @@
     },
     "1053" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-29.859589, -5.263318, -9.917982],
@@ -129,7 +129,7 @@
     },
     "1056" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -144,7 +144,7 @@
     },
     "1058" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, 2.493762, 7.455355],
@@ -160,7 +160,7 @@
     },
     "1060" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -0.355190, 7.455355],
@@ -176,7 +176,7 @@
     },
     "1062" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -3.526618, 7.455355],
@@ -192,7 +192,7 @@
     },
     "1064" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -6.375567, 7.455355],
@@ -208,7 +208,7 @@
     },
     "1066" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -9.958869, 7.455355],
@@ -224,7 +224,7 @@
     },
     "1070" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -12.807822, 7.455355],
@@ -240,7 +240,7 @@
     },
     "1072" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -15.979250, 7.455355],
@@ -256,7 +256,7 @@
     },
     "1074" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -18.828203, 7.455355],
@@ -272,7 +272,7 @@
     },
     "1078" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-10.896288, -12.248041, 1.210198],
@@ -288,7 +288,7 @@
     },
     "108" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-5.000000, 1.233164, -6.832710],
@@ -304,7 +304,7 @@
     },
     "1080" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-10.896288, 1.948840, 1.210198],
@@ -320,7 +320,7 @@
     },
     "1082" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-10.896288, -4.004251, 6.771818],
@@ -336,7 +336,7 @@
     },
     "1084" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-10.896288, -12.248041, 1.210198],
@@ -352,7 +352,7 @@
     },
     "1086" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [5.824731, -12.248041, 1.210198],
@@ -368,7 +368,7 @@
     },
     "1088" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [5.824731, 1.948840, 1.210198],
@@ -405,7 +405,7 @@
     },
     "1091" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -441,7 +441,7 @@
     },
     "1094" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -474,7 +474,7 @@
     },
     "112" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -512,7 +512,7 @@
     },
     "117" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -548,7 +548,7 @@
     },
     "1283" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -563,7 +563,7 @@
     },
     "1425" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-33.235443, 4.726506, -9.917982],
@@ -579,7 +579,7 @@
     },
     "1427" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-33.688896, -14.795533, -9.917982],
@@ -595,7 +595,7 @@
     },
     "1429" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-56.603100, -5.263318, -9.917982],
@@ -611,7 +611,7 @@
     },
     "1431" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-36.124489, -0.052806, -4.479021],
@@ -627,7 +627,7 @@
     },
     "1433" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-28.375587, -0.052809, -4.479021],
@@ -643,7 +643,7 @@
     },
     "1435" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-28.375587, -10.433474, -4.478975],
@@ -659,7 +659,7 @@
     },
     "1437" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-36.124489, -10.433471, -4.478975],
@@ -675,7 +675,7 @@
     },
     "1439" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-35.963516, -10.504894, 10.191195],
@@ -712,7 +712,7 @@
     },
     "1444" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -727,7 +727,7 @@
     },
     "1446" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-41.429981, -12.248030, 1.210197],
@@ -743,7 +743,7 @@
     },
     "1448" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-41.429981, 1.864088, 1.210134],
@@ -759,7 +759,7 @@
     },
     "1450" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-41.477299, -4.004148, 6.771812],
@@ -775,7 +775,7 @@
     },
     "1452" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-44.907593, -9.830031, -6.600000],
@@ -791,7 +791,7 @@
     },
     "1456" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-45.132320, -1.634780, -6.616370],
@@ -831,7 +831,7 @@
     },
     "1459" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -870,7 +870,7 @@
     },
     "1461" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -913,7 +913,7 @@
     },
     "1465" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-52.654041, 3.351690, -4.479031],
@@ -929,7 +929,7 @@
     },
     "1467" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-59.938988, 3.351693, -4.479031],
@@ -945,7 +945,7 @@
     },
     "1469" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-59.938988, -16.670301, -4.478939],
@@ -961,7 +961,7 @@
     },
     "1471" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-52.654041, -16.670303, -4.478939],
@@ -977,7 +977,7 @@
     },
     "1473" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-86.634705, -5.263318, -9.917982],
@@ -1016,7 +1016,7 @@
     },
     "1489" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1054,7 +1054,7 @@
     },
     "1492" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1092,7 +1092,7 @@
     },
     "1498" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1130,7 +1130,7 @@
     },
     "1501" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1168,7 +1168,7 @@
     },
     "1504" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1206,7 +1206,7 @@
     },
     "1507" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1267,7 +1267,7 @@
     },
     "1510" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1305,7 +1305,7 @@
     },
     "1513" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1343,7 +1343,7 @@
     },
     "1516" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1358,7 +1358,7 @@
     },
     "1518" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [26.770424, -5.255391, -4.242271],
@@ -1374,7 +1374,7 @@
     },
     "152" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1417,7 +1417,7 @@
     },
     "161" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-5.812969, -9.842304, -6.832710],
@@ -1433,7 +1433,7 @@
     },
     "163" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-17.069799, -11.303535, -8.243221],
@@ -1472,7 +1472,7 @@
     },
     "171" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1510,7 +1510,7 @@
     },
     "174" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1525,7 +1525,7 @@
     },
     "1904" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, 0.000000],
@@ -1542,7 +1542,7 @@
     },
     "1905" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, 0.000000],
@@ -1583,7 +1583,7 @@
     },
     "1907" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1622,7 +1622,7 @@
     },
     "2107" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1660,7 +1660,7 @@
     },
     "213" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1675,7 +1675,7 @@
     },
     "228" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, -14.795533, -9.917982],
@@ -1691,7 +1691,7 @@
     },
     "230" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-9.037565, 4.726506, -9.917982],
@@ -1731,7 +1731,7 @@
     },
     "2493" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -1746,7 +1746,7 @@
     },
     "2690" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [22.997005, 1.948840, 1.210198],
@@ -1762,7 +1762,7 @@
     },
     "2694" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [31.555023, 1.948840, 1.210198],
@@ -1778,7 +1778,7 @@
     },
     "2696" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [36.059437, 1.948840, 1.210198],
@@ -1794,7 +1794,7 @@
     },
     "2698" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [27.501419, 1.948840, 1.210198],
@@ -1810,7 +1810,7 @@
     },
     "2700" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [36.059437, 1.948840, 1.210198],
@@ -1826,7 +1826,7 @@
     },
     "2702" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [27.501419, 1.948840, 1.210198],
@@ -1842,7 +1842,7 @@
     },
     "2704" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [31.555023, -13.927194, 1.210198],
@@ -1858,7 +1858,7 @@
     },
     "2706" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [22.997005, -13.927194, 1.210198],
@@ -1874,7 +1874,7 @@
     },
     "2708" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [27.501419, -13.927194, 1.210198],
@@ -1890,7 +1890,7 @@
     },
     "2710" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [36.059437, -13.927194, 1.210198],
@@ -1906,7 +1906,7 @@
     },
     "2712" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [27.501419, 5.406322, 1.210198],
@@ -1922,7 +1922,7 @@
     },
     "2714" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [27.501419, -18.094566, 1.210198],
@@ -1938,7 +1938,7 @@
     },
     "2716" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [36.286289, -5.211103, 1.210198],
@@ -1954,7 +1954,7 @@
     },
     "2720" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [15.339584, -14.268734, 1.210198],
@@ -1970,7 +1970,7 @@
     },
     "2722" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [15.339584, 2.692766, 1.210198],
@@ -1986,7 +1986,7 @@
     },
     "2726" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [15.339584, -5.376533, 1.210198],
@@ -2002,7 +2002,7 @@
     },
     "2728" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [15.339584, -5.376533, 3.987578],
@@ -2018,7 +2018,7 @@
     },
     "376" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, -0.500000],
@@ -2049,7 +2049,7 @@
     },
     "680" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [-15.612826, 0.838096, -8.165803],
@@ -2065,7 +2065,7 @@
     },
     "681" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, -0.500000],
@@ -2117,7 +2117,7 @@
     },
     "724" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,

@@ -12,7 +12,7 @@
   "Primitives" : {
     "135" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, -8.896593],
@@ -28,7 +28,7 @@
     },
     "142" : {
       "EditorOnly" : false,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "Location" : [0.000000, 0.000000, -9.858698],
@@ -67,7 +67,7 @@
     },
     "232" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -100,7 +100,7 @@
     },
     "265" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -119,7 +119,7 @@
       "DriveAmbientLight" : true,
       "DriveHeightFog" : true,
       "EditorOnly" : false,
-      "Enable Cull" : false,
+      "EnableCull" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "HorizonFalloff" : 1.500000,
@@ -141,7 +141,7 @@
     },
     "269" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -179,7 +179,7 @@
     },
     "335" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
@@ -217,7 +217,7 @@
     },
     "359" : {
       "EditorOnly" : true,
-      "Enable Cull" : true,
+      "EnableCull" : true,
       "EnableTick" : true,
       "Height" : 1.000000,
       "HiddenInEditor" : true,
