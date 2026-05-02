@@ -3,6 +3,7 @@
 #include "Object/ObjectFactory.h"
 #include "SceneComponent.h"
 #include "Render/Common/RenderTypes.h"
+#include "Render/Common/ViewTypes.h"
 #include "Engine/Geometry/Ray.h"
 #include "Core/CollisionTypes.h"
 #include "Engine/Geometry/AABB.h"
@@ -32,6 +33,7 @@ public:
 
     void SetEnableCull(const bool bInEnableCull) { bEnableCull = bInEnableCull; }
     bool IsEnableCull() const { return bEnableCull; }
+    bool ShouldDrawDebugBounds(bool bGlobalEnabled) const { return ResolveDebugDrawVisibility(DebugBoundsVisibility, bGlobalEnabled); }
 
     /* Getter */
     virtual const FAABB& GetWorldAABB() const 
@@ -95,6 +97,7 @@ protected:
     mutable FAABB WorldAABB;
     bool bIsVisible = true;
     bool bEnableCull = true; // frustum, occlusion culling으로 컬링될지 여부 판정
+    int32 DebugBoundsVisibility = static_cast<int32>(EDebugDrawVisibility::UseGlobal);
     
     ECollisionType CollisionType = ECollisionType::None;
 

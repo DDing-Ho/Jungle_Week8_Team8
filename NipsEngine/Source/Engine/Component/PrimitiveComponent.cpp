@@ -15,6 +15,8 @@ void UPrimitiveComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Out
 
     OutProps.push_back({"Visible", EPropertyType::Bool, &bIsVisible});
     OutProps.push_back({"Enable Cull", EPropertyType::Bool, &bEnableCull});
+    static const char* DebugBoundsVisibilityNames[] = { "Use Global", "Force Show", "Force Hide" };
+    OutProps.push_back({"Show Bounds", EPropertyType::Enum, &DebugBoundsVisibility, 0.0f, 0.0f, 0.0f, DebugBoundsVisibilityNames, 3});
     OutProps.push_back({"Generate Overlap Events", EPropertyType::Bool, &bGenerateOverlapEvents});
     OutProps.push_back({"Block Component", EPropertyType::Bool, &bBlockComponent});
 }
@@ -22,6 +24,7 @@ void UPrimitiveComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Out
 void UPrimitiveComponent::PostEditProperty(const char* PropertyName)
 {
     USceneComponent::PostEditProperty(PropertyName);
+    DebugBoundsVisibility = std::clamp(DebugBoundsVisibility, 0, static_cast<int32>(EDebugDrawVisibility::Count) - 1);
     NotifySpatialIndexDirty();
 }
 
@@ -30,8 +33,14 @@ void UPrimitiveComponent::Serialize(FArchive& Ar)
     USceneComponent::Serialize(Ar);
     Ar << "Visible" << bIsVisible;
     Ar << "EnableCull" << bEnableCull;
+    Ar << "DebugBoundsVisibility" << DebugBoundsVisibility;
     Ar << "GenerateOverlapEvents" << bGenerateOverlapEvents;
     Ar << "BlockComponent" << bBlockComponent;
+
+    if (Ar.IsLoading())
+    {
+        DebugBoundsVisibility = std::clamp(DebugBoundsVisibility, 0, static_cast<int32>(EDebugDrawVisibility::Count) - 1);
+    }
 }
 
 void UPrimitiveComponent::SetVisibility(bool bVisible)

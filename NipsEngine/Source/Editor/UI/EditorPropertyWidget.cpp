@@ -8,8 +8,10 @@
 #include "Core/ResourceManager.h"
 #include "Core/Paths.h"
 #include "Object/FName.h"
+#include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <cstdio>
 #include <functional>
 #include <Windows.h>
 #include <commdlg.h>
@@ -19,6 +21,7 @@
 
 #include "GameFramework/AActor.h"
 #include "Component/LuaScriptComponent.h"
+#include "Component/AudioComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -64,6 +67,14 @@ namespace
 	FString GetEditorScriptActorName(const AActor* Actor);
 	FString GetEditorLuaScriptName(UEditorEngine* EditorEngine, const AActor* Actor);
 	bool OpenLuaScriptFileDialog(FString& OutFilePath);
+	bool OpenAudioFileDialog(FString& OutFilePath);
+	bool DoesRelativeAssetFileExist(const FString& RelativePath);
+	FString FormatAudioTime(float Seconds);
+
+	UObject* PreviewAudioObject = nullptr;
+	float PendingAudioPreviewStartTime = 0.0f;
+	bool bAudioTimelineDragging = false;
+	float AudioTimelineDragTime = 0.0f;
 }
 
 void FEditorPropertyWidget::Initialize(UEditorEngine* InEditorEngine)
@@ -567,12 +578,21 @@ void FEditorPropertyWidget::RenderComponentProperties()
 	{
 		RenderLuaScriptControls(LuaComp);
 	}
+	else if (UAudioComponent* AudioComp = Cast<UAudioComponent>(SelectedComponent))
+	{
+		RenderAudioControls(AudioComp);
+	}
 
 	bool bAnyChanged = false;
 	const bool bIsLuaScriptComponent = SelectedComponent->IsA<ULuaScriptComponent>();
+	const bool bIsAudioComponent = SelectedComponent->IsA<UAudioComponent>();
 	for (auto& Prop : Props)
 	{
 		if (bIsLuaScriptComponent && strcmp(Prop.Name, "Script Path") == 0)
+		{
+			continue;
+		}
+		if (bIsAudioComponent && strcmp(Prop.Name, "Sound Path") == 0)
 		{
 			continue;
 		}
@@ -673,6 +693,176 @@ void FEditorPropertyWidget::RenderLuaScriptControls(ULuaScriptComponent* Comp)
 	if (!Error.empty())
 	{
 		ImGui::TextWrapped("Last Error: %s", Error.c_str());
+	}
+}
+
+void FEditorPropertyWidget::RenderAudioControls(UAudioComponent* Comp)
+{
+	if (!Comp)
+	{
+		return;
+	}
+
+	ImGui::Spacing();
+
+	const FString& SoundPath = Comp->GetSoundPath();
+	const bool bHasPath = !SoundPath.empty();
+	const bool bFileExists = bHasPath && DoesRelativeAssetFileExist(SoundPath);
+	const bool bHasPlayback = Comp->HasPreviewPlayback();
+	const bool bIsPlaying = Comp->IsPreviewPlaying();
+	const float Duration = Comp->GetPreviewDuration();
+	if (PreviewAudioObject != Comp)
+	{
+		PreviewAudioObject = Comp;
+		PendingAudioPreviewStartTime = 0.0f;
+		bAudioTimelineDragging = false;
+		AudioTimelineDragTime = 0.0f;
+	}
+
+	float CurrentTime = bHasPlayback ? Comp->GetPreviewPlaybackTime() : PendingAudioPreviewStartTime;
+	if (Duration > 0.0f)
+	{
+		CurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
+		PendingAudioPreviewStartTime = std::clamp(PendingAudioPreviewStartTime, 0.0f, Duration);
+	}
+
+	ImGui::TextWrapped("Selected Audio: %s", bHasPath ? SoundPath.c_str() : "(none)");
+	if (bHasPath && !bFileExists)
+	{
+		ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.2f, 1.0f), "Audio file does not exist.");
+	}
+
+	if (ImGui::Button("Select Audio", ImVec2(-1, 0)))
+	{
+		FString SelectedAudioPath;
+		if (OpenAudioFileDialog(SelectedAudioPath))
+		{
+			Comp->SetSoundPath(SelectedAudioPath);
+			Comp->PostEditProperty("Sound Path");
+			Comp->StopPreview();
+			PendingAudioPreviewStartTime = 0.0f;
+			UE_LOG("AudioComponent: selected audio '%s'.", Comp->GetSoundPath().c_str());
+		}
+	}
+
+	const float ContentWidth = ImGui::GetContentRegionAvail().x;
+	const float ButtonWidth = (ContentWidth - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
+	const char* PlayPauseLabel = bIsPlaying ? "Pause" : (bHasPlayback ? "Resume" : "Play");
+	if (ImGui::Button(PlayPauseLabel, ImVec2(ButtonWidth, 0)))
+	{
+		if (!bHasPath)
+		{
+			UE_LOG("AudioComponent: no audio file selected.");
+		}
+		else if (bIsPlaying)
+		{
+			Comp->PausePreview();
+		}
+		else if (bHasPlayback)
+		{
+			Comp->ResumePreview();
+		}
+		else
+		{
+			Comp->PlayPreview();
+			if (PendingAudioPreviewStartTime > 0.0f)
+			{
+				Comp->SetPreviewPlaybackTime(PendingAudioPreviewStartTime);
+			}
+		}
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Stop", ImVec2(ButtonWidth, 0)))
+	{
+		Comp->StopPreview();
+		PendingAudioPreviewStartTime = 0.0f;
+		bAudioTimelineDragging = false;
+		AudioTimelineDragTime = 0.0f;
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Restart", ImVec2(ButtonWidth, 0)))
+	{
+		if (bHasPath)
+		{
+			PendingAudioPreviewStartTime = 0.0f;
+			bAudioTimelineDragging = false;
+			AudioTimelineDragTime = 0.0f;
+			if (bHasPlayback)
+			{
+				Comp->RestartPreview();
+			}
+			else
+			{
+				Comp->PlayPreview();
+			}
+		}
+		else
+		{
+			UE_LOG("AudioComponent: no audio file selected.");
+		}
+	}
+
+	const char* StatusText = bIsPlaying ? "Playing" : (bHasPlayback ? "Paused" : "Stopped");
+	ImGui::Text("Status: %s", StatusText);
+
+	ImGui::SetNextItemWidth(-1.0f);
+	if (Duration > 0.0f)
+	{
+		float SeekTime = bAudioTimelineDragging ? AudioTimelineDragTime : CurrentTime;
+		const bool bChanged = ImGui::SliderFloat("##AudioTimeline", &SeekTime, 0.0f, Duration, "");
+		if (ImGui::IsItemActivated())
+		{
+			bAudioTimelineDragging = true;
+			AudioTimelineDragTime = CurrentTime;
+		}
+		if (bChanged)
+		{
+			PendingAudioPreviewStartTime = SeekTime;
+			AudioTimelineDragTime = SeekTime;
+		}
+		if (ImGui::IsItemDeactivatedAfterEdit())
+		{
+			bAudioTimelineDragging = false;
+			PendingAudioPreviewStartTime = SeekTime;
+			if (bHasPlayback)
+			{
+				const bool bShouldResume = Comp->IsPreviewPlaying();
+				if (bShouldResume)
+				{
+					Comp->PausePreview();
+				}
+				Comp->SetPreviewPlaybackTime(SeekTime);
+				if (bShouldResume)
+				{
+					Comp->ResumePreview();
+				}
+			}
+		}
+
+		const float DisplayTime = bAudioTimelineDragging ? AudioTimelineDragTime : CurrentTime;
+		ImGui::Text("%s / %s", FormatAudioTime(DisplayTime).c_str(), FormatAudioTime(Duration).c_str());
+	}
+	else
+	{
+		float SeekTime = bAudioTimelineDragging ? AudioTimelineDragTime : std::max(0.0f, PendingAudioPreviewStartTime);
+		const bool bChanged = ImGui::SliderFloat("##AudioTimeline", &SeekTime, 0.0f, 1.0f, "");
+		if (ImGui::IsItemActivated())
+		{
+			bAudioTimelineDragging = true;
+			AudioTimelineDragTime = SeekTime;
+		}
+		if (bChanged)
+		{
+			PendingAudioPreviewStartTime = SeekTime;
+			AudioTimelineDragTime = SeekTime;
+		}
+		if (ImGui::IsItemDeactivatedAfterEdit())
+		{
+			bAudioTimelineDragging = false;
+		}
+		ImGui::Text("00:00 / 00:00");
 	}
 }
 
@@ -1342,6 +1532,78 @@ namespace
 		OutFilePath = FPaths::Normalize(FPaths::ToRelativeString(FileBuffer));
 		return true;
 	}
+
+	bool OpenAudioFileDialog(FString& OutFilePath)
+	{
+		OutFilePath.clear();
+
+		std::filesystem::path AudioDir(FPaths::RootDir());
+		AudioDir /= L"Asset/Audio";
+		AudioDir = AudioDir.lexically_normal();
+		AudioDir.make_preferred();
+
+		std::error_code Ec;
+		std::filesystem::create_directories(AudioDir, Ec);
+
+		WCHAR FileBuffer[MAX_PATH] = { 0 };
+		const std::filesystem::path OpenPattern = AudioDir / L"*.wav";
+		wcsncpy_s(FileBuffer, MAX_PATH, OpenPattern.wstring().c_str(), _TRUNCATE);
+		const std::wstring InitialDir = AudioDir.wstring();
+
+		const std::filesystem::path PrevCwd = std::filesystem::current_path();
+		std::error_code ChdirEc;
+		std::filesystem::current_path(AudioDir, ChdirEc);
+
+		OPENFILENAMEW DialogDesc = {};
+		DialogDesc.lStructSize = sizeof(DialogDesc);
+		DialogDesc.hwndOwner = static_cast<HWND>(ImGui::GetMainViewport()->PlatformHandleRaw);
+		DialogDesc.lpstrFilter = L"Audio Files (*.wav;*.mp3;*.ogg;*.flac)\0*.wav;*.mp3;*.ogg;*.flac\0All Files (*.*)\0*.*\0";
+		DialogDesc.lpstrFile = FileBuffer;
+		DialogDesc.nMaxFile = MAX_PATH;
+		DialogDesc.lpstrInitialDir = InitialDir.c_str();
+		DialogDesc.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+		const BOOL bPicked = GetOpenFileNameW(&DialogDesc);
+
+		std::error_code RestoreEc;
+		std::filesystem::current_path(PrevCwd, RestoreEc);
+
+		if (!bPicked)
+		{
+			return false;
+		}
+
+		OutFilePath = FPaths::Normalize(FPaths::ToRelativeString(FileBuffer));
+		return true;
+	}
+
+	bool DoesRelativeAssetFileExist(const FString& RelativePath)
+	{
+		if (RelativePath.empty())
+		{
+			return false;
+		}
+
+		const std::filesystem::path AbsolutePath(FPaths::ToAbsolute(FPaths::ToWide(RelativePath)));
+		return std::filesystem::exists(AbsolutePath);
+	}
+
+	FString FormatAudioTime(float Seconds)
+	{
+		if (Seconds < 0.0f)
+		{
+			Seconds = 0.0f;
+		}
+
+		const int32 TotalSeconds = static_cast<int32>(Seconds + 0.5f);
+		const int32 Minutes = TotalSeconds / 60;
+		const int32 RemainderSeconds = TotalSeconds % 60;
+
+		char Buffer[16] = {};
+		snprintf(Buffer, sizeof(Buffer), "%02d:%02d", Minutes, RemainderSeconds);
+		return Buffer;
+	}
+
 }
 
 // 액터나 컴포넌트의 이름을 입력 창을 통해 실시간으로 수정할 수 있게 합니다.

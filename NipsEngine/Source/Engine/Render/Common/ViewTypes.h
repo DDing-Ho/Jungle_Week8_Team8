@@ -17,6 +17,28 @@ enum class EViewMode : int32
 	Count = 7
 };
 
+enum class EDebugDrawVisibility : int32
+{
+	UseGlobal = 0,
+	ForceShow,
+	ForceHide,
+	Count
+};
+
+inline bool ResolveDebugDrawVisibility(int32 Visibility, bool bGlobalEnabled)
+{
+	switch (static_cast<EDebugDrawVisibility>(Visibility))
+	{
+	case EDebugDrawVisibility::ForceShow:
+		return true;
+	case EDebugDrawVisibility::ForceHide:
+		return false;
+	case EDebugDrawVisibility::UseGlobal:
+	default:
+		return bGlobalEnabled;
+	}
+}
+
 // 버퍼 기반 시각화 모드 분기는 여기로 모아둔다.
 // SceneDepth / WorldNormal 외 다른 buffer visualization을 추가할 때 함께 확장하는 지점이다.
 inline bool IsBufferVisualizationViewMode(EViewMode ViewMode)
@@ -40,6 +62,9 @@ struct FShowFlags
 	bool bBillboardText = false;
 	bool bBoundingVolume = false;
 	bool bBVHBoundingVolume = false;
+	bool bAudioRange = false;
+	bool bAudioComponentRange = true;
+	bool bAudioZoneRange = true;
 	bool bEnableLOD = true;
 	bool bDecals = true;
 	bool bFog = true;

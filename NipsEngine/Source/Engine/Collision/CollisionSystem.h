@@ -25,4 +25,5 @@ private:
 	static void ProcessBroadCollision(UWorld* World, const FCollisionCandidate& Candidate);
 	static void ProcessNarrowCollision(const FCollisionCandidate& A, const FCollisionCandidate& B);
 	static void ClearStaleCollisions(const TArray<FCollisionCandidate>& Candidates);
+	static void ProcessBlocking(UPrimitiveComponent* A, UPrimitiveComponent* B);
 };

@@ -1,6 +1,8 @@
 ﻿#include "OverlayRenderCollector.h"
 
 #include "Component/ActorComponent.h"
+#include "Component/AudioComponent.h"
+#include "Component/AudioZoneComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/CapsuleComponent.h"
@@ -19,6 +21,7 @@
 #include "Engine/Asset/StaticMesh.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
+#include "Object/ActorIterator.h"
 #include "Render/LineBatcher.h"
 #include "Render/Resource/Material.h"
 #include "Render/Resource/MeshBufferManager.h"
@@ -167,6 +170,35 @@ namespace
 			return true;
 		}
 	}
+
+	void DrawAudioComponentRange(const UAudioComponent* AudioComponent, FLineBatcher* LineBatcher)
+	{
+		if (AudioComponent == nullptr || LineBatcher == nullptr || !AudioComponent->IsSpatial())
+		{
+			return;
+		}
+
+		const FVector Center = AudioComponent->GetWorldLocation();
+		const FVector Right = AudioComponent->GetRightVector();
+		const FVector Up = AudioComponent->GetUpVector();
+
+		LineBatcher->AddSphere(Center, AudioComponent->GetMinDistance(), Right, Up, FColor(80, 220, 255));
+		LineBatcher->AddSphere(Center, AudioComponent->GetMaxDistance(), Right, Up, FColor(40, 120, 255));
+	}
+
+	void DrawAudioZoneRange(const UAudioZoneComponent* AudioZoneComponent, FLineBatcher* LineBatcher)
+	{
+		if (AudioZoneComponent == nullptr || LineBatcher == nullptr)
+		{
+			return;
+		}
+
+		const FOBB Box(
+			AudioZoneComponent->GetWorldLocation(),
+			AudioZoneComponent->GetScaledBoxExtent(),
+			AudioZoneComponent->GetWorldMatrix().GetRotationMatrix());
+		LineBatcher->AddOBB(Box, FColor(80, 255, 180));
+	}
 }
 
 void FOverlayRenderCollector::CollectSelection(
@@ -201,6 +233,33 @@ void FOverlayRenderCollector::CollectSelection(
 		Material->BlendType = EBlendType::AlphaBlend;
 
 		RenderBus.AddCommand(ERenderPass::PostProcessOutline, PostProcessCmd);
+	}
+}
+
+void FOverlayRenderCollector::CollectDebugBounds(
+	UWorld* World,
+	const FShowFlags& ShowFlags,
+	EViewMode ViewMode,
+	FRenderBus& RenderBus,
+	FLineBatcher* LineBatcher)
+{
+	(void)ViewMode;
+
+	if (World == nullptr || LineBatcher == nullptr)
+	{
+		return;
+	}
+
+	std::unordered_set<int32> SeenBVHNodeIndices;
+	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
+	{
+		AActor* Actor = *Iter;
+		if (Actor == nullptr || !Actor->IsVisible())
+		{
+			continue;
+		}
+
+		CollectDebugBoundsFromActor(Actor, ShowFlags, ViewMode, RenderBus, LineBatcher, SeenBVHNodeIndices);
 	}
 }
 
@@ -295,7 +354,6 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 
 		if (DrawShapeComponent(primitiveComponent, LineBatcher))
 		{
-			CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, LineBatcher, SeenBVHNodeIndices);
 			continue;
 		}
 
@@ -372,12 +430,6 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 		RenderBus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
 		bHasSelectionMask = true;
 
-		if (ShowFlags.bBoundingVolume && LineBatcher != nullptr)
-		{
-			LineBatcher->AddAABB(BuildRenderAABB(primitiveComponent, RenderBus), FColor::White());
-		}
-
-		CollectBVHInternalNodeAABBs(primitiveComponent, ShowFlags, RenderBus, LineBatcher, SeenBVHNodeIndices);
 	}
 
 	for (UActorComponent* Component : Actor->GetComponents())
@@ -424,6 +476,71 @@ bool FOverlayRenderCollector::CollectFromSelectedActor(
 	return bHasSelectionMask;
 }
 
+void FOverlayRenderCollector::CollectDebugBoundsFromActor(
+	AActor* Actor,
+	const FShowFlags& ShowFlags,
+	EViewMode ViewMode,
+	FRenderBus& RenderBus,
+	FLineBatcher* LineBatcher,
+	std::unordered_set<int32>& SeenBVHNodeIndices)
+{
+	(void)ViewMode;
+
+	if (Actor == nullptr || LineBatcher == nullptr)
+	{
+		return;
+	}
+
+	for (UPrimitiveComponent* PrimitiveComponent : Actor->GetPrimitiveComponents())
+	{
+		if (PrimitiveComponent == nullptr || !PrimitiveComponent->IsVisible() || PrimitiveComponent->IsHiddenInEditor())
+		{
+			continue;
+		}
+
+		if (PrimitiveComponent->IsEditorOnly())
+		{
+			UWorld* World = Actor->GetFocusedWorld();
+			if (World && World->GetWorldType() != EWorldType::Editor)
+			{
+				continue;
+			}
+		}
+
+		const bool bDrawBounds = PrimitiveComponent->ShouldDrawDebugBounds(ShowFlags.bBoundingVolume);
+		if (bDrawBounds)
+		{
+			if (!DrawShapeComponent(PrimitiveComponent, LineBatcher))
+			{
+				LineBatcher->AddAABB(BuildRenderAABB(PrimitiveComponent, RenderBus), FColor::White());
+			}
+		}
+
+		CollectBVHInternalNodeAABBs(PrimitiveComponent, ShowFlags, RenderBus, LineBatcher, SeenBVHNodeIndices);
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (const UAudioComponent* AudioComponent = Cast<UAudioComponent>(Component))
+		{
+			const bool bGlobalAudioComponentRange = ShowFlags.bAudioRange && ShowFlags.bAudioComponentRange;
+			if (AudioComponent->ShouldDrawAudioRange(bGlobalAudioComponentRange))
+			{
+				DrawAudioComponentRange(AudioComponent, LineBatcher);
+			}
+		}
+
+		if (const UAudioZoneComponent* AudioZoneComponent = Cast<UAudioZoneComponent>(Component))
+		{
+			const bool bGlobalAudioZoneRange = ShowFlags.bAudioRange && ShowFlags.bAudioZoneRange;
+			if (AudioZoneComponent->ShouldDrawAudioRange(bGlobalAudioZoneRange))
+			{
+				DrawAudioZoneRange(AudioZoneComponent, LineBatcher);
+			}
+		}
+	}
+}
+
 void FOverlayRenderCollector::CollectBVHInternalNodeAABBs(
 	UPrimitiveComponent* PrimitiveComponent,
 	const FShowFlags& ShowFlags,
@@ -431,7 +548,8 @@ void FOverlayRenderCollector::CollectBVHInternalNodeAABBs(
 	FLineBatcher* LineBatcher,
 	std::unordered_set<int32>& SeenNodeIndices)
 {
-	if (!ShowFlags.bBoundingVolume || !ShowFlags.bBVHBoundingVolume || PrimitiveComponent == nullptr || LineBatcher == nullptr)
+	if (PrimitiveComponent == nullptr || LineBatcher == nullptr ||
+		!PrimitiveComponent->ShouldDrawDebugBounds(ShowFlags.bBoundingVolume) || !ShowFlags.bBVHBoundingVolume)
 	{
 		return;
 	}

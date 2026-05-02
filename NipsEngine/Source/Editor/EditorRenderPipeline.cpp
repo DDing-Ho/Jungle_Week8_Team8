@@ -66,6 +66,12 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 	ViewportDecalStats[ViewportIndex] = Collector.GetLastDecalStats();
 	ViewportShadowStats[ViewportIndex] = Collector.GetLastShadowStats();
 
+	FShowFlags DebugShowFlags = ShowFlags;
+	if (VC->GetPlayState() != EViewportPlayState::Editing)
+	{
+		DebugShowFlags.bAudioRange = false;
+	}
+	Collector.CollectDebugBounds(World, DebugShowFlags, ViewMode, Bus);
 	Collector.CollectGrid(Settings.GridSpacing, Settings.GridHalfLineCount, Bus, SceneView.bOrthographic);
 
 	// 뷰포트가 편집 모드일 때만 기즈모·선택 오버레이를 그립니다.

@@ -117,3 +117,11 @@ public:
 
 	void InitDefaultComponents();
 };
+
+class AAudioZoneActor : public AActor {
+public:
+	DECLARE_CLASS(AAudioZoneActor, AActor)
+	AAudioZoneActor() = default;
+
+	void InitDefaultComponents();
+};

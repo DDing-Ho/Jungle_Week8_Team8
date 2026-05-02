@@ -8,9 +8,13 @@ ULevel::~ULevel()
 	for (AActor* Actor : Actors)
 	{
 		if (Actor)
-		{
+			Actor->UnregisterAllComponents();
+	}
+
+	for (AActor* Actor : Actors)
+	{
+		if (Actor)
 			UObjectManager::Get().DestroyObject(Actor);
-		}
 	}
 
 	Actors.clear();

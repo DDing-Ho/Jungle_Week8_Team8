@@ -364,6 +364,8 @@ void UEditorEngine::StartPlaySession()
     }
     if (CurrentState == EViewportPlayState::Playing) return;
 
+	FAudioSystem::Get().StopAll();
+
 	// 포커스된 뷰포트 클라이언트를 찾고 카메라 상태를 저장한 뒤, 실행 상태를 변경합니다.
     const int32 FocusedIdx = ViewportLayout.GetLastFocusedViewportIndex();
     FEditorViewportClient* FocusedClient = ViewportLayout.GetViewportClient(FocusedIdx);

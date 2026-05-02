@@ -22,8 +22,9 @@
 #include "Component/Collision/CapsuleComponent.h"
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
+#include "Component/AudioZoneComponent.h"
 
-// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정이 필요한 컴포넌트는 직접 설정합니다.
+// 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정(빌보드 붙이기 등)이 필요한 컴포넌트는 직접 설정합니다.
 template<typename ComponentType>
 UActorComponent* FEditorComponentFactory::RegisterComp(AActor* Actor)
 {
@@ -84,6 +85,19 @@ UActorComponent* FEditorComponentFactory::RegisterComp<UHeightFogComponent>(AAct
     return Comp;
 }
 
+template <>
+UActorComponent* FEditorComponentFactory::RegisterComp<UAudioZoneComponent>(AActor* Actor)
+{
+    auto* Comp = Actor->AddComponent<UAudioZoneComponent>();
+	
+	UBillboardComponent* Billboard = Actor->AddComponent<UBillboardComponent>();
+	Billboard->AttachToComponent(Comp);
+	Billboard->SetEditorOnly(true);
+    Billboard->SetHiddenInEditor(true);
+	Billboard->SetTexturePath("Asset/Texture/Icons/AudioVolume_64x.png");
+    return Comp;
+}
+
 template <typename LightType>
 UActorComponent* FEditorComponentFactory::RegisterLightComp(AActor* Actor)
 {
@@ -116,6 +130,7 @@ const TArray<FComponentMenuEntry>& FEditorComponentFactory::GetMenuRegistry()
 
         { "LuaScript Component", "Scripting", RegisterComp<ULuaScriptComponent> },
         { "Audio Component", "Audio", RegisterComp<UAudioComponent> },
+        { "AudioZone Component", "Audio", RegisterComp<UAudioZoneComponent> },
 
         { "AmbientLight Component", "Light", RegisterLightComp<UAmbientLightComponent> },
         { "DirectionalLight Component", "Light", RegisterLightComp<UDirectionalLightComponent> },

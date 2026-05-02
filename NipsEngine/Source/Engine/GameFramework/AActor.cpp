@@ -12,13 +12,7 @@ REGISTER_FACTORY(AActor)
 
 AActor::~AActor()
 {
-	for (auto* Comp : OwnedComponents)
-	{
-		if (Comp && Comp->IsRegistered())
-		{
-			Comp->OnUnregister();
-		}
-	}
+	UnregisterAllComponents();
 
 	if (OwningWorld != nullptr)
 	{
@@ -185,6 +179,17 @@ void AActor::RegisterComponent(UActorComponent* Comp)
 		OwnedComponents.push_back(Comp);
 		bPrimitiveCacheDirty = true;
 		Comp->OnRegister();
+	}
+}
+
+void AActor::UnregisterAllComponents()
+{
+	for (UActorComponent* Comp : OwnedComponents)
+	{
+		if (Comp && Comp->IsRegistered())
+		{
+			Comp->OnUnregister();
+		}
 	}
 }
 
@@ -360,18 +365,4 @@ const TArray<UPrimitiveComponent*>& AActor::GetPrimitiveComponents() const
 		bPrimitiveCacheDirty = false;
 	}
 	return PrimitiveCache;
-}
-
-// 소유한 PrimitiveComponent 중 하나라도 대상 Actor와 overlap 중인지 확인한다.
-bool AActor::IsOverlappingActor(const AActor* Other) const
-{
-	for (UPrimitiveComponent* PrimComp : GetPrimitiveComponents())
-	{
-		if (PrimComp && PrimComp->GetOverlapInfos().size() > 0 && PrimComp->IsOverlappingActor(Other))
-		{
-			return true;
-		}
-	}
-
-	return false;
 }

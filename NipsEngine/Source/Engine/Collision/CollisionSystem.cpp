@@ -3,6 +3,8 @@
 #include "Collision/Collision.h"
 #include "Component/Collision/ShapeComponent.h"
 #include "Component/PrimitiveComponent.h"
+#include "Geometry/AABB.h"
+#include "Math/Utils.h"
 #include "UI/EditorConsoleWidget.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -42,6 +44,35 @@ namespace
 		Result.Normal = Hit.Normal * -1.0f;
 		Result.bHit = (HitComponent != nullptr);
 		return Result;
+	}
+
+	bool TryMakeAABBSeparation(const FAABB& A, const FAABB& B, FVector& OutNormal, float& OutDepth)
+	{
+		const float OverlapX = std::min(A.Max.X, B.Max.X) - std::max(A.Min.X, B.Min.X);
+		const float OverlapY = std::min(A.Max.Y, B.Max.Y) - std::max(A.Min.Y, B.Min.Y);
+		const float OverlapZ = std::min(A.Max.Z, B.Max.Z) - std::max(A.Min.Z, B.Min.Z);
+		if (OverlapX <= 0.0f || OverlapY <= 0.0f || OverlapZ <= 0.0f)
+		{
+			return false;
+		}
+
+		const FVector Delta = B.GetCenter() - A.GetCenter();
+		OutDepth = OverlapX;
+		OutNormal = FVector((Delta.X >= 0.0f) ? 1.0f : -1.0f, 0.0f, 0.0f);
+
+		if (OverlapY < OutDepth)
+		{
+			OutDepth = OverlapY;
+			OutNormal = FVector(0.0f, (Delta.Y >= 0.0f) ? 1.0f : -1.0f, 0.0f);
+		}
+
+		if (OverlapZ < OutDepth)
+		{
+			OutDepth = OverlapZ;
+			OutNormal = FVector(0.0f, 0.0f, (Delta.Z >= 0.0f) ? 1.0f : -1.0f);
+		}
+
+		return true;
 	}
 }
 
@@ -176,6 +207,8 @@ void FCollisionSystem::ProcessNarrowCollision(const FCollisionCandidate& A, cons
 
 	if (bShouldBlock)
 	{
+		ProcessBlocking(A.Component, B.Component);
+
 		if (bWasAOverlapping)
 		{
 			FOverlapResult EndOverlapInfo{ B.Actor, B.Component };
@@ -194,7 +227,7 @@ void FCollisionSystem::ProcessNarrowCollision(const FCollisionCandidate& A, cons
 		{
 			A.Component->AddBlockingInfo(B.Actor, B.Component, Hit);
 			A.Component->OnComponentHit.Broadcast(Hit);
-			UE_LOG("[Collision] Block Begin %s -> %s", ActorNameA.c_str(), ActorNameB.c_str());
+			// UE_LOG("[Collision] Block Begin %s -> %s", ActorNameA.c_str(), ActorNameB.c_str());
 		}
 
 		if (!bWasBBlocking)
@@ -202,7 +235,7 @@ void FCollisionSystem::ProcessNarrowCollision(const FCollisionCandidate& A, cons
 			const FHitResult ReverseHit = MakeReverseHit(Hit, A.Component);
 			B.Component->AddBlockingInfo(A.Actor, A.Component, ReverseHit);
 			B.Component->OnComponentHit.Broadcast(ReverseHit);
-			UE_LOG("[Collision] Block Begin %s -> %s", ActorNameB.c_str(), ActorNameA.c_str());
+			// UE_LOG("[Collision] Block Begin %s -> %s", ActorNameB.c_str(), ActorNameA.c_str());
 		}
 
 		return;
@@ -223,7 +256,6 @@ void FCollisionSystem::ProcessNarrowCollision(const FCollisionCandidate& A, cons
 		FOverlapResult BeginOverlapInfo{ B.Actor, B.Component };
 		A.Component->AddOverlapInfo(B.Actor, B.Component);
 		A.Component->OnComponentBeginOverlap.Broadcast(BeginOverlapInfo);
-		UE_LOG("[Collision] Overlap Begin %s -> %s", ActorNameA.c_str(), ActorNameB.c_str());
 	}
 
 	if (B.Component->IsGenerateOverlapEvents() && !bWasBOverlapping)
@@ -231,7 +263,56 @@ void FCollisionSystem::ProcessNarrowCollision(const FCollisionCandidate& A, cons
 		FOverlapResult BeginOverlapInfo{ A.Actor, A.Component };
 		B.Component->AddOverlapInfo(A.Actor, A.Component);
 		B.Component->OnComponentBeginOverlap.Broadcast(BeginOverlapInfo);
-		UE_LOG("[Collision] Overlap Begin %s -> %s", ActorNameB.c_str(), ActorNameA.c_str());
+	}
+}
+
+void FCollisionSystem::ProcessBlocking(UPrimitiveComponent* A, UPrimitiveComponent* B)
+{
+	if (A == nullptr || B == nullptr)
+	{
+		return;
+	}
+
+	FVector Normal;
+	float Depth = 0.0f;
+	if (!TryMakeAABBSeparation(A->GetWorldAABB(), B->GetWorldAABB(), Normal, Depth))
+	{
+		return;
+	}
+
+	constexpr float PushOutEpsilon = 0.1f;
+	const float PushDistance = Depth + PushOutEpsilon;
+	const bool bABlocks = A->IsBlockComponent();
+	const bool bBBlocks = B->IsBlockComponent();
+
+	if (bABlocks && bBBlocks)
+	{
+		if (AActor* OwnerA = A->GetOwner())
+		{
+			OwnerA->AddActorWorldOffset(Normal * (-PushDistance * 0.5f));
+		}
+		if (AActor* OwnerB = B->GetOwner())
+		{
+			OwnerB->AddActorWorldOffset(Normal * ( PushDistance * 0.5f));
+		}
+		return;
+	}
+
+	if (bABlocks)
+	{
+		if (AActor* OwnerB = B->GetOwner())
+		{
+			OwnerB->AddActorWorldOffset(Normal * PushDistance);
+		}
+		return;
+	}
+
+	if (bBBlocks)
+	{
+		if (AActor* OwnerA = A->GetOwner())
+		{
+			OwnerA->AddActorWorldOffset(Normal * -PushDistance);
+		}
 	}
 }
 
@@ -255,7 +336,6 @@ void FCollisionSystem::ClearStaleCollisions(const TArray<FCollisionCandidate>& C
 			Comp->OnComponentEndOverlap.Broadcast(Stale);
 			const FString ActorNameA = GetActorLogName(C.Actor);
 			const FString ActorNameB = GetActorLogName(Stale.OtherActor);
-			UE_LOG("[Collision] Overlap End %s -> %s", ActorNameA.c_str(), ActorNameB.c_str());
 		}
 
 		TArray<FBlockingResult> StaleBlockings;
@@ -269,7 +349,6 @@ void FCollisionSystem::ClearStaleCollisions(const TArray<FCollisionCandidate>& C
 			Comp->RemoveBlockingInfo(Stale.OtherActor, Stale.OtherComp);
 			const FString ActorNameA = GetActorLogName(C.Actor);
 			const FString ActorNameB = GetActorLogName(Stale.OtherActor);
-			UE_LOG("[Collision] Block End %s -> %s", ActorNameA.c_str(), ActorNameB.c_str());
 		}
 	}
 }

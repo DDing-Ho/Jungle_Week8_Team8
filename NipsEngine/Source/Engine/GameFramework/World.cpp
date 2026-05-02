@@ -67,6 +67,13 @@ void UWorld::PostDuplicate(UObject* Original)
 void UWorld::BeginPlay()
 {
     bHasBegunPlay = true;
+    if (ActiveCamera && WorldType != EWorldType::Editor)
+    {
+        FAudioSystem::Get().SetListenerTransform(
+            ActiveCamera->GetLocation(),
+            ActiveCamera->GetForwardVector(),
+            ActiveCamera->GetUpVector());
+    }
     PersistentLevel->BeginPlay();
     RebuildSpatialIndex();
 }
@@ -86,11 +93,12 @@ void UWorld::Tick(float DeltaTime)
 
     if (WorldType == EWorldType::Editor)
         PersistentLevel->TickEditor(DeltaTime);
-    else
-        PersistentLevel->TickGame(DeltaTime);
-
-    SyncSpatialIndex();
-    FCollisionSystem::UpdateWorldCollision(this);
+	else if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+	{
+		PersistentLevel->TickGame(DeltaTime);
+		SyncSpatialIndex();
+		FCollisionSystem::UpdateWorldCollision(this);
+	}
 }
 
 void UWorld::EndPlay(EEndPlayReason::Type EndPlayReason)

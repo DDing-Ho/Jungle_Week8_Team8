@@ -100,11 +100,13 @@ void UObject::CopyPropertiesFrom(UObject* Src)
         case EPropertyType::Vec3:
         case EPropertyType::Vec4:
 		case EPropertyType::Color:
+		case EPropertyType::Enum:
         {
             const size_t Size = GetPropertySize(SrcProp.Type);
-            if (Size > 0)
+            const size_t CopySize = SrcProp.Type == EPropertyType::Enum ? sizeof(int32) : Size;
+            if (CopySize > 0)
 			{
-                memcpy(DstProp->ValuePtr, SrcProp.ValuePtr, Size);
+                memcpy(DstProp->ValuePtr, SrcProp.ValuePtr, CopySize);
 				this->PostEditProperty(SrcProp.Name);
 			}
             break;
