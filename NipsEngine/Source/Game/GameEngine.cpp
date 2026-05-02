@@ -13,8 +13,6 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "Engine/UI/GameUISystem.h"
-#include "Engine/Render/Renderer/GameRenderPipeline.h"
-#include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Renderer/Renderer.h"
 
 #include <Windows.h>
@@ -93,8 +91,6 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
     );
 
     Game::RegisterGameTypes();
-
-	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, Renderer));
 
 	LoadStartupScene();
 

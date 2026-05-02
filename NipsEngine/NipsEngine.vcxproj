@@ -113,28 +113,28 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Build\$(Configuration)\</IntDir>
-    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
+    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\vcpkg_installed\x64-windows\debug\lib;$(LibraryPath)</LibraryPath>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Build\$(Configuration)\</IntDir>
-    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
+    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\vcpkg_installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewer|x64'">
     <OutDir>$(ProjectDir)Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Build\$(Configuration)\</IntDir>
-    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
+    <IncludePath>Source\Engine;Source;ThirdParty;ThirdParty\ImGui;Source\Editor;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\vcpkg_installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Game|x64'">
     <OutDir>$(ProjectDir)Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Build\$(Configuration)\</IntDir>
-    <IncludePath>Source\Game;Source\Engine;Source;ThirdParty;ThirdParty\ImGui;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
+    <IncludePath>Source\Game;Source\Engine;Source;ThirdParty;ThirdParty\ImGui;.;$(ProjectDir)..\vcpkg_installed\x64-windows\include;$(ProjectDir)..\vcpkg_installed\x64-windows\include\luajit;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\vcpkg_installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
@@ -393,7 +393,9 @@
     <ClCompile Include="Source\Engine\Object\Object.cpp" />
     <ClCompile Include="Source\Engine\Render\FontBatcher.cpp" />
     <ClCompile Include="Source\Engine\Render\LineBatcher.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\SubUVBatcher.cpp" />
     <ClCompile Include="Source\Engine\Render\Collector\LightRenderCollector.cpp" />
     <ClCompile Include="Source\Engine\Render\Collector\OverlayRenderCollector.cpp" />

@@ -51,16 +51,6 @@ namespace
 		return std::max(MinValue, std::min(Value, MaxValue));
 	}
 
-	const char* GetObjectTypeName(const UObject* Object)
-	{
-		return Object != nullptr && Object->GetTypeInfo() != nullptr ? Object->GetTypeInfo()->name : "None";
-	}
-
-	FString GetObjectNameForLog(const UObject* Object)
-	{
-		return Object != nullptr ? Object->GetName() : "None";
-	}
-
 	float NormalizeAngleDelta(float Degrees)
 	{
 		float Result = std::fmod(Degrees, 360.0f);
@@ -94,14 +84,7 @@ void URigidBodyComponent::BeginPlay()
 		UpdatedComponent = Owner->GetRootComponent();
 	}
 
-	USceneComponent* CurrentUpdatedComponent = GetUpdatedComponent();
 	CacheInitialRotationIfNeeded();
-	const FString OwnerName = GetObjectNameForLog(Owner);
-	const FString UpdatedName = GetObjectNameForLog(CurrentUpdatedComponent);
-	UE_LOG("RigidBodyComponent: BeginPlay owner=%s updated=%s(%s)",
-		OwnerName.c_str(),
-		UpdatedName.c_str(),
-		GetObjectTypeName(CurrentUpdatedComponent));
 }
 
 void URigidBodyComponent::Serialize(FArchive& Ar)
@@ -439,64 +422,6 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		Velocity = FVector::ZeroVector;
 		AngularVelocity = FVector::ZeroVector;
 		ClearTippingState();
-	}
-
-	USceneComponent* CurrentUpdatedComponent = GetUpdatedComponent();
-	DebugSupportLogTimer += DeltaTime;
-	const bool bShouldLogSupportState =
-		!bDebugSupportStateInitialized ||
-		DebugPrevUpdatedComponent != CurrentUpdatedComponent ||
-		bDebugPrevHasSupport != bHasRestingSupport ||
-		bDebugPrevStable != Support.bStable ||
-		bDebugPrevHasTipTorque != bHasTipTorque ||
-		bDebugPrevTipping != bTipping ||
-		DebugSupportLogTimer >= 1.0f;
-	if (bShouldLogSupportState)
-	{
-		const FString OwnerName = GetObjectNameForLog(Owner);
-		const FString UpdatedName = GetObjectNameForLog(CurrentUpdatedComponent);
-		const FVector Rotation = CurrentUpdatedComponent ? CurrentUpdatedComponent->GetRelativeRotation() : FVector::ZeroVector;
-		UE_LOG(
-			"RigidBodyComponent: support owner=%s updated=%s(%s) hasSupport=%d stable=%d tipping=%d hasTorque=%d wasGrounded=%d pushed=%d groundContact=%d torqueScale=%.3f maxAngular=%.3f grace=%.3f rotation=(%.3f, %.3f, %.3f) center=(%.3f, %.3f, %.3f) pivot=(%.3f, %.3f, %.3f) tipAxis=(%.3f, %.3f, %.3f) torque=(%.3f, %.3f, %.3f) angularVelocity=(%.3f, %.3f, %.3f)",
-			OwnerName.c_str(),
-			UpdatedName.c_str(),
-			GetObjectTypeName(CurrentUpdatedComponent),
-			bHasRestingSupport ? 1 : 0,
-			Support.bStable ? 1 : 0,
-			bTipping ? 1 : 0,
-			bHasTipTorque ? 1 : 0,
-			bWasGrounded ? 1 : 0,
-			bWasPushedOntoGround ? 1 : 0,
-			bHasGroundContact ? 1 : 0,
-			TipTorqueStrength,
-			MaxAngularSpeed,
-			TippingTimeWithoutSupport,
-			Rotation.X,
-			Rotation.Y,
-			Rotation.Z,
-			Support.CenterWorld.X,
-			Support.CenterWorld.Y,
-			Support.CenterWorld.Z,
-			Support.PivotWorld.X,
-			Support.PivotWorld.Y,
-			Support.PivotWorld.Z,
-			TippingAxisWorld.X,
-			TippingAxisWorld.Y,
-			TippingAxisWorld.Z,
-			Support.Torque.X,
-			Support.Torque.Y,
-			Support.Torque.Z,
-			AngularVelocity.X,
-			AngularVelocity.Y,
-			AngularVelocity.Z);
-
-		bDebugSupportStateInitialized = true;
-		DebugPrevUpdatedComponent = CurrentUpdatedComponent;
-		bDebugPrevHasSupport = bHasRestingSupport;
-		bDebugPrevStable = Support.bStable;
-		bDebugPrevHasTipTorque = bHasTipTorque;
-		bDebugPrevTipping = bTipping;
-		DebugSupportLogTimer = 0.0f;
 	}
 
 	if (bHasUnstableSupport && Velocity.Z < 0.0f)
@@ -902,13 +827,6 @@ bool URigidBodyComponent::FindSupportState(float Tolerance, FSupportState& OutSu
 
 	bool bFoundSupport = false;
 	float BestAbsDeltaZ = std::numeric_limits<float>::max();
-	int32 OwnerBlockCount = 0;
-	int32 OtherBlockCount = 0;
-	int32 XYOverlapCount = 0;
-	float ClosestAbsDeltaZ = std::numeric_limits<float>::max();
-	FAABB DebugOwnBounds;
-	FAABB DebugOtherBounds;
-	bool bHasDebugPair = false;
 
 	for (UPrimitiveComponent* Primitive : Owner->GetPrimitiveComponents())
 	{
@@ -917,7 +835,6 @@ bool URigidBodyComponent::FindSupportState(float Tolerance, FSupportState& OutSu
 			continue;
 		}
 
-		++OwnerBlockCount;
 		const FAABB OwnBounds = Primitive->GetWorldAABB();
 		for (AActor* OtherActor : World->GetActors())
 		{
@@ -933,7 +850,6 @@ bool URigidBodyComponent::FindSupportState(float Tolerance, FSupportState& OutSu
 					continue;
 				}
 
-				++OtherBlockCount;
 				const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
 				const bool bOverlapsX =
 					OwnBounds.Max.X > OtherBounds.Min.X + GroundSupportHorizontalSlop &&
@@ -946,18 +862,10 @@ bool URigidBodyComponent::FindSupportState(float Tolerance, FSupportState& OutSu
 					continue;
 				}
 
-				++XYOverlapCount;
 				const float BottomZ = OwnBounds.Min.Z;
 				const float SupportTopZ = OtherBounds.Max.Z;
 				const float SnapDeltaZ = SupportTopZ - BottomZ;
 				const float AbsDeltaZ = std::fabs(SnapDeltaZ);
-				if (AbsDeltaZ < ClosestAbsDeltaZ)
-				{
-					ClosestAbsDeltaZ = AbsDeltaZ;
-					DebugOwnBounds = OwnBounds;
-					DebugOtherBounds = OtherBounds;
-					bHasDebugPair = true;
-				}
 				if (AbsDeltaZ <= Tolerance && AbsDeltaZ < BestAbsDeltaZ)
 				{
 					const FVector OwnCenter = OwnBounds.GetCenter();
@@ -989,66 +897,6 @@ bool URigidBodyComponent::FindSupportState(float Tolerance, FSupportState& OutSu
 				}
 			}
 		}
-	}
-
-	DebugSupportProbeLogTimer += 1.0f / 60.0f;
-	if (!bFoundSupport && DebugSupportProbeLogTimer >= 1.0f)
-	{
-		const FString OwnerName = GetObjectNameForLog(Owner);
-		const char* Reason = "ZTooFar";
-		if (OwnerBlockCount == 0)
-		{
-			Reason = "NoOwnerBlock";
-		}
-		else if (OtherBlockCount == 0)
-		{
-			Reason = "NoOtherBlock";
-		}
-		else if (XYOverlapCount == 0)
-		{
-			Reason = "NoXYOverlap";
-		}
-
-		if (bHasDebugPair)
-		{
-			UE_LOG(
-				"RigidBodyComponent: support probe failed owner=%s reason=%s ownerBlocks=%d otherBlocks=%d xyPairs=%d closestZ=%.3f tolerance=%.3f ownMin=(%.3f, %.3f, %.3f) ownMax=(%.3f, %.3f, %.3f) otherMin=(%.3f, %.3f, %.3f) otherMax=(%.3f, %.3f, %.3f)",
-				OwnerName.c_str(),
-				Reason,
-				OwnerBlockCount,
-				OtherBlockCount,
-				XYOverlapCount,
-				ClosestAbsDeltaZ,
-				Tolerance,
-				DebugOwnBounds.Min.X,
-				DebugOwnBounds.Min.Y,
-				DebugOwnBounds.Min.Z,
-				DebugOwnBounds.Max.X,
-				DebugOwnBounds.Max.Y,
-				DebugOwnBounds.Max.Z,
-				DebugOtherBounds.Min.X,
-				DebugOtherBounds.Min.Y,
-				DebugOtherBounds.Min.Z,
-				DebugOtherBounds.Max.X,
-				DebugOtherBounds.Max.Y,
-				DebugOtherBounds.Max.Z);
-		}
-		else
-		{
-			UE_LOG(
-				"RigidBodyComponent: support probe failed owner=%s reason=%s ownerBlocks=%d otherBlocks=%d xyPairs=%d",
-				OwnerName.c_str(),
-				Reason,
-				OwnerBlockCount,
-				OtherBlockCount,
-				XYOverlapCount);
-		}
-
-		DebugSupportProbeLogTimer = 0.0f;
-	}
-	else if (bFoundSupport)
-	{
-		DebugSupportProbeLogTimer = 0.0f;
 	}
 
 	return bFoundSupport;

@@ -97,14 +97,6 @@ private:
 	FVector InitialRelativeRotation = FVector::ZeroVector;
 	FVector TippingPivotWorld = FVector::ZeroVector;
 	FVector TippingAxisWorld = FVector::ZeroVector;
-	bool bDebugSupportStateInitialized = false;
-	bool bDebugPrevHasSupport = false;
-	bool bDebugPrevStable = true;
-	bool bDebugPrevHasTipTorque = false;
-	bool bDebugPrevTipping = false;
-	float DebugSupportLogTimer = 0.0f;
-	mutable float DebugSupportProbeLogTimer = 0.0f;
-	USceneComponent* DebugPrevUpdatedComponent = nullptr;
 
 	float Mass = 1.0f;
 	float GravityScale = 1.0f;
