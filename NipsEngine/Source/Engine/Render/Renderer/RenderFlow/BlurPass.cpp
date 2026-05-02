@@ -2,7 +2,7 @@
 
 #include "Core/Paths.h"
 #include "Core/ResourceManager.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 #include "ShadowPass.h"
 #include "ShadowAtlasManager.h"
 

@@ -1,9 +1,9 @@
-﻿#include "Texture.h"
+#include "Texture.h"
 #include "Core/Paths.h"
 
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 DEFINE_CLASS(UTexture, UObject)
 

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Core/CoreMinimal.h"
+#include "Core/Logger.h"
 #include <cstdarg>
 #include <functional>
 #include <sstream>
@@ -17,6 +18,7 @@ public:
 	~FEditorConsoleWidget();
 
 	static void AddLog(const char* fmt, ...);
+	static void AddMessage(const char* Message);
 
 	virtual void Render(float DeltaTime) override;
 
@@ -56,5 +58,3 @@ private:
     void CmdShadowFilter(const TArray<FString>& Args);
 };
 
-#define UE_LOG(Format, ...) \
-    FEditorConsoleWidget::AddLog(Format, ##__VA_ARGS__)

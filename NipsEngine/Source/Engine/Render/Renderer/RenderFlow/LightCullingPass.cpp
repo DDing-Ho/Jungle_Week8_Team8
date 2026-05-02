@@ -3,7 +3,7 @@
 #include "Render/Scene/RenderBus.h"
 #include "Render/Scene/RenderCommand.h"
 #include <cstring>
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 #include <cmath>
 #include <algorithm>
 

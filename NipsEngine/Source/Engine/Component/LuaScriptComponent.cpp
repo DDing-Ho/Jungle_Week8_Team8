@@ -1,11 +1,11 @@
-﻿#include "Component/LuaScriptComponent.h"
+#include "Component/LuaScriptComponent.h"
 
 #include "Component/PrimitiveComponent.h"
 #include "Core/Paths.h"
 #include "GameFramework/AActor.h"
 #include "Object/ObjectFactory.h"
 #include "Scripting/LuaScriptSystem.h"
-#include "UI/EditorConsoleWidget.h"
+#include "Core/Logger.h"
 
 #include <chrono>
 #include <filesystem>
