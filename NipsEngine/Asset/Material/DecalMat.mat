@@ -1,13 +1,30 @@
 {
-    "Name": "DecalMat",
-    "Shader": "Shaders/UberLit.hlsl",
-    "MaterialDomain": "Decal",
-    "Params": [
-        { "Name": "BaseColor", "Type": "Vector3", "Value": [1.0, 1.0, 1.0] },
-        { "Name": "Opacity", "Type": "Float", "Value": 1.0 },
-        { "Name": "DiffuseMap", "Type": "Texture", "Value": "Asset/Texture/Blood_Stain_sgfjdepc_1K.png" },
-        { "Name": "NormalMap", "Type": "Texture", "Value": "DefaultNormal" },
-        { "Name": "bHasNormalMap", "Type": "Bool", "Value": false },
-        { "Name": "EmissiveColor", "Type": "Vector3", "Value": [0.0, 0.0, 0.0] }
-    ]
-}
+        "MaterialDomain" : "Decal",
+        "Name" : "DecalMat",
+        "Params" : [{
+            "Name" : "BaseColor",
+            "Type" : "Vector3",
+            "Value" : [0.565401, 0.565401, 0.565401]
+          }, {
+            "Name" : "Opacity",
+            "Type" : "Float",
+            "Value" : 1.000000
+          }, {
+            "Name" : "EmissiveColor",
+            "Type" : "Vector3",
+            "Value" : [0.000000, 0.000000, 0.000000]
+          }, {
+            "Name" : "DiffuseMap",
+            "Type" : "Texture",
+            "Value" : "Asset/Texture/stain1.png"
+          }, {
+            "Name" : "bHasNormalMap",
+            "Type" : "Bool",
+            "Value" : false
+          }, {
+            "Name" : "NormalMap",
+            "Type" : "Texture",
+            "Value" : ""
+          }],
+        "Shader" : "Shaders/UberLit.hlsl"
+      }
