@@ -6,6 +6,7 @@
 #include "Core/ResourceManager.h"
 #include "Render/Common/RenderTypes.h"
 #include "Render/Mesh/MeshManager.h"
+#include "Render/Resource/Shader.h"
 #include "Core/Logging/Stats.h"
 #include "Core/Logging/GPUProfiler.h"
 #include "Core/Logger.h"
@@ -46,6 +47,7 @@ void FRenderer::Create(HWND hWindow)
 	FResourceManager::Get().LoadShader("Shaders/Multipass/SkyPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
 	FResourceManager::Get().LoadShader("Shaders/Multipass/FogPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
 	FResourceManager::Get().LoadShader("Shaders/Multipass/FXAAPass.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
+	FResourceManager::Get().LoadShader("Shaders/Multipass/ViewportPresent.hlsl", "mainVS", "mainPS", nullptr, 0, nullptr);
 	FResourceManager::Get().LoadShader("Shaders/ShaderFont.hlsl", "VS", "PS", TextureVertexInputLayout, ARRAYSIZE(TextureVertexInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/ShaderLine.hlsl", "mainVS", "mainPS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/ShaderBillboard.hlsl", "mainVS", "mainPS", TextureVertexInputLayout, ARRAYSIZE(TextureVertexInputLayout), nullptr);
@@ -277,6 +279,51 @@ void FRenderer::Render(const FRenderBus& InRenderBus)
 	RenderPipeline.Render(RenderPassContext.get());
 	
 	SceneFinalSRV = RenderPipeline.GetOutSRV();
+}
+
+void FRenderer::PresentToBackBuffer(const ID3D11ShaderResourceView* FinalSRV)
+{
+	if (!FinalSRV)
+		return;
+
+	FRenderTargetSet* BackBufferRenderTargets = Device.GetBackBufferRenderTargets();
+	if (!BackBufferRenderTargets || !BackBufferRenderTargets->IsValid())
+		return;
+
+	ID3D11DeviceContext* DeviceContext = Device.GetDeviceContext();
+	ID3D11RenderTargetView* BackBufferRTV = BackBufferRenderTargets->SceneColorRTV;
+	DeviceContext->OMSetRenderTargets(1, &BackBufferRTV, nullptr);
+	Device.SetSubViewport(0, 0, static_cast<int32>(BackBufferRenderTargets->Width), static_cast<int32>(BackBufferRenderTargets->Height));
+
+	UShader* PresentShader = FResourceManager::Get().GetShader("Shaders/Multipass/ViewportPresent.hlsl");
+	if (!PresentShader)
+		return;
+
+	if (!ViewportPresentShaderBinding || ViewportPresentShaderBinding->GetShader() != PresentShader)
+	{
+		ViewportPresentShaderBinding = PresentShader->CreateBindingInstance(Device.GetDevice());
+	}
+
+	if (!ViewportPresentShaderBinding)
+		return;
+
+	ViewportPresentShaderBinding->SetSRV("ViewportFinalColor", const_cast<ID3D11ShaderResourceView*>(FinalSRV));
+	ViewportPresentShaderBinding->SetAllSamplers(FResourceManager::Get().GetOrCreateSamplerState(ESamplerType::EST_Linear));
+
+	DeviceContext->IASetInputLayout(nullptr);
+	DeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+	DeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+	DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	ViewportPresentShaderBinding->Bind(DeviceContext);
+	DeviceContext->Draw(3, 0);
+
+	ID3D11ShaderResourceView* NullSRVs[] = { nullptr };
+	DeviceContext->PSSetShaderResources(0, 1, NullSRVs);
+
+	SceneFinalRTV = BackBufferRTV;
+	SceneFinalSRV.Reset();
+	CurrentRenderTargets = BackBufferRenderTargets;
 }
 
 FViewportRenderResource& FRenderer::AcquireViewportResource(uint32 Width, uint32 Height, int32 Index)

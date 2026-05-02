@@ -62,6 +62,7 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);
+	Renderer.PresentToBackBuffer(Renderer.GetCurrentSceneSRV());
 }
 
 bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSceneView, FGameViewportClient*& OutViewportClient)
@@ -80,17 +81,8 @@ bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSc
 		return false;
 	}
 
-	FViewportRenderResource& ViewportResource =
-		Renderer.AcquireViewportResource(static_cast<uint32>(Rect.Width), static_cast<uint32>(Rect.Height), 0);
+	FViewportRenderResource& ViewportResource = Renderer.AcquireViewportResource(static_cast<uint32>(Rect.Width), static_cast<uint32>(Rect.Height), 0);
 	FRenderTargetSet& RenderTargets = ViewportResource.GetView();
-
-	// Game 출력은 최종 컬러만 백버퍼로 보내고, 중간 G-buffer들은 뷰포트 리소스를 사용합니다.
-	FRenderTargetSet* BackBuffer = Renderer.GetFD3DDevice().GetBackBufferRenderTargets();
-	if (BackBuffer)
-	{
-		RenderTargets.SceneFXAARTV = BackBuffer->SceneColorRTV;
-		RenderTargets.SceneFXAASRV = nullptr;
-	}
 
 	Renderer.BeginViewportFrame(&RenderTargets);
 

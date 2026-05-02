@@ -20,6 +20,8 @@
 
 #include "Render/Renderer/RenderFlow/RenderPipeline.h"
 
+class FShaderBindingInstance;
+
 /**
  * Renderer 가 Viewport 별로 소유하는 데이터를 나타내는 구조체
  */
@@ -116,6 +118,7 @@ public:
 	// Viewport 로부터 RTV, SRV 등 정보를 받아서 세팅
 	void BeginViewportFrame(FRenderTargetSet* InRenderTargetSet);
 	void Render(const FRenderBus& InRenderBus);
+	void PresentToBackBuffer(const ID3D11ShaderResourceView* FinalSRV);
 	void EndFrame();
 	void UseBackBufferRenderTargets();
 	
@@ -153,6 +156,7 @@ private:
 	/** 모든 Render Pass 를 관리할 객체 */
 	FRenderPipeline RenderPipeline;
 	std::shared_ptr<FRenderPassContext> RenderPassContext;
+	std::shared_ptr<FShaderBindingInstance> ViewportPresentShaderBinding;
 
 	// 패스별 커맨드 정렬이 필요한 경우 정렬된 복사본 반환, 아니면 원본 참조
 	const TArray<FRenderCommand>& GetAlignedCommands(ERenderPass Pass, const TArray<FRenderCommand>& Commands);
