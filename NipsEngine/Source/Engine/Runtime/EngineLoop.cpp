@@ -2,6 +2,7 @@
 
 #if IS_OBJ_VIEWER
 #include "Misc/ObjViewer/ObjViewerEngine.h"
+
 #elif WITH_EDITOR
 #include "Editor/EditorEngine.h"
 #elif WITH_GAME
@@ -17,7 +18,7 @@ void FEngineLoop::CreateEngine()
 #elif WITH_GAME
 	GEngine = UObjectManager::Get().CreateObject<UGameEngine>();
 #else
-	GEngine = UObjectManager::Get().CreateObject<UEngine>();
+	GEngine = UObjectManager::Get().CreateObject<UGameEngine>();
 #endif
 }
 

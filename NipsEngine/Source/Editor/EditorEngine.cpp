@@ -2,6 +2,7 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
+#include "Engine/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Engine/Input/InputSystem.h"
 #include "Viewport/ViewportRect.h"
@@ -422,6 +423,11 @@ void UEditorEngine::StartPlaySession()
     FocusedClient->LockCursorToViewport();
     InputSystem::Get().SetCursorVisibility(false);
 
+    // PIE 진입마다 시작화면부터 (커서/마우스 상태는 SetState 내부에서 처리)
+    GameUISystem::Get().ResetGameData();
+    GameUISystem::Get().SetState(EGameUIState::StartMenu);
+    GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
+
 	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
 	const TArray<AActor*> PIEActors = PIEWorld->GetActors();
 	TArray<AActor*> MappedSelectedActors;
@@ -625,6 +631,10 @@ void UEditorEngine::StopPlaySession()
     FocusedClient->EndPIE(EditorWorld);
     SetEditorState(EViewportPlayState::Editing);
     FocusedClient->RestoreCameraSnapshot();
+
+    // PIE 종료 시 게임 UI 상태 초기화 (Ending 화면 등이 에디터에 남지 않도록)
+    GameUISystem::Get().SetState(EGameUIState::StartMenu);
+    GameUISystem::Get().SetExitPlayCallback(nullptr);
 
     if (ViewportPIEHandles.empty())
     {

@@ -12,6 +12,11 @@
 #include "Engine/GameFramework/World.h"
 #include "Engine/Runtime/WindowsWindow.h"
 
+#include "Engine/UI/GameUISystem.h"
+#include "Engine/Render/Renderer/GameRenderPipeline.h"
+#include "Engine/Runtime/WindowsWindow.h"
+#include "Render/Renderer/Renderer.h"
+
 #include <Windows.h>
 #include <commdlg.h>
 
@@ -77,7 +82,17 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 {
 	UEngine::Init(InWindow);
 
-	Game::RegisterGameTypes();
+    // DefaultRenderPipeline → GameRenderPipeline 교체 (UI 렌더 포함)
+    SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, GetRenderer()));
+
+    // GameUISystem 초기화 (ImGui 컨텍스트)
+    GameUISystem::Get().Init(
+        InWindow->GetHWND(),
+        GetRenderer().GetFD3DDevice().GetDevice(),
+        GetRenderer().GetFD3DDevice().GetDeviceContext()
+    );
+
+    Game::RegisterGameTypes();
 
 	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, Renderer));
 
@@ -123,8 +138,9 @@ void UGameEngine::Tick(float DeltaTime)
 
 void UGameEngine::Shutdown()
 {
+    GameUISystem::Get().Shutdown();
 	GameViewport.reset();
-	UEngine::Shutdown();
+    UEngine::Shutdown();
 }
 
 void UGameEngine::OnWindowResized(uint32 Width, uint32 Height)

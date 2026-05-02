@@ -25,6 +25,10 @@ void FPIEController::OnMouseMove(float DeltaX, float DeltaY)
     if (!Camera)
         return;
 
+    // 마우스가 잠금 해제 상태(메뉴, 대화, 엔딩 등)이면 카메라 회전 차단
+    if (!InputSystem::Get().IsMouseLocked())
+        return;
+
     if (Camera->IsOrthographic())
     {
         // Pan: scale movement proportionally to current ortho zoom level

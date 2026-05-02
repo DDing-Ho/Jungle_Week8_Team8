@@ -12,6 +12,7 @@
 
 #include "Render/Renderer/Renderer.h"
 #include "Engine/Input/InputSystem.h"
+#include "Engine/UI/GameUISystem.h"
 namespace
 {
 void SetOpaqueBlendStateCallback(const ImDrawList*, const ImDrawCmd* Cmd)
@@ -179,6 +180,15 @@ void FEditorMainPanel::Render(float DeltaTime)
 	if (bShowStatProfiler)
 		StatWidget.Render(DeltaTime);
 	ViewportOverlayWidget.Render(DeltaTime);
+
+	// 게임 UI - 에디터에서는 항상 표시, PIE 중이면 Play 모드로 동작
+	{
+		const EUIRenderMode UIMode =
+			(EditorEngine && EditorEngine->GetEditorState() == EViewportPlayState::Playing)
+			? EUIRenderMode::Play
+			: EUIRenderMode::Preview;
+		GameUISystem::Get().RenderPanelsOnly(UIMode);
+	}
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

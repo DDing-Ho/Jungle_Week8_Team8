@@ -855,6 +855,12 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp" />
+    <ClCompile Include="Source\Engine\Runtime\GameEngine.cpp" />
+    <ClCompile Include="Source\Engine\UI\GameUISystem.cpp" />
+    <ClCompile Include="Source\Engine\UI\HUDPanel.cpp" />
+    <ClCompile Include="Source\Engine\UI\PauseMenuPanel.cpp" />
+    <ClCompile Include="Source\Engine\UI\DialoguePanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1601,6 +1607,11 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Renderer\GameRenderPipeline.h" />
+    <ClInclude Include="Source\Engine\Runtime\GameEngine.h" />
+    <ClInclude Include="Source\Engine\UI\GameUISystem.h" />
+    <ClInclude Include="Source\Engine\UI\HUDPanel.h" />
+    <ClInclude Include="Source\Engine\UI\PauseMenuPanel.h" />
     <ClInclude Include="ThirdParty\sol\as_args.hpp">
       <Filter>ThirdParty\sol</Filter>
     </ClInclude>
@@ -1937,5 +1948,9 @@
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Input\IInputController.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\UI\DialoguePanel.h" />
   </ItemGroup>
 </Project>

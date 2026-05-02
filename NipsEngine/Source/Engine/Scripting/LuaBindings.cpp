@@ -8,6 +8,8 @@
 #include "Core/CollisionTypes.h"
 #include "Core/Logger.h"
 #include "Audio/AudioSystem.h"
+#include "Engine/Input/InputSystem.h"
+#include "Engine/UI/GameUISystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -63,6 +65,88 @@ void RegisterLuaBindings(sol::state& Lua)
 		"GetName", [](AActor& Actor) { return Actor.GetFName().ToString(); },
 		"GetUUID", &AActor::GetUUID
 	);
+
+	// -------------------------------------------------------
+	// GameUI
+	// -------------------------------------------------------
+	Lua.set_function("SetUIState", [](const std::string& StateName)
+	{
+		if      (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
+		else if (StateName == "Prologue")  GameUISystem::Get().SetState(EGameUIState::Prologue);
+		else if (StateName == "InGame")    GameUISystem::Get().SetState(EGameUIState::InGame);
+		else if (StateName == "Ending")    GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	Lua.set_function("SetProgress", [](float Progress)
+	{
+		GameUISystem::Get().SetProgress(Progress);
+	});
+
+	Lua.set_function("SetCurrentItem", [](const std::string& Name, const std::string& Desc)
+	{
+		GameUISystem::Get().SetCurrentItem(Name.c_str(), Desc.c_str());
+	});
+
+	Lua.set_function("SetItemCount", [](int Count)
+	{
+		GameUISystem::Get().SetItemCount(Count);
+	});
+
+	Lua.set_function("SetElapsedTime", [](float Seconds)
+	{
+		GameUISystem::Get().SetElapsedTime(Seconds);
+	});
+
+	Lua.set_function("SetPauseMenuOpen", [](bool bOpen)
+	{
+		GameUISystem::Get().SetPauseMenuOpen(bOpen);
+	});
+
+	Lua.set_function("IsPauseMenuOpen", []()
+	{
+		return GameUISystem::Get().IsPauseMenuOpen();
+	});
+
+	// -------------------------------------------------------
+	// Dialogue
+	// -------------------------------------------------------
+	Lua.set_function("ShowDialogue", [](const std::string& Speaker, const std::string& Text)
+	{
+		GameUISystem::Get().ShowDialogue(Speaker.c_str(), Text.c_str());
+	});
+
+	Lua.set_function("QueueDialogue", [](const std::string& Speaker, const std::string& Text)
+	{
+		GameUISystem::Get().QueueDialogue(Speaker.c_str(), Text.c_str());
+	});
+
+	Lua.set_function("HideDialogue", []()
+	{
+		GameUISystem::Get().HideDialogue();
+	});
+
+	Lua.set_function("IsDialogueActive", []()
+	{
+		return GameUISystem::Get().IsDialogueActive();
+	});
+
+	// 키 입력 (Windows Virtual Key Code)
+	// 자주 쓰는 상수를 Lua 전역으로 노출
+	Lua.set("KEY_SPACE",  0x20);
+	Lua.set("KEY_ESCAPE", 0x1B);
+	Lua.set("KEY_P",      0x50);
+	Lua.set("KEY_TAB",    0x09);
+	Lua.set("KEY_ENTER",  0x0D);
+
+	Lua.set_function("GetKeyDown", [](int VK)
+	{
+		return InputSystem::Get().GetKeyDown(VK);
+	});
+
+	Lua.set_function("GetKeyUp", [](int VK)
+	{
+		return InputSystem::Get().GetKeyUp(VK);
+	});
 
 	Lua.new_usertype<FHitResult>(
 		"FHitResult",
