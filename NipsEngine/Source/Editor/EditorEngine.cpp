@@ -16,6 +16,7 @@
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
 #include "Settings/EditorSettings.h"
+#include "Settings/EngineSettings.h"
 #include <algorithm>
 
 DEFINE_CLASS(UEditorEngine, UEngine)
@@ -257,6 +258,19 @@ namespace
 
 		return nullptr;
 	}
+
+	void SyncEngineSettingsFromEditorSettings()
+	{
+		const FEditorSettings& EditorSettings = FEditorSettings::Get();
+		FEngineSettings& EngineSettings = FEngineSettings::Get();
+
+		EngineSettings.bEnableStaticMeshLOD = EditorSettings.ShowFlags.bEnableLOD;
+		EngineSettings.SpatialBatchRefitMinDirtyCount = EditorSettings.SpatialBatchRefitMinDirtyCount;
+		EngineSettings.SpatialBatchRefitDirtyPercentThreshold = EditorSettings.SpatialBatchRefitDirtyPercentThreshold;
+		EngineSettings.SpatialRotationStructuralChangeThreshold = EditorSettings.SpatialRotationStructuralChangeThreshold;
+		EngineSettings.SpatialRotationDirtyCountThreshold = EditorSettings.SpatialRotationDirtyCountThreshold;
+		EngineSettings.SpatialRotationDirtyPercentThreshold = EditorSettings.SpatialRotationDirtyPercentThreshold;
+	}
 }
 
 //  Init
@@ -264,6 +278,7 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
     UEngine::Init(InWindow);
     FEditorSettings::Get().LoadFromFile(FEditorSettings::GetDefaultSettingsPath());
+	SyncEngineSettingsFromEditorSettings();
 
     MainPanel.Create(Window, Renderer, this);
     if (WorldList.empty())
@@ -708,14 +723,9 @@ void UEditorEngine::ApplySpatialIndexMaintenanceSettings(UWorld* TargetWorld)
         }
     }
 
-    const FEditorSettings& Settings = GetSettings();
+	SyncEngineSettingsFromEditorSettings();
     FWorldSpatialIndex::FMaintenancePolicy& Policy = World->GetSpatialIndex().GetMaintenancePolicy();
-
-    Policy.BatchRefitMinDirtyCount = std::max<int32>(1, Settings.SpatialBatchRefitMinDirtyCount);
-    Policy.BatchRefitDirtyPercentThreshold = std::clamp<int32>(Settings.SpatialBatchRefitDirtyPercentThreshold, 1, 100);
-    Policy.RotationStructuralChangeThreshold = std::max<int32>(1, Settings.SpatialRotationStructuralChangeThreshold);
-    Policy.RotationDirtyCountThreshold = std::max<int32>(1, Settings.SpatialRotationDirtyCountThreshold);
-    Policy.RotationDirtyPercentThreshold = std::clamp<int32>(Settings.SpatialRotationDirtyPercentThreshold, 1, 100);
+	FEngineSettings::Get().ApplyToSpatialPolicy(Policy);
 }
 
 FViewportCamera* UEditorEngine::GetCamera()

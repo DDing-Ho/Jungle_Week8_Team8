@@ -2,7 +2,7 @@
 
 #include "Renderer.h"
 #include "Engine/Runtime/Engine.h"
-#include "Editor/Viewport/ViewportCamera.h"
+#include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/World.h"
 
 FDefaultRenderPipeline::FDefaultRenderPipeline(UEngine* InEngine, FRenderer& InRenderer)

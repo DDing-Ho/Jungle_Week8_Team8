@@ -2,7 +2,7 @@
 #include "Collision/CollisionSystem.h"
 #include "Component/Light/LightComponent.h"
 #include "Audio/AudioSystem.h"
-#include "Editor/Viewport/ViewportCamera.h"
+#include "Engine/Viewport/ViewportCamera.h"
 
 DEFINE_CLASS(UWorld, UObject)
 REGISTER_FACTORY(UWorld)

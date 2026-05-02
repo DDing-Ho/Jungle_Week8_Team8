@@ -59,6 +59,15 @@ INCLUDE_PATHS = [
     ".",
 ]
 
+GAME_EXCLUDED_PREFIXES = (
+    "Source\\Editor\\",
+    "Source\\Misc\\ObjViewer\\",
+)
+
+EDITOR_EXCLUDED_PREFIXES = (
+    "Source\\Game\\",
+)
+
 # Library paths (relative to project dir)
 LIBRARY_PATHS = []
 
@@ -139,6 +148,29 @@ def collect_all_filters(files: dict[str, list[str]]) -> set[str]:
                 for i in range(1, len(parts) + 1):
                     filters.add("\\".join(parts[:i]))
     return filters
+
+
+def include_paths_for_config(cfg: str) -> list[str]:
+    """Return include paths for a configuration."""
+    if cfg == "Game":
+        return [path for path in INCLUDE_PATHS if path != "Source\\Editor"]
+    return INCLUDE_PATHS
+
+
+def should_exclude_from_config(rel_path: str, cfg: str) -> bool:
+    """Return true when a source file should be hidden from a configuration."""
+    normalized = rel_path.replace("/", "\\")
+    if cfg == "Game":
+        return normalized.startswith(GAME_EXCLUDED_PREFIXES)
+    return normalized.startswith(EDITOR_EXCLUDED_PREFIXES)
+
+
+def add_source_exclusions(elem, rel_path: str):
+    """Emit per-configuration exclusions for sources that belong to another target."""
+    for cfg, plat in CONFIGURATIONS:
+        if should_exclude_from_config(rel_path, cfg):
+            cond = f"'$(Configuration)|$(Platform)'=='{cfg}|{plat}'"
+            ET.SubElement(elem, "ExcludedFromBuild", Condition=cond).text = "true"
 
 
 # ──────────────────────────────────────────────
@@ -225,10 +257,10 @@ def generate_vcxproj(files: dict[str, list[str]]):
     ET.SubElement(proj, "PropertyGroup", Label="UserMacros")
 
     # OutDir, IntDir, IncludePath, LibraryPath, WorkingDirectory for all configurations
-    include_path_value = ";".join(INCLUDE_PATHS) + ";$(IncludePath)"
     library_path_value = ";".join(LIBRARY_PATHS) + ";$(LibraryPath)" if LIBRARY_PATHS else "$(LibraryPath)"
     for cfg, plat in CONFIGURATIONS:
         cond = f"'$(Configuration)|$(Platform)'=='{cfg}|{plat}'"
+        include_path_value = ";".join(include_paths_for_config(cfg)) + ";$(IncludePath)"
         pg = ET.SubElement(proj, "PropertyGroup", Condition=cond)
         ET.SubElement(pg, "OutDir").text = f"$(ProjectDir)Bin\\$(Configuration)\\"
         ET.SubElement(pg, "IntDir").text = f"$(ProjectDir)Build\\$(Configuration)\\"
@@ -285,7 +317,8 @@ def generate_vcxproj(files: dict[str, list[str]]):
     # ClCompile items
     ig = ET.SubElement(proj, "ItemGroup")
     for f in files["ClCompile"]:
-        ET.SubElement(ig, "ClCompile", Include=f)
+        elem = ET.SubElement(ig, "ClCompile", Include=f)
+        add_source_exclusions(elem, f)
 
     # ClInclude items
     ig = ET.SubElement(proj, "ItemGroup")

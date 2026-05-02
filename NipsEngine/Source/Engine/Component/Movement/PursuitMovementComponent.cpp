@@ -2,9 +2,10 @@
 #include "Math/Quat.h"
 #include "Object/ObjectFactory.h"
 #include "Component/SceneComponent.h"
-#include "Editor/Viewport/ViewportCamera.h"
-#include "Editor/EditorEngine.h"
+#include "Engine/Viewport/ViewportCamera.h"
 #include "Engine/Runtime/Engine.h"
+#include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 
 DEFINE_CLASS(UPursuitMovementComponent, UMovementComponent)
 REGISTER_FACTORY(UPursuitMovementComponent)
@@ -43,9 +44,12 @@ void UPursuitMovementComponent::BeginPlay()
 {
     if (bAutoTargetPerspCamera && !Target)
     {
-        if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+        if (AActor* Owner = GetOwner())
         {
-            Target = EditorEngine->GetCamera();
+            if (UWorld* World = Owner->GetFocusedWorld())
+            {
+                Target = World->GetActiveCamera();
+            }
         }
     }
 }
