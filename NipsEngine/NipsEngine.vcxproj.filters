@@ -801,6 +801,10 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp" />
+    <ClCompile Include="Source\Engine\Runtime\GameEngine.cpp" />
+    <ClCompile Include="Source\Engine\UI\GameUISystem.cpp" />
+    <ClCompile Include="Source\Engine\UI\HUDPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1508,5 +1512,9 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Renderer\GameRenderPipeline.h" />
+    <ClInclude Include="Source\Engine\Runtime\GameEngine.h" />
+    <ClInclude Include="Source\Engine\UI\GameUISystem.h" />
+    <ClInclude Include="Source\Engine\UI\HUDPanel.h" />
   </ItemGroup>
 </Project>

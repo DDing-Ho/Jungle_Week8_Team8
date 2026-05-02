@@ -2,6 +2,7 @@
 
 #include "Editor/EditorEngine.h"
 #include "Misc/ObjViewer/ObjViewerEngine.h"
+#include "Engine/Runtime/GameEngine.h"
 
 void FEngineLoop::CreateEngine()
 {
@@ -10,7 +11,7 @@ void FEngineLoop::CreateEngine()
 #elif WITH_EDITOR
 	GEngine = UObjectManager::Get().CreateObject<UEditorEngine>();
 #else
-	GEngine = UObjectManager::Get().CreateObject<UEngine>();
+	GEngine = UObjectManager::Get().CreateObject<UGameEngine>();
 #endif
 }
 

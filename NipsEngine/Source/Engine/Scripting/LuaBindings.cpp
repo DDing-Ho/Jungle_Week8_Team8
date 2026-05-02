@@ -8,6 +8,7 @@
 #include "Core/CollisionTypes.h"
 #include "UI/EditorConsoleWidget.h"
 #include "Audio/AudioSystem.h"
+#include "Engine/UI/GameUISystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -63,6 +64,27 @@ void RegisterLuaBindings(sol::state& Lua)
 		"GetName", [](AActor& Actor) { return Actor.GetFName().ToString(); },
 		"GetUUID", &AActor::GetUUID
 	);
+
+	// -------------------------------------------------------
+	// GameUI
+	// -------------------------------------------------------
+	Lua.set_function("SetUIState", [](const std::string& StateName)
+	{
+		if      (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
+		else if (StateName == "Prologue")  GameUISystem::Get().SetState(EGameUIState::Prologue);
+		else if (StateName == "InGame")    GameUISystem::Get().SetState(EGameUIState::InGame);
+		else if (StateName == "Ending")    GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	Lua.set_function("SetProgress", [](float Progress)
+	{
+		GameUISystem::Get().SetProgress(Progress);
+	});
+
+	Lua.set_function("SetCurrentItem", [](const std::string& Name, const std::string& Desc)
+	{
+		GameUISystem::Get().SetCurrentItem(Name.c_str(), Desc.c_str());
+	});
 
 	Lua.new_usertype<FHitResult>(
 		"FHitResult",
