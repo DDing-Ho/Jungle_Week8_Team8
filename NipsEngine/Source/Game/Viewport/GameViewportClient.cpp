@@ -7,7 +7,6 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Math/Utils.h"
 
-#include <cmath>
 #include <windows.h>
 
 namespace
@@ -16,20 +15,6 @@ namespace
 		'W', 'A', 'S', 'D', 'Q', 'E',
 		VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_SPACE, VK_ESCAPE,
 	};
-
-	FVector MakeForwardFromCamera(const UCameraComponent& Camera)
-	{
-		const float PitchRad = MathUtil::DegreesToRadians(Camera.GetPitchDegrees());
-		const float YawRad = MathUtil::DegreesToRadians(Camera.GetYawDegrees());
-
-		return FVector(std::cos(PitchRad) * std::cos(YawRad), std::cos(PitchRad) * std::sin(YawRad), std::sin(PitchRad)).GetSafeNormal();
-	}
-
-	FVector MakeRightFromCamera(const UCameraComponent& Camera)
-	{
-		const float YawRad = MathUtil::DegreesToRadians(Camera.GetYawDegrees());
-		return FVector(-std::sin(YawRad), std::cos(YawRad), 0.0f).GetSafeNormal();
-	}
 } // namespace
 
 FGameViewportClient::~FGameViewportClient()
@@ -45,7 +30,9 @@ void FGameViewportClient::Initialize(FWindowsWindow* InWindow)
 	FreeCamera.OnResize(static_cast<uint32>(WindowWidth), static_cast<uint32>(WindowHeight));
 	FreeCamera.SetLocation(FVector(-5.0f, -5.0f, 3.0f));
 	FreeCamera.SetLookAt(FVector::ZeroVector);
-	InputRouter.GetPlayerController().SetFreeCamera(&FreeCamera);
+	PlayerController.SetFreeCamera(&FreeCamera);
+	InputRouter.SetWorldType(EWorldType::Game);
+	InputRouter.SetGamePlayerController(&PlayerController);
 	UpdateControllerViewportDim();
 	UpdateCursorCapture();
 }
@@ -75,43 +62,7 @@ void FGameViewportClient::Tick(float DeltaTime)
 // 카메라 활성화 여부에 따라 적절한 카메라를 선택하여 렌더러에 넘겨줄 FSceneView 구조체의 내용을 채웁니다.
 void FGameViewportClient::BuildSceneView(FSceneView& OutView) const
 {
-	if (ActiveCamera)
-	{
-		OutView.ViewMatrix = ActiveCamera->GetViewMatrix();
-		OutView.ProjectionMatrix = ActiveCamera->GetProjectionMatrix();
-		OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
-
-		OutView.CameraPosition = ActiveCamera->GetWorldLocation();
-		OutView.CameraForward = MakeForwardFromCamera(*ActiveCamera);
-		OutView.CameraRight = MakeRightFromCamera(*ActiveCamera);
-		OutView.CameraUp = FVector::UpVector;
-
-		OutView.NearPlane = ActiveCamera->GetNearPlane();
-		OutView.FarPlane = ActiveCamera->GetFarPlane();
-		OutView.bOrthographic = ActiveCamera->IsOrthogonal();
-		OutView.CameraOrthoHeight = ActiveCamera->GetOrthoWidth();
-		OutView.CameraFrustum.UpdateFromCamera(OutView.ViewProjectionMatrix);
-	}
-	else
-	{
-		OutView.ViewMatrix = FreeCamera.GetViewMatrix();
-		OutView.ProjectionMatrix = FreeCamera.GetProjectionMatrix();
-		OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
-
-		OutView.CameraPosition = FreeCamera.GetLocation();
-		OutView.CameraForward = FreeCamera.GetForwardVector();
-		OutView.CameraRight = FreeCamera.GetRightVector();
-		OutView.CameraUp = FreeCamera.GetUpVector();
-
-		OutView.NearPlane = FreeCamera.GetNearPlane();
-		OutView.FarPlane = FreeCamera.GetFarPlane();
-		OutView.bOrthographic = FreeCamera.IsOrthographic();
-		OutView.CameraOrthoHeight = FreeCamera.GetOrthoHeight();
-		OutView.CameraFrustum = FreeCamera.GetFrustum();
-	}
-
-	OutView.ViewRect = FViewportRect(0, 0, static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
-	OutView.ViewMode = EViewMode::Lit;
+	PlayerController.BuildSceneView(OutView, FViewportRect(0, 0, static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight)), EViewMode::Lit);
 }
 
 void FGameViewportClient::SetWorld(UWorld* InWorld)
@@ -121,12 +72,13 @@ void FGameViewportClient::SetWorld(UWorld* InWorld)
 	{
 		World->SetActiveCamera(&FreeCamera);
 	}
+	InputRouter.SetWorldType(EWorldType::Game);
 }
 
 void FGameViewportClient::SetCamera(UCameraComponent* InCamera)
 {
 	ActiveCamera = InCamera;
-	InputRouter.GetPlayerController().SetCamera(InCamera);
+	PlayerController.SetCamera(InCamera);
 	if (ActiveCamera)
 	{
 		ActiveCamera->OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
@@ -224,7 +176,7 @@ void FGameViewportClient::TickMouseInput()
 // PlayerController에 현재 뷰포트 크기를 적용합니다.
 void FGameViewportClient::UpdateControllerViewportDim()
 {
-	InputRouter.GetPlayerController().SetViewportDim(0.0f, 0.0f, WindowWidth, WindowHeight);
+	InputRouter.SetViewportDim(0.0f, 0.0f, WindowWidth, WindowHeight);
 }
 
 // 윈도우 포커스 여부에 따라 마우스 커서를 숨길지, 보일지 결정합니다.

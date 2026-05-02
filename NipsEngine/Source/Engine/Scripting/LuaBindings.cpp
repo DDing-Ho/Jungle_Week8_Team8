@@ -9,7 +9,7 @@
 #include "Core/Logger.h"
 #include "Audio/AudioSystem.h"
 #include "Engine/Input/InputSystem.h"
-#include "Engine/UI/GameUISystem.h"
+#include "Game/UI/GameUISystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {

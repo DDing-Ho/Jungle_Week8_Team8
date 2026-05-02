@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/UI/GameUISystem.h"
+#include "Game/UI/GameUISystem.h"
 
 class HUDPanel
 {

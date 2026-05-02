@@ -133,6 +133,9 @@
     <Filter Include="Source\Engine\Spatial">
       <UniqueIdentifier>{f8334c36-7f14-c751-7bba-2157775fd0eb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\UI">
+      <UniqueIdentifier>{b9e951bb-3501-2ca8-5cf4-bb4e6ec9edc2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Viewport">
       <UniqueIdentifier>{267a334b-b2ac-5fd7-67a5-5bdb67375b74}</UniqueIdentifier>
     </Filter>
@@ -292,9 +295,6 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp">
       <Filter>Source\Editor</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Input\EditorInputRouter.cpp">
-      <Filter>Source\Editor\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Input\EditorWorldController.cpp">
       <Filter>Source\Editor\Input</Filter>
@@ -538,6 +538,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Geometry\Transform.cpp">
       <Filter>Source\Engine\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputRouter.cpp">
+      <Filter>Source\Engine\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Engine\Input</Filter>
@@ -785,6 +788,24 @@
     <ClCompile Include="Source\Engine\Spatial\WorldSpatialIndex.cpp">
       <Filter>Source\Engine\Spatial</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Game\UI\DialoguePanel.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\EndingPanel.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\GameUISystem.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\HUDPanel.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\PauseMenuPanel.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\StartMenuPanel.cpp">
+      <Filter>Source\Engine\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Viewport\ViewportCamera.cpp">
       <Filter>Source\Engine\Viewport</Filter>
     </ClCompile>
@@ -796,9 +817,6 @@
     </ClCompile>
     <ClCompile Include="Source\Game\GameTypes.cpp">
       <Filter>Source\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Game\Input\GameInputRouter.cpp">
-      <Filter>Source\Game\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Game\Input\GamePlayerController.cpp">
       <Filter>Source\Game\Input</Filter>
@@ -855,12 +873,6 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp" />
-    <ClCompile Include="Source\Engine\Runtime\GameEngine.cpp" />
-    <ClCompile Include="Source\Engine\UI\GameUISystem.cpp" />
-    <ClCompile Include="Source\Engine\UI\HUDPanel.cpp" />
-    <ClCompile Include="Source\Engine\UI\PauseMenuPanel.cpp" />
-    <ClCompile Include="Source\Engine\UI\DialoguePanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -870,9 +882,6 @@
       <Filter>Source\Editor</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\BaseEditorController.h">
-      <Filter>Source\Editor\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\Input\EditorInputRouter.h">
       <Filter>Source\Editor\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\EditorWorldController.h">
@@ -1205,6 +1214,9 @@
     <ClInclude Include="Source\Engine\Input\IInputController.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputRouter.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
@@ -1517,6 +1529,24 @@
     <ClInclude Include="Source\Engine\Spatial\WorldSpatialIndex.h">
       <Filter>Source\Engine\Spatial</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Game\UI\DialoguePanel.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\EndingPanel.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\GameUISystem.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\HUDPanel.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\PauseMenuPanel.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\StartMenuPanel.h">
+      <Filter>Source\Engine\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Viewport\Viewport.h">
       <Filter>Source\Engine\Viewport</Filter>
     </ClInclude>
@@ -1536,9 +1566,6 @@
       <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Input\BaseGameController.h">
-      <Filter>Source\Game\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Game\Input\GameInputRouter.h">
       <Filter>Source\Game\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Input\GamePlayerController.h">
@@ -1607,11 +1634,6 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Renderer\GameRenderPipeline.h" />
-    <ClInclude Include="Source\Engine\Runtime\GameEngine.h" />
-    <ClInclude Include="Source\Engine\UI\GameUISystem.h" />
-    <ClInclude Include="Source\Engine\UI\HUDPanel.h" />
-    <ClInclude Include="Source\Engine\UI\PauseMenuPanel.h" />
     <ClInclude Include="ThirdParty\sol\as_args.hpp">
       <Filter>ThirdParty\sol</Filter>
     </ClInclude>
@@ -1948,9 +1970,5 @@
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Input\IInputController.h">
-      <Filter>Source\Engine\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\UI\DialoguePanel.h" />
   </ItemGroup>
 </Project>

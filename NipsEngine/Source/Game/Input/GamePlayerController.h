@@ -2,9 +2,12 @@
 
 #include "Game/Input/BaseGameController.h"
 #include "Math/Vector.h"
+#include "Render/Common/ViewTypes.h"
 
 class AActor;
+struct FSceneView;
 class FViewportCamera;
+struct FViewportRect;
 class UCameraComponent;
 
 class FGamePlayerController : public IBaseGameController
@@ -40,6 +43,8 @@ public:
 
 	void SetMoveSpeed(float InMoveSpeed) { MoveSpeed = InMoveSpeed; }
 	void SetRotateSensitivity(float InSensitivity) { RotateSensitivity = InSensitivity; }
+
+	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 
 private:
 	void RotateActiveCamera(float DeltaX, float DeltaY);

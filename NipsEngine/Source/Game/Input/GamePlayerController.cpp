@@ -1,7 +1,9 @@
 ﻿#include "Game/Input/GamePlayerController.h"
 
 #include "Component/CameraComponent.h"
+#include "Engine/Runtime/SceneView.h"
 #include "Engine/Viewport/ViewportCamera.h"
+#include "GameFramework/AActor.h"
 #include "Math/Matrix.h"
 #include "Math/Utils.h"
 
@@ -155,6 +157,47 @@ void FGamePlayerController::SetFreeCamera(FViewportCamera* InCamera)
 	SyncFreeCameraAngles();
 }
 
+void FGamePlayerController::BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const
+{
+	if (Camera)
+	{
+		OutView.ViewMatrix = Camera->GetViewMatrix();
+		OutView.ProjectionMatrix = Camera->GetProjectionMatrix();
+		OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
+
+		OutView.CameraPosition = Camera->GetWorldLocation();
+		OutView.CameraForward = Camera->GetForwardVector();
+		OutView.CameraRight = Camera->GetRightVector();
+		OutView.CameraUp = Camera->GetUpVector();
+
+		OutView.NearPlane = Camera->GetNearPlane();
+		OutView.FarPlane = Camera->GetFarPlane();
+		OutView.bOrthographic = Camera->IsOrthogonal();
+		OutView.CameraOrthoHeight = Camera->GetOrthoWidth();
+		OutView.CameraFrustum.UpdateFromCamera(OutView.ViewProjectionMatrix);
+	}
+	else if (FreeCamera)
+	{
+		OutView.ViewMatrix = FreeCamera->GetViewMatrix();
+		OutView.ProjectionMatrix = FreeCamera->GetProjectionMatrix();
+		OutView.ViewProjectionMatrix = OutView.ViewMatrix * OutView.ProjectionMatrix;
+
+		OutView.CameraPosition = FreeCamera->GetLocation();
+		OutView.CameraForward = FreeCamera->GetForwardVector();
+		OutView.CameraRight = FreeCamera->GetRightVector();
+		OutView.CameraUp = FreeCamera->GetUpVector();
+
+		OutView.NearPlane = FreeCamera->GetNearPlane();
+		OutView.FarPlane = FreeCamera->GetFarPlane();
+		OutView.bOrthographic = FreeCamera->IsOrthographic();
+		OutView.CameraOrthoHeight = FreeCamera->GetOrthoHeight();
+		OutView.CameraFrustum = FreeCamera->GetFrustum();
+	}
+
+	OutView.ViewRect = ViewRect;
+	OutView.ViewMode = ViewMode;
+}
+
 void FGamePlayerController::RotateActiveCamera(float DeltaX, float DeltaY)
 {
 	if (Camera)
@@ -178,6 +221,12 @@ void FGamePlayerController::RotateActiveCamera(float DeltaX, float DeltaY)
 
 void FGamePlayerController::MoveActiveCamera(const FVector& Direction, float Scale)
 {
+	if (Player)
+	{
+		Player->AddActorWorldOffset(Direction * Scale);
+		return;
+	}
+
 	if (Camera)
 	{
 		Camera->SetWorldLocation(Camera->GetWorldLocation() + Direction * Scale);

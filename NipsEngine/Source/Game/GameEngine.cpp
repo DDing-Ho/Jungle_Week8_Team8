@@ -12,8 +12,7 @@
 #include "Engine/GameFramework/World.h"
 #include "Engine/Runtime/WindowsWindow.h"
 
-#include "Engine/UI/GameUISystem.h"
-#include "Engine/Render/Renderer/GameRenderPipeline.h"
+#include "Game/UI/GameUISystem.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Renderer/Renderer.h"
 

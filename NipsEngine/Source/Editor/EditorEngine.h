@@ -95,6 +95,6 @@ public:
 private:
 	FSelectionManager SelectionManager;
 	FEditorMainPanel  MainPanel;
-	FEditorViewportLayout   ViewportLayout;
+	FEditorViewportLayout ViewportLayout;
 	TMap<int32, FName> ViewportPIEHandles;  // 뷰포트 인덱스 → PIE 월드 컨텍스트 핸들
 };

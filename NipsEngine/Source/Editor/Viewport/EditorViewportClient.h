@@ -3,8 +3,11 @@
 #include "Render/Common/RenderTypes.h"
 #include "Engine/Geometry/Ray.h"
 #include "Core/CollisionTypes.h"
+#include "Engine/Input/InputRouter.h"
 #include "Viewport/ViewportClient.h"
-#include "Editor/Input/EditorInputRouter.h"
+#include "Editor/Input/EditorWorldController.h"
+#include "Editor/Input/PIEController.h"
+#include "Game/Input/GamePlayerController.h"
 #include "Spatial/WorldSpatialIndex.h"
 #include "Editor/Utility/EditorUIUtils.h"
 #include "Engine/Viewport/ViewportCamera.h"
@@ -64,7 +67,7 @@ public:
 	void SetGizmo(UGizmoComponent* InGizmo)
 	{
 		Gizmo = InGizmo;
-		InputRouter.GetEditorWorldController().SetGizmo(InGizmo);
+		EditorWorldController.SetGizmo(InGizmo);
 	}
 	void SetSettings(const FEditorSettings* InSettings) { Settings = InSettings; }
 	void SetSelectionManager(FSelectionManager* InSelectionManager);
@@ -74,8 +77,8 @@ public:
 	/** Override to also resize the camera. */
 	void SetViewportSize(float InWidth, float InHeight) override;
 
-	float GetMoveSpeed() { return InputRouter.GetEditorWorldController().GetMoveSpeed(); }
-	void  SetMoveSpeed(float InSpeed) { InputRouter.GetEditorWorldController().SetMoveSpeed(InSpeed); }
+	float GetMoveSpeed() { return EditorWorldController.GetMoveSpeed(); }
+	void  SetMoveSpeed(float InSpeed) { EditorWorldController.SetMoveSpeed(InSpeed); }
 	void  FocusSelection() { FocusPrimarySelection(); }
 
 	// Camera lifecycle
@@ -85,7 +88,7 @@ public:
 	FViewportCamera*       GetCamera()       { return bHasCamera ? &Camera : nullptr; }
 	const FViewportCamera* GetCamera() const { return bHasCamera ? &Camera : nullptr; }
 	// 외부에서 카메라 위치를 변경한 후 컨트롤러의 TargetLocation을 동기화할 때 호출
-	void SyncCameraTarget() { InputRouter.GetEditorWorldController().ResetTargetLocation(); }
+	void SyncCameraTarget() { EditorWorldController.ResetTargetLocation(); }
 
 	void Tick(float DeltaTime) override;
 	void BuildSceneView(FSceneView& OutView) const override;
@@ -119,8 +122,8 @@ public:
 	void  ClearPendingActorPlacement() { bPendingActorPlacement = false; }
 
 	void LockCursorToViewport();
-	void SetEndPIECallback(std::function<void()> Callback) { InputRouter.GetPIEController().SetEndPIECallback(std::move(Callback)); }
-	void ClearEndPIECallback()                             { InputRouter.GetPIEController().ClearEndPIECallback(); }
+	void SetEndPIECallback(std::function<void()> Callback) { PIEController.SetEndPIECallback(std::move(Callback)); }
+	void ClearEndPIECallback()                             { PIEController.ClearEndPIECallback(); }
 
 private:
 	// ── Tick sub-steps ───────────────────────────────────────────────────────
@@ -130,6 +133,7 @@ private:
 	void TickEditorShortcuts();               // editor-only hotkeys (gizmo toggle, delete, select all)
 	void TickPIEShortCuts();				  // PIE-only hotkeys
 	void TickMouseInput(float VX, float VY);  // poll mouse state -> route to active controller
+	void TogglePIEInputCapture();
 
 	void TickInteraction(float DeltaTime);    // box selection + gizmo screen-scaling
 
@@ -155,7 +159,10 @@ private:
 	FSelectionManager*     SelectionManager = nullptr;
 
 	FViewportCamera		   Camera;
-	FEditorInputRouter	   InputRouter;
+	FEditorWorldController EditorWorldController;
+	FPIEController		   PIEController;
+	FGamePlayerController  GamePlayerController;
+	FInputRouter		   InputRouter;
 	bool				   bHasCamera		= false;
 
 	EViewportPlayState     PlayState       = EViewportPlayState::Editing;

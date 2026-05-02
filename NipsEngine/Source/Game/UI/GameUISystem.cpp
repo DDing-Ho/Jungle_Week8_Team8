@@ -1,10 +1,10 @@
-#include "Engine/UI/GameUISystem.h"
+﻿#include "Game/UI/GameUISystem.h"
 
-#include "Engine/UI/StartMenuPanel.h"
-#include "Engine/UI/HUDPanel.h"
-#include "Engine/UI/DialoguePanel.h"
-#include "Engine/UI/PauseMenuPanel.h"
-#include "Engine/UI/EndingPanel.h"
+#include "Game/UI/StartMenuPanel.h"
+#include "Game/UI/HUDPanel.h"
+#include "Game/UI/DialoguePanel.h"
+#include "Game/UI/PauseMenuPanel.h"
+#include "Game/UI/EndingPanel.h"
 #include "Engine/Input/InputSystem.h"
 
 #include "ImGui/imgui.h"

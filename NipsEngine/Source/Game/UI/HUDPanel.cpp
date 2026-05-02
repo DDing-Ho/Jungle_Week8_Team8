@@ -1,4 +1,4 @@
-﻿#include "Engine/UI/HUDPanel.h"
+﻿#include "Game/UI/HUDPanel.h"
 
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Viewport/ViewportRect.h"
