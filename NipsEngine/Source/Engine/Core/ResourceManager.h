@@ -118,6 +118,7 @@ public:
 	bool SerializeMaterialInstance(const FString& Path, const UMaterialInstance* MaterialInstance);
 	bool DeserializeMaterial(const FString& Path);
 	TArray<FString> GetMaterialNames() const;
+	TArray<FString> GetMaterialInterfaceNames() const;
 
 	UMaterialInstance* CreateMaterialInstance(const FString& Path, UMaterial* Parent);
 	UMaterialInstance* GetMaterialInstance(const FString& Path) const;

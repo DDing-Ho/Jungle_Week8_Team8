@@ -278,9 +278,9 @@ void FEditorMaterialWidget::RenderMaterialDetails(UPrimitiveComponent* Primitive
 
     // ---- 머테리얼 교체 콤보박스 (항상 표시) ----
 	TArray<UMaterialInterface*> Materials;
-	for (TObjectIterator<UMaterialInterface> It; It; ++It)
+	for (const FString& MaterialName : FResourceManager::Get().GetMaterialInterfaceNames())
 	{
-		UMaterialInterface* Mat = *It;
+		UMaterialInterface* Mat = FResourceManager::Get().GetMaterialInterface(MaterialName);
 		if (Mat)
 		{
 			Materials.push_back(Mat);

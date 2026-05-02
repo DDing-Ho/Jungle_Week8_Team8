@@ -1382,6 +1382,30 @@ TArray<FString> FResourceManager::GetMaterialNames() const
 	return Names;
 }
 
+TArray<FString> FResourceManager::GetMaterialInterfaceNames() const
+{
+	TArray<FString> Names;
+	Names.reserve(Materials.size() + MaterialInstances.size());
+
+	for (const auto& [Name, Mat] : Materials)
+	{
+		if (Mat)
+		{
+			Names.push_back(Name);
+		}
+	}
+
+	for (const auto& [Name, MatInst] : MaterialInstances)
+	{
+		if (MatInst)
+		{
+			Names.push_back(Name);
+		}
+	}
+
+	return Names;
+}
+
 UMaterial* FResourceManager::GetMaterial(const FString& MaterialName) const
 {
 	auto It = Materials.find(MaterialName);
