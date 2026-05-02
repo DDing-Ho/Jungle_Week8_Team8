@@ -142,6 +142,18 @@ struct FAudioSystemImpl
 			&& std::abs(LocalZ) <= Zone.Extent.Z;
 	}
 
+	float GetDistanceSqToZone(const FVector& Point, const FZoneMix& Zone) const
+	{
+		const FVector Delta = Point - Zone.Location;
+		const float LocalX = FVector::DotProduct(Delta, Zone.Forward);
+		const float LocalY = FVector::DotProduct(Delta, Zone.Right);
+		const float LocalZ = FVector::DotProduct(Delta, Zone.Up);
+		const float OutsideX = std::max(std::abs(LocalX) - Zone.Extent.X, 0.0f);
+		const float OutsideY = std::max(std::abs(LocalY) - Zone.Extent.Y, 0.0f);
+		const float OutsideZ = std::max(std::abs(LocalZ) - Zone.Extent.Z, 0.0f);
+		return OutsideX * OutsideX + OutsideY * OutsideY + OutsideZ * OutsideZ;
+	}
+
 	const FZoneMix* FindBestListenerZone() const
 	{
 		const FZoneMix* BestZone = nullptr;
@@ -150,7 +162,7 @@ struct FAudioSystemImpl
 			const FZoneMix& Zone = Pair.second;
 			if (Zone.Weight <= 0.0f)
 			{
-				continue;
+				continue;  
 			}
 
 			if (!BestZone ||
@@ -181,6 +193,27 @@ struct FAudioSystemImpl
 			{
 				BestZoneId = Pair.first;
 				BestZone = &Zone;
+			}
+		}
+		return BestZoneId;
+	}
+
+	uint32 FindBestExteriorListenerZoneId() const
+	{
+		uint32 BestZoneId = 0;
+		const FZoneMix* BestZone = nullptr;
+		float BestDistanceSq = 0.0f;
+		for (const auto& Pair : ZoneMixes)
+		{
+			const FZoneMix& Zone = Pair.second;
+			const float DistanceSq = GetDistanceSqToZone(ListenerLocation, Zone);
+			if (!BestZone ||
+				Zone.Priority > BestZone->Priority ||
+				(Zone.Priority == BestZone->Priority && DistanceSq < BestDistanceSq))
+			{
+				BestZoneId = Pair.first;
+				BestZone = &Zone;
+				BestDistanceSq = DistanceSq;
 			}
 		}
 		return BestZoneId;
@@ -601,9 +634,16 @@ struct FAudioSystemImpl
 		{
 			LastListenerZoneId = ContainingZoneId;
 		}
-		else if (LastListenerZoneId != 0 && ZoneMixes.find(LastListenerZoneId) == ZoneMixes.end())
+		else
 		{
-			LastListenerZoneId = 0;
+			if (LastListenerZoneId != 0 && ZoneMixes.find(LastListenerZoneId) == ZoneMixes.end())
+			{
+				LastListenerZoneId = 0;
+			}
+			if (LastListenerZoneId == 0)
+			{
+				LastListenerZoneId = FindBestExteriorListenerZoneId();
+			}
 		}
 
 		for (auto& Pair : ZoneMixes)
