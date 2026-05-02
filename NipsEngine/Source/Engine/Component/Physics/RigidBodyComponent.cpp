@@ -4,6 +4,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Object/ObjectFactory.h"
 #include "Serialization/Archive.h"
@@ -13,6 +14,9 @@
 
 namespace
 {
+	constexpr float GroundSupportTolerance = 0.05f;
+	constexpr float GroundSupportHorizontalSlop = 0.001f;
+
 	bool IsLiveObjectPointer(const UObject* Object)
 	{
 		if (Object == nullptr)
@@ -137,6 +141,7 @@ void URigidBodyComponent::AddImpulse(const FVector& Impulse)
 	ClampEditableValues();
 	Velocity += Impulse / Mass;
 	bGrounded = false;
+	bGroundPushOutSinceLastTick = false;
 }
 
 void URigidBodyComponent::NotifyBlockingPushOut(const FVector& PushDelta)
@@ -150,6 +155,7 @@ void URigidBodyComponent::NotifyBlockingPushOut(const FVector& PushDelta)
 	if (PushDelta.Z > 0.0f)
 	{
 		bGrounded = true;
+		bGroundPushOutSinceLastTick = true;
 		if (Velocity.Z < 0.0f)
 		{
 			Velocity.Z = 0.0f;
@@ -213,7 +219,12 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	ClampEditableValues();
 	ApplyBlockingResponse();
 
-	bGrounded = HasGroundContact();
+	const bool bWasGrounded = bGrounded;
+	const bool bWasPushedOntoGround = bGroundPushOutSinceLastTick;
+	bGroundPushOutSinceLastTick = false;
+	const bool bHasGroundContact = HasGroundContact();
+	const bool bCanKeepRestingSupport = bWasGrounded || bWasPushedOntoGround || bHasGroundContact;
+	bGrounded = bWasPushedOntoGround || bHasGroundContact || (bCanKeepRestingSupport && HasRestingSupport(GroundSupportTolerance));
 	if (bGrounded && Velocity.Z < 0.0f)
 	{
 		Velocity.Z = 0.0f;
@@ -350,6 +361,66 @@ bool URigidBodyComponent::HasGroundContact() const
 			if (Normal.Z > 0.5f)
 			{
 				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool URigidBodyComponent::HasRestingSupport(float Tolerance) const
+{
+	if (Owner == nullptr)
+	{
+		return false;
+	}
+
+	UWorld* World = Owner->GetFocusedWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	for (UPrimitiveComponent* Primitive : Owner->GetPrimitiveComponents())
+	{
+		if (Primitive == nullptr || !Primitive->IsBlockComponent())
+		{
+			continue;
+		}
+
+		const FAABB OwnBounds = Primitive->GetWorldAABB();
+		for (AActor* OtherActor : World->GetActors())
+		{
+			if (OtherActor == nullptr || OtherActor == Owner || !OtherActor->IsActive())
+			{
+				continue;
+			}
+
+			for (UPrimitiveComponent* OtherPrimitive : OtherActor->GetPrimitiveComponents())
+			{
+				if (OtherPrimitive == nullptr || !OtherPrimitive->IsBlockComponent())
+				{
+					continue;
+				}
+
+				const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
+				const bool bOverlapsX =
+					OwnBounds.Max.X > OtherBounds.Min.X + GroundSupportHorizontalSlop &&
+					OwnBounds.Min.X < OtherBounds.Max.X - GroundSupportHorizontalSlop;
+				const bool bOverlapsY =
+					OwnBounds.Max.Y > OtherBounds.Min.Y + GroundSupportHorizontalSlop &&
+					OwnBounds.Min.Y < OtherBounds.Max.Y - GroundSupportHorizontalSlop;
+				if (!bOverlapsX || !bOverlapsY)
+				{
+					continue;
+				}
+
+				const float BottomZ = OwnBounds.Min.Z;
+				const float SupportTopZ = OtherBounds.Max.Z;
+				if (BottomZ >= SupportTopZ - Tolerance && BottomZ <= SupportTopZ + Tolerance)
+				{
+					return true;
+				}
 			}
 		}
 	}

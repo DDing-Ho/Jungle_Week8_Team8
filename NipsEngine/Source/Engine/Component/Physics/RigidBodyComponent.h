@@ -55,6 +55,7 @@ private:
 	void ApplyBlockingResponse();
 	bool HasBlockingContact() const;
 	bool HasGroundContact() const;
+	bool HasRestingSupport(float Tolerance) const;
 
 private:
 	USceneComponent* UpdatedComponent = nullptr;
@@ -66,6 +67,7 @@ private:
 	bool bHeldByPhysicsHandle = false;
 	bool bWasSimulatingBeforeHold = true;
 	bool bGrounded = false;
+	bool bGroundPushOutSinceLastTick = false;
 
 	float Mass = 1.0f;
 	float GravityScale = 1.0f;
