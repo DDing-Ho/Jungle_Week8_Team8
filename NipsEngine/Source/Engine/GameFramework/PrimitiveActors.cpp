@@ -175,6 +175,7 @@ void AAudioZoneActor::InitDefaultComponents()
 	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
 	Billboard->AttachToComponent(AudioZone);
 	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
 	Billboard->SetTexturePath("Asset/Texture/Icons/AudioVolume_64x.png");
 }
 
