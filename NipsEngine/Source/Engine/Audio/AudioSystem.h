@@ -26,6 +26,7 @@ struct FAudioPlayParams
 {
 	bool bLoop = false;
 	bool bSpatial = false;
+	bool bAffectedByAudioZones = true;
 	EAudioBus Bus = EAudioBus::SFX;
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;
@@ -76,6 +77,7 @@ public:
 	bool IsPlaying(FAudioHandle Handle) const;
 	void SetVolume(FAudioHandle Handle, float Volume);
 	void SetLooping(FAudioHandle Handle, bool bLoop);
+	void SetAffectedByAudioZones(FAudioHandle Handle, bool bAffected);
 
 	void SetPlaybackTime(FAudioHandle Handle, float TimeSeconds);
 	float GetPlaybackTime(FAudioHandle Handle) const;
@@ -84,8 +86,10 @@ public:
 
 	void SetSoundPosition(FAudioHandle Handle, const FVector& Location);
 	void SetListenerTransform(const FVector& Location, const FVector& Forward, const FVector& Up);
-	void SubmitZoneMix(uint32 ZoneId, int32 Priority, float Weight,
-		float MasterVolume, float SFXVolume, float MusicVolume, float AmbientVolume);
+	void SubmitZoneMix(uint32 ZoneId, int32 Priority, float FadeInTime, float FadeOutTime,
+		const FVector& Location, const FVector& Forward, const FVector& Right, const FVector& Up, const FVector& Extent,
+		float InteriorMasterVolume, float InteriorSFXVolume, float InteriorMusicVolume, float InteriorAmbientVolume,
+		float ExteriorMasterVolume, float ExteriorSFXVolume, float ExteriorMusicVolume, float ExteriorAmbientVolume);
 	void RemoveZoneMix(uint32 ZoneId);
 
 private:
