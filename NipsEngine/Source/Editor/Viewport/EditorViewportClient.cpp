@@ -37,6 +37,7 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
+    InputRouter.GetPIEController().SetWorld(InWorld);
     InputRouter.GetPIEController().SetCamera(&Camera); // re-sync Yaw/Pitch
     InputRouter.GetPIEController().SetTargetLocation(InputRouter.GetEditorWorldController().GetTargetLocation());
 	InputRouter.SetActiveController(EActiveEditorController::PIEController);
@@ -45,6 +46,7 @@ void FEditorViewportClient::StartPIE(UWorld* InWorld)
 void FEditorViewportClient::EndPIE(UWorld* InWorld)
 {
 	World = InWorld;
+    InputRouter.GetPIEController().SetWorld(nullptr);
     InputRouter.GetEditorWorldController().SetTargetLocation(InputRouter.GetPIEController().GetTargetLocation());
 	InputRouter.GetEditorWorldController().SetWorld(InWorld);
 	InputRouter.SetActiveController(EActiveEditorController::EditorWorldController);
@@ -75,6 +77,7 @@ void FEditorViewportClient::DestroyCamera()
 {
 	bHasCamera = false;
 	InputRouter.GetEditorWorldController().NullifyCamera();
+	InputRouter.GetPIEController().NullifyCamera();
 }
 
 void FEditorViewportClient::ResetCamera()

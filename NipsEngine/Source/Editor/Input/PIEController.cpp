@@ -1,8 +1,15 @@
 #include "PIEController.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "Engine/Input/InputSystem.h"
+#include "Component/Physics/PhysicsHandleComponent.h"
+#include "Object/Object.h"
 
 #include <windows.h>
+
+FPIEController::~FPIEController()
+{
+    DestroyPhysicsHandle();
+}
 
 void FPIEController::Tick(float InDeltaTime)
 {
@@ -18,6 +25,11 @@ void FPIEController::Tick(float InDeltaTime)
     const FVector   CurrentLocation = Camera->GetLocation();
     const float     LerpAlpha = MathUtil::Clamp(DeltaTime * LocationLerpSpeed, 0.0f, 1.0f);
     Camera->SetLocation(CurrentLocation + (TargetLocation - CurrentLocation) * LerpAlpha);
+
+    if (PhysicsHandle)
+    {
+        PhysicsHandle->TickHandle(DeltaTime, Camera);
+    }
 }
 
 void FPIEController::OnMouseMove(float DeltaX, float DeltaY)
@@ -91,6 +103,9 @@ void FPIEController::OnKeyPressed(int VK)
         if (OnRequestEndPIE)
             OnRequestEndPIE();
         break;
+    case 'E':
+        TogglePickup();
+        break;
     }
 }
 
@@ -163,6 +178,15 @@ void FPIEController::SetCamera(FViewportCamera* InCamera)
 
 void FPIEController::SetCamera(FViewportCamera& InCamera) { SetCamera(&InCamera); }
 
+void FPIEController::NullifyCamera()
+{
+    if (PhysicsHandle)
+    {
+        PhysicsHandle->Release();
+    }
+    Camera = nullptr;
+}
+
 void FPIEController::UpdateCameraRotation()
 {
     if (!Camera)
@@ -195,4 +219,42 @@ void FPIEController::ResetTargetLocation()
 {
     if (Camera)
         TargetLocation = Camera->GetLocation();
+}
+
+UPhysicsHandleComponent* FPIEController::GetPhysicsHandle()
+{
+    if (PhysicsHandle == nullptr)
+    {
+        PhysicsHandle = UObjectManager::Get().CreateObject<UPhysicsHandleComponent>();
+        PhysicsHandle->SetTransient(true);
+    }
+
+    return PhysicsHandle;
+}
+
+void FPIEController::DestroyPhysicsHandle()
+{
+    if (PhysicsHandle)
+    {
+        PhysicsHandle->Release();
+        UObjectManager::Get().DestroyObject(PhysicsHandle);
+        PhysicsHandle = nullptr;
+    }
+}
+
+void FPIEController::TogglePickup()
+{
+    UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+    if (Handle == nullptr)
+    {
+        return;
+    }
+
+    if (Handle->IsHolding())
+    {
+        Handle->Release();
+        return;
+    }
+
+    Handle->TryGrab(World, Camera);
 }

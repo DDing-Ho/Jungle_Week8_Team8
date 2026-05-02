@@ -146,13 +146,19 @@ set "LUAJIT_HPP=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\luajit\lua.hp
 set "LUAJIT_LIB=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\lib\lua51.lib"
 set "LUAJIT_DLL=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\bin\lua51.dll"
 set "MINIAUDIO_H=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\miniaudio.h"
+set "JOLT_H=%PROJECT_ROOT%\vcpkg_installed\x64-windows\include\Jolt\Jolt.h"
+set "JOLT_DEBUG_LIB=%PROJECT_ROOT%\vcpkg_installed\x64-windows\debug\lib\Jolt.lib"
+set "JOLT_RELEASE_LIB=%PROJECT_ROOT%\vcpkg_installed\x64-windows\lib\Jolt.lib"
 
 if not exist "%LUAJIT_HPP%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_HPP%
 if not exist "%LUAJIT_LIB%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_LIB%
 if not exist "%LUAJIT_DLL%" echo WARNING: Missing / 경고: 파일 없음 %LUAJIT_DLL%
 if not exist "%MINIAUDIO_H%" echo WARNING: Missing / 경고: 파일 없음 %MINIAUDIO_H%
+if not exist "%JOLT_H%" echo WARNING: Missing / 경고: 파일 없음 %JOLT_H%
+if not exist "%JOLT_DEBUG_LIB%" echo WARNING: Missing / 경고: 파일 없음 %JOLT_DEBUG_LIB%
+if not exist "%JOLT_RELEASE_LIB%" echo WARNING: Missing / 경고: 파일 없음 %JOLT_RELEASE_LIB%
 
-if exist "%LUAJIT_HPP%" if exist "%LUAJIT_LIB%" if exist "%LUAJIT_DLL%" if exist "%MINIAUDIO_H%" (
+if exist "%LUAJIT_HPP%" if exist "%LUAJIT_LIB%" if exist "%LUAJIT_DLL%" if exist "%MINIAUDIO_H%" if exist "%JOLT_H%" if exist "%JOLT_DEBUG_LIB%" if exist "%JOLT_RELEASE_LIB%" (
     echo.
     echo NipsEngine dependencies install completed successfully.
     echo NipsEngine 의존성 설치가 완료되었습니다.

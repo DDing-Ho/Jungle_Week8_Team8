@@ -3,6 +3,7 @@
 #include "GameFramework/AActor.h"
 #include "Level.h"
 #include "Spatial/WorldSpatialIndex.h"
+#include "Core/CollisionTypes.h"
 
 class UCameraComponent;
 class ULineBatchComponent;
@@ -109,6 +110,8 @@ public:
 
     /** @brief Access the world-level primitive AABB/BVH manager. */
     const FWorldSpatialIndex& GetSpatialIndex() const { return SpatialIndex; }
+
+    bool LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& OutHit, const AActor* IgnoredActor = nullptr);
 
 	EWorldType GetWorldType() const { return WorldType; }
 	void SetWorldType(EWorldType InWorldType) { WorldType = InWorldType; }

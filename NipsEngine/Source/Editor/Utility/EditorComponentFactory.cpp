@@ -23,6 +23,8 @@
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
 #include "Component/AudioZoneComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
+#include "Component/Physics/PhysicsHandleComponent.h"
 
 // 새로운 컴포넌트를 레지스트리에 등록합니다. 특수한 설정(빌보드 붙이기 등)이 필요한 컴포넌트는 직접 설정합니다.
 template<typename ComponentType>
@@ -127,6 +129,9 @@ const TArray<FComponentMenuEntry>& FEditorComponentFactory::GetMenuRegistry()
         { "InterpToMovement Component", "Movement", RegisterComp<UInterpToMovementComponent> },
         { "PursuitMovement Component", "Movement", RegisterComp<UPursuitMovementComponent> },
         { "ProjectileMovement Component", "Movement", RegisterComp<UProjectileMovementComponent> },
+
+        { "RigidBody Component", "Physics", RegisterComp<URigidBodyComponent> },
+        { "PhysicsHandle Component", "Physics", RegisterComp<UPhysicsHandleComponent> },
 
         { "LuaScript Component", "Scripting", RegisterComp<ULuaScriptComponent> },
         { "Audio Component", "Audio", RegisterComp<UAudioComponent> },

@@ -1,8 +1,10 @@
 ﻿#include "GameFramework/World.h"
 #include "Collision/CollisionSystem.h"
 #include "Component/Light/LightComponent.h"
+#include "Component/PrimitiveComponent.h"
 #include "Audio/AudioSystem.h"
 #include "Engine/Viewport/ViewportCamera.h"
+#include "Physics/JoltPhysicsSystem.h"
 
 DEFINE_CLASS(UWorld, UObject)
 REGISTER_FACTORY(UWorld)
@@ -16,6 +18,10 @@ UWorld::UWorld()
 // 소멸 역시 UObjectManager를 통해 처리한다.
 UWorld::~UWorld()
 {
+    if (FJoltPhysicsSystem::Get().IsCurrentWorld(this))
+    {
+        FJoltPhysicsSystem::Get().Shutdown();
+    }
     SpatialIndex.Clear();
     UObjectManager::Get().DestroyObject(PersistentLevel);
 }
@@ -76,6 +82,10 @@ void UWorld::BeginPlay()
     }
     PersistentLevel->BeginPlay();
     RebuildSpatialIndex();
+    if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+    {
+        FJoltPhysicsSystem::Get().RebuildWorld(this);
+    }
 }
 
 void UWorld::Tick(float DeltaTime)
@@ -96,6 +106,7 @@ void UWorld::Tick(float DeltaTime)
 	else if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
 	{
 		PersistentLevel->TickGame(DeltaTime);
+		FJoltPhysicsSystem::Get().Step(this, DeltaTime);
 		SyncSpatialIndex();
 		FCollisionSystem::UpdateWorldCollision(this);
 	}
@@ -107,6 +118,10 @@ void UWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
     {
         bHasBegunPlay = false;
         PersistentLevel->EndPlay(EndPlayReason);
+        if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+        {
+            FJoltPhysicsSystem::Get().Shutdown();
+        }
     }
 }
 
@@ -118,6 +133,49 @@ void UWorld::RebuildSpatialIndex()
 void UWorld::SyncSpatialIndex()
 {
     SpatialIndex.FlushDirtyBounds();
+}
+
+bool UWorld::LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& OutHit, const AActor* IgnoredActor)
+{
+    OutHit.Reset();
+
+    if (MaxDistance <= 0.0f)
+    {
+        return false;
+    }
+
+    FWorldSpatialIndex::FPrimitiveRayQueryScratch Scratch;
+    TArray<UPrimitiveComponent*> Candidates;
+    TArray<float> BroadHitTs;
+    SpatialIndex.RayQueryPrimitives(Ray, Candidates, BroadHitTs, Scratch);
+
+    bool bFoundHit = false;
+    float ClosestDistance = MaxDistance;
+
+    for (UPrimitiveComponent* Candidate : Candidates)
+    {
+        if (Candidate == nullptr || Candidate->GetOwner() == IgnoredActor)
+        {
+            continue;
+        }
+
+        FHitResult CandidateHit;
+        if (!Candidate->Raycast(Ray, CandidateHit) || !CandidateHit.IsValid())
+        {
+            continue;
+        }
+
+        if (CandidateHit.Distance < 0.0f || CandidateHit.Distance > ClosestDistance)
+        {
+            continue;
+        }
+
+        ClosestDistance = CandidateHit.Distance;
+        OutHit = CandidateHit;
+        bFoundHit = true;
+    }
+
+    return bFoundHit;
 }
 
 FLightHandle UWorld::RegisterLight(ULightComponentBase* Comp)

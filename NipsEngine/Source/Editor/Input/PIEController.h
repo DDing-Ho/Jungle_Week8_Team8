@@ -4,10 +4,14 @@
 #include <functional>
 
 class FViewportCamera;
+class UPhysicsHandleComponent;
+class UWorld;
 
 class FPIEController : public IBaseEditorController
 {
   public:
+    ~FPIEController() override;
+
     void Tick(float InDeltaTime) override;
     void OnMouseMove(float DeltaX, float DeltaY) override;
     void OnLeftMouseClick(float X, float Y) override;
@@ -24,7 +28,8 @@ class FPIEController : public IBaseEditorController
 
     void SetCamera(FViewportCamera* InCamera);
     void SetCamera(FViewportCamera& InCamera);
-    void NullifyCamera() { Camera = nullptr; }
+    void NullifyCamera();
+    void SetWorld(UWorld* InWorld) { World = InWorld; }
     void ResetTargetLocation();
 
     void SetEndPIECallback(std::function<void()> Callback) { OnRequestEndPIE = std::move(Callback); }
@@ -35,9 +40,14 @@ class FPIEController : public IBaseEditorController
 
   private:
     void UpdateCameraRotation();
+    UPhysicsHandleComponent* GetPhysicsHandle();
+    void DestroyPhysicsHandle();
+    void TogglePickup();
 
   private:
     FViewportCamera*      Camera = nullptr;
+    UWorld*               World = nullptr;
+    UPhysicsHandleComponent* PhysicsHandle = nullptr;
     std::function<void()> OnRequestEndPIE;
 
     float   Yaw = 0.f;

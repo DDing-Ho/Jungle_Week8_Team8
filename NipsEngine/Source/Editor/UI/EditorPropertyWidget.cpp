@@ -27,6 +27,7 @@
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
 #include "Editor/Viewport/ViewportLayout.h"
 #include "Editor/Utility/EditorUIUtils.h"
 #include "Engine/Render/Renderer/RenderFlow/ShadowAtlasManager.h"
@@ -1233,6 +1234,13 @@ void FEditorPropertyWidget::AttachAndSelectNewComponent(AActor* PrimaryActor, UA
 	{
 		if (AttachTarget)
 			MoveComp->SetUpdatedComponent(AttachTarget);
+	}
+	else if (URigidBodyComponent* BodyComp = Cast<URigidBodyComponent>(NewComp))
+	{
+		if (AttachTarget)
+			BodyComp->SetUpdatedComponent(AttachTarget);
+		else
+			BodyComp->SetUpdatedComponent(PrimaryActor->GetRootComponent());
 	}
 
 	if (ULuaScriptComponent* LuaComp = Cast<ULuaScriptComponent>(NewComp))

@@ -2,6 +2,7 @@
 
 #include "Collision/Collision.h"
 #include "Component/Collision/ShapeComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Geometry/AABB.h"
 #include "Math/Utils.h"
@@ -35,6 +36,25 @@ namespace
 	bool HasCollisionResponse(const UPrimitiveComponent* Component)
 	{
 		return Component != nullptr && (Component->IsGenerateOverlapEvents() || Component->IsBlockComponent());
+	}
+
+	URigidBodyComponent* FindSimulatingRigidBody(AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component);
+			if (Body != nullptr && (Body->IsSimulatingPhysics() || Body->IsHeldByPhysicsHandle()))
+			{
+				return Body;
+			}
+		}
+
+		return nullptr;
 	}
 
 	FHitResult MakeReverseHit(const FHitResult& Hit, UPrimitiveComponent* HitComponent)
@@ -280,38 +300,77 @@ void FCollisionSystem::ProcessBlocking(UPrimitiveComponent* A, UPrimitiveCompone
 		return;
 	}
 
-	constexpr float PushOutEpsilon = 0.1f;
+	constexpr float PushOutEpsilon = 0.005f;
 	const float PushDistance = Depth + PushOutEpsilon;
 	const bool bABlocks = A->IsBlockComponent();
 	const bool bBBlocks = B->IsBlockComponent();
+	AActor* OwnerA = A->GetOwner();
+	AActor* OwnerB = B->GetOwner();
+	URigidBodyComponent* BodyA = FindSimulatingRigidBody(OwnerA);
+	URigidBodyComponent* BodyB = FindSimulatingRigidBody(OwnerB);
+	if ((BodyA != nullptr && BodyA->IsUsingJoltPhysics()) ||
+		(BodyB != nullptr && BodyB->IsUsingJoltPhysics()))
+	{
+		return;
+	}
+
+	const bool bAMovable = BodyA != nullptr;
+	const bool bBMovable = BodyB != nullptr;
 
 	if (bABlocks && bBBlocks)
 	{
-		if (AActor* OwnerA = A->GetOwner())
+		if (bAMovable && bBMovable)
 		{
-			OwnerA->AddActorWorldOffset(Normal * (-PushDistance * 0.5f));
+			const FVector PushA = Normal * (-PushDistance * 0.5f);
+			const FVector PushB = Normal * ( PushDistance * 0.5f);
+			if (OwnerA)
+			{
+				OwnerA->AddActorWorldOffset(PushA);
+				BodyA->NotifyBlockingPushOut(PushA);
+			}
+			if (OwnerB)
+			{
+				OwnerB->AddActorWorldOffset(PushB);
+				BodyB->NotifyBlockingPushOut(PushB);
+			}
+			return;
 		}
-		if (AActor* OwnerB = B->GetOwner())
+
+		if (bAMovable && OwnerA)
 		{
-			OwnerB->AddActorWorldOffset(Normal * ( PushDistance * 0.5f));
+			const FVector Push = Normal * -PushDistance;
+			OwnerA->AddActorWorldOffset(Push);
+			BodyA->NotifyBlockingPushOut(Push);
+			return;
+		}
+
+		if (bBMovable && OwnerB)
+		{
+			const FVector Push = Normal * PushDistance;
+			OwnerB->AddActorWorldOffset(Push);
+			BodyB->NotifyBlockingPushOut(Push);
 		}
 		return;
 	}
 
-	if (bABlocks)
+	if (bABlocks && bBMovable)
 	{
-		if (AActor* OwnerB = B->GetOwner())
+		if (OwnerB)
 		{
-			OwnerB->AddActorWorldOffset(Normal * PushDistance);
+			const FVector Push = Normal * PushDistance;
+			OwnerB->AddActorWorldOffset(Push);
+			BodyB->NotifyBlockingPushOut(Push);
 		}
 		return;
 	}
 
-	if (bBBlocks)
+	if (bBBlocks && bAMovable)
 	{
-		if (AActor* OwnerA = A->GetOwner())
+		if (OwnerA)
 		{
-			OwnerA->AddActorWorldOffset(Normal * -PushDistance);
+			const FVector Push = Normal * -PushDistance;
+			OwnerA->AddActorWorldOffset(Push);
+			BodyA->NotifyBlockingPushOut(Push);
 		}
 	}
 }
