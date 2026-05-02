@@ -66,8 +66,8 @@ private:
 	void ClampEditableValues();
 	void ApplyBlockingResponse();
 	bool ApplyTipTorque(const FSupportState& Support, float DeltaTime, const FVector* AxisWorld = nullptr);
-	bool ApplyGroundAlignmentTorque(const FSupportState& Support, float DeltaTime);
 	void ConstrainAngularVelocityToAxis(const FVector& AxisWorld);
+	void FlattenRestingRotationToYaw(const FSupportState& Support);
 	void ApplyAngularMotion(float DeltaTime, bool bAllowSleep, const FVector* PivotWorld = nullptr);
 	float ComputeRotationalInertia(const FVector& Axis) const;
 	bool HasBlockingContact() const;
@@ -87,6 +87,7 @@ private:
 	bool bGrounded = false;
 	bool bGroundPushOutSinceLastTick = false;
 	bool bTipping = false;
+	float StableRestTime = 0.0f;
 	float TippingTimeWithoutSupport = 0.0f;
 	FVector TippingPivotWorld = FVector::ZeroVector;
 	FVector TippingAxisWorld = FVector::ZeroVector;

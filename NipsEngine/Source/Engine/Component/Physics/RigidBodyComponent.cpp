@@ -1,4 +1,4 @@
-#include "Component/Physics/RigidBodyComponent.h"
+﻿#include "Component/Physics/RigidBodyComponent.h"
 
 #include "Audio/AudioSystem.h"
 #include "Component/Collision/BoxComponent.h"
@@ -21,9 +21,7 @@ namespace
 	constexpr float GroundSupportHorizontalSlop = 0.001f;
 	constexpr float AngularSleepSpeed = 0.5f;
 	constexpr float GroundedAngularDamping = 18.0f;
-	constexpr float GroundAlignmentStartDot = 0.999f;
-	constexpr float GroundAlignmentSpeedScale = 4.0f;
-	constexpr float GroundAlignmentResponse = 8.0f;
+	constexpr float RestingAngularStopDelay = 0.18f;
 	constexpr float GravityAcceleration = 9.8f;
 	constexpr float RadiansToDegrees = 57.29577951308232f;
 
@@ -175,6 +173,7 @@ void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 		bSimulatePhysics = false;
 		bGrounded = false;
 		bTipping = false;
+		StableRestTime = 0.0f;
 		TippingTimeWithoutSupport = 0.0f;
 		TippingPivotWorld = FVector::ZeroVector;
 		TippingAxisWorld = FVector::ZeroVector;
@@ -191,6 +190,7 @@ void URigidBodyComponent::AddImpulse(const FVector& Impulse)
 	ClampEditableValues();
 	Velocity += Impulse / Mass;
 	bGrounded = false;
+	StableRestTime = 0.0f;
 	bGroundPushOutSinceLastTick = false;
 }
 
@@ -279,8 +279,9 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	const bool bHasStableSupport = bHasRestingSupport && Support.bStable;
 	if (bHasUnstableSupport)
 	{
+		StableRestTime = 0.0f;
 		const FVector CandidateAxis = Support.Torque.GetSafeNormal();
-		if (!bTipping || TippingAxisWorld.IsNearlyZero())
+		if (!bTipping && !CandidateAxis.IsNearlyZero())
 		{
 			bTipping = true;
 			TippingPivotWorld = Support.PivotWorld;
@@ -291,6 +292,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	}
 	else if (bTipping)
 	{
+		StableRestTime = 0.0f;
 		TippingTimeWithoutSupport += DeltaTime;
 		if (bHasRestingSupport && Support.bStable)
 		{
@@ -306,6 +308,10 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 			TippingPivotWorld = FVector::ZeroVector;
 			TippingAxisWorld = FVector::ZeroVector;
 		}
+	}
+	else if (!bHasStableSupport)
+	{
+		StableRestTime = 0.0f;
 	}
 
 	bGrounded = bHasStableSupport;
@@ -327,8 +333,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	{
 		ConstrainAngularVelocityToAxis(TippingAxisWorld);
 	}
-	const bool bHasGroundAlignmentTorque = bHasStableSupport && !bTipping && ApplyGroundAlignmentTorque(Support, DeltaTime);
-	if (bGrounded && !bHasGroundAlignmentTorque && AngularVelocity.SizeSquared() > 0.0f)
+	if (bGrounded && AngularVelocity.SizeSquared() > 0.0f)
 	{
 		const float ContactDampingScale = std::max(0.0f, 1.0f - GroundedAngularDamping * DeltaTime);
 		AngularVelocity *= ContactDampingScale;
@@ -342,18 +347,38 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		}
 	}
 
-	if (!bGrounded || bHasGroundAlignmentTorque || AngularVelocity.SizeSquared() > 0.0f)
+	if (!bGrounded || AngularVelocity.SizeSquared() > 0.0f)
 	{
 		const FVector* AngularPivot = nullptr;
 		if (bHasUnstableSupport && bTipping)
 		{
 			AngularPivot = &TippingPivotWorld;
 		}
-		else if (bHasGroundAlignmentTorque)
-		{
-			AngularPivot = &Support.PivotWorld;
-		}
 		ApplyAngularMotion(DeltaTime, bGrounded, AngularPivot);
+	}
+
+	const bool bCanStopRestingAngularMotion =
+		bGrounded &&
+		!bTipping &&
+		Velocity.SizeSquared() <= SleepSpeed * SleepSpeed;
+	if (bCanStopRestingAngularMotion)
+	{
+		StableRestTime += DeltaTime;
+		if (StableRestTime >= RestingAngularStopDelay)
+		{
+			FlattenRestingRotationToYaw(Support);
+			Velocity = FVector::ZeroVector;
+			AngularVelocity = FVector::ZeroVector;
+			bTipping = false;
+			TippingTimeWithoutSupport = 0.0f;
+			TippingPivotWorld = FVector::ZeroVector;
+			TippingAxisWorld = FVector::ZeroVector;
+			StableRestTime = 0.0f;
+		}
+	}
+	else
+	{
+		StableRestTime = 0.0f;
 	}
 
 	if (bGrounded &&
@@ -384,7 +409,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		const FString UpdatedName = GetObjectNameForLog(CurrentUpdatedComponent);
 		const FVector Rotation = CurrentUpdatedComponent ? CurrentUpdatedComponent->GetRelativeRotation() : FVector::ZeroVector;
 		UE_LOG(
-			"RigidBodyComponent: support owner=%s updated=%s(%s) hasSupport=%d stable=%d tipping=%d hasTorque=%d alignTorque=%d wasGrounded=%d pushed=%d groundContact=%d torqueScale=%.3f maxAngular=%.3f grace=%.3f rotation=(%.3f, %.3f, %.3f) center=(%.3f, %.3f, %.3f) pivot=(%.3f, %.3f, %.3f) hingeAxis=(%.3f, %.3f, %.3f) torque=(%.3f, %.3f, %.3f) angularVelocity=(%.3f, %.3f, %.3f)",
+			"RigidBodyComponent: support owner=%s updated=%s(%s) hasSupport=%d stable=%d tipping=%d hasTorque=%d wasGrounded=%d pushed=%d groundContact=%d torqueScale=%.3f maxAngular=%.3f grace=%.3f rotation=(%.3f, %.3f, %.3f) center=(%.3f, %.3f, %.3f) pivot=(%.3f, %.3f, %.3f) tipAxis=(%.3f, %.3f, %.3f) torque=(%.3f, %.3f, %.3f) angularVelocity=(%.3f, %.3f, %.3f)",
 			OwnerName.c_str(),
 			UpdatedName.c_str(),
 			GetObjectTypeName(CurrentUpdatedComponent),
@@ -392,7 +417,6 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 			Support.bStable ? 1 : 0,
 			bTipping ? 1 : 0,
 			bHasTipTorque ? 1 : 0,
-			bHasGroundAlignmentTorque ? 1 : 0,
 			bWasGrounded ? 1 : 0,
 			bWasPushedOntoGround ? 1 : 0,
 			bHasGroundContact ? 1 : 0,
@@ -473,6 +497,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	if (Velocity.Z > SleepSpeed)
 	{
 		bGrounded = false;
+		StableRestTime = 0.0f;
 	}
 }
 
@@ -642,7 +667,7 @@ bool URigidBodyComponent::ApplyTipTorque(const FSupportState& Support, float Del
 		return false;
 	}
 
-	const float TorqueAlongAxis = FVector::DotProduct(Support.Torque, Axis);
+	float TorqueAlongAxis = FVector::DotProduct(Support.Torque, Axis);
 	if (std::fabs(TorqueAlongAxis) <= GroundSupportHorizontalSlop)
 	{
 		return false;
@@ -651,71 +676,6 @@ bool URigidBodyComponent::ApplyTipTorque(const FSupportState& Support, float Del
 	const float Inertia = ComputeRotationalInertia(Axis);
 	const FVector AngularAccelerationDeg = Axis * (TorqueAlongAxis * RadiansToDegrees * TipTorqueStrength / Inertia);
 	AngularVelocity += AngularAccelerationDeg * DeltaTime;
-	return true;
-}
-
-bool URigidBodyComponent::ApplyGroundAlignmentTorque(const FSupportState& Support, float DeltaTime)
-{
-	if (DeltaTime <= 0.0f || !Support.bHasSupport || !Support.bStable)
-	{
-		return false;
-	}
-
-	USceneComponent* Scene = GetUpdatedComponent();
-	if (Scene == nullptr)
-	{
-		return false;
-	}
-
-	const FVector WorldUp = FVector::UpVector;
-	FVector BestFaceUp = FVector::ZeroVector;
-	float BestDotAbs = -1.0f;
-	const auto ConsiderAxis = [&](const FVector& Axis)
-	{
-		FVector SafeAxis = Axis.GetSafeNormal();
-		if (SafeAxis.IsNearlyZero())
-		{
-			return;
-		}
-
-		const float Dot = FVector::DotProduct(SafeAxis, WorldUp);
-		const float DotAbs = std::fabs(Dot);
-		if (DotAbs > BestDotAbs)
-		{
-			BestDotAbs = DotAbs;
-			BestFaceUp = Dot >= 0.0f ? SafeAxis : -SafeAxis;
-		}
-	};
-
-	ConsiderAxis(Scene->GetForwardVector());
-	ConsiderAxis(Scene->GetRightVector());
-	ConsiderAxis(Scene->GetUpVector());
-
-	if (BestFaceUp.IsNearlyZero())
-	{
-		return false;
-	}
-
-	const float AlignmentDot = ClampFloat(FVector::DotProduct(BestFaceUp, WorldUp), -1.0f, 1.0f);
-	if (AlignmentDot >= GroundAlignmentStartDot)
-	{
-		return false;
-	}
-
-	FVector ErrorAxis = FVector::CrossProduct(BestFaceUp, WorldUp);
-	const float ErrorSin = ErrorAxis.Size();
-	if (ErrorSin <= 1.e-5f)
-	{
-		return false;
-	}
-
-	ErrorAxis /= ErrorSin;
-	const float AngleDeg = std::atan2(ErrorSin, AlignmentDot) * RadiansToDegrees;
-	const float SpeedLimit = MaxAngularSpeed > 0.0f ? MaxAngularSpeed * 0.75f : 180.0f;
-	const float TargetAngularSpeed = ClampFloat(AngleDeg * GroundAlignmentSpeedScale, 0.0f, SpeedLimit);
-	const float CurrentAngularSpeed = FVector::DotProduct(AngularVelocity, ErrorAxis);
-	const float AngularAcceleration = (TargetAngularSpeed - CurrentAngularSpeed) * GroundAlignmentResponse;
-	AngularVelocity += ErrorAxis * (AngularAcceleration * DeltaTime);
 	return true;
 }
 
@@ -729,6 +689,32 @@ void URigidBodyComponent::ConstrainAngularVelocityToAxis(const FVector& AxisWorl
 
 	const float SpeedAlongAxis = FVector::DotProduct(AngularVelocity, Axis);
 	AngularVelocity = Axis * SpeedAlongAxis;
+}
+
+void URigidBodyComponent::FlattenRestingRotationToYaw(const FSupportState& Support)
+{
+	USceneComponent* Scene = GetUpdatedComponent();
+	if (Scene == nullptr || Owner == nullptr || !Support.bHasSupport || !Support.bStable)
+	{
+		return;
+	}
+
+	const FVector Rotation = Scene->GetRelativeRotation();
+	Scene->SetRelativeRotation(FVector(0.0f, 0.0f, Rotation.Z));
+
+	float NewBottomZ = std::numeric_limits<float>::max();
+	for (UPrimitiveComponent* Primitive : Owner->GetPrimitiveComponents())
+	{
+		if (Primitive != nullptr && Primitive->IsBlockComponent())
+		{
+			NewBottomZ = std::min(NewBottomZ, Primitive->GetWorldAABB().Min.Z);
+		}
+	}
+
+	if (NewBottomZ != std::numeric_limits<float>::max())
+	{
+		Scene->AddWorldOffset(FVector(0.0f, 0.0f, Support.PivotWorld.Z - NewBottomZ));
+	}
 }
 
 void URigidBodyComponent::ApplyAngularMotion(float DeltaTime, bool bAllowSleep, const FVector* PivotWorld)
