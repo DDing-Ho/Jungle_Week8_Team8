@@ -67,7 +67,9 @@ private:
 	void ApplyBlockingResponse();
 	bool ApplyTipTorque(const FSupportState& Support, float DeltaTime, const FVector* AxisWorld = nullptr);
 	void ConstrainAngularVelocityToAxis(const FVector& AxisWorld);
-	void FlattenRestingRotationToYaw(const FSupportState& Support);
+	void ClearTippingState();
+	void CacheInitialRotationIfNeeded();
+	void ResetRotationToInitial();
 	void ApplyAngularMotion(float DeltaTime, bool bAllowSleep, const FVector* PivotWorld = nullptr);
 	float ComputeRotationalInertia(const FVector& Axis) const;
 	bool HasBlockingContact() const;
@@ -87,8 +89,10 @@ private:
 	bool bGrounded = false;
 	bool bGroundPushOutSinceLastTick = false;
 	bool bTipping = false;
+	bool bHasInitialRelativeRotation = false;
 	float StableRestTime = 0.0f;
 	float TippingTimeWithoutSupport = 0.0f;
+	FVector InitialRelativeRotation = FVector::ZeroVector;
 	FVector TippingPivotWorld = FVector::ZeroVector;
 	FVector TippingAxisWorld = FVector::ZeroVector;
 	bool bDebugSupportStateInitialized = false;

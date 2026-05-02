@@ -78,6 +78,7 @@ void URigidBodyComponent::BeginPlay()
 	}
 
 	USceneComponent* CurrentUpdatedComponent = GetUpdatedComponent();
+	CacheInitialRotationIfNeeded();
 	const FString OwnerName = GetObjectNameForLog(Owner);
 	const FString UpdatedName = GetObjectNameForLog(CurrentUpdatedComponent);
 	UE_LOG("RigidBodyComponent: BeginPlay owner=%s updated=%s(%s)",
@@ -172,12 +173,11 @@ void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 		bWasSimulatingBeforeHold = bSimulatePhysics;
 		bSimulatePhysics = false;
 		bGrounded = false;
-		bTipping = false;
 		StableRestTime = 0.0f;
-		TippingTimeWithoutSupport = 0.0f;
-		TippingPivotWorld = FVector::ZeroVector;
-		TippingAxisWorld = FVector::ZeroVector;
+		Velocity = FVector::ZeroVector;
 		AngularVelocity = FVector::ZeroVector;
+		ClearTippingState();
+		ResetRotationToInitial();
 	}
 	else
 	{
@@ -191,6 +191,7 @@ void URigidBodyComponent::AddImpulse(const FVector& Impulse)
 	Velocity += Impulse / Mass;
 	bGrounded = false;
 	StableRestTime = 0.0f;
+	ClearTippingState();
 	bGroundPushOutSinceLastTick = false;
 }
 
@@ -296,17 +297,11 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		TippingTimeWithoutSupport += DeltaTime;
 		if (bHasRestingSupport && Support.bStable)
 		{
-			bTipping = false;
-			TippingTimeWithoutSupport = 0.0f;
-			TippingPivotWorld = FVector::ZeroVector;
-			TippingAxisWorld = FVector::ZeroVector;
+			ClearTippingState();
 		}
 		else if (TippingTimeWithoutSupport > TippingSupportGraceTime)
 		{
-			bTipping = false;
-			TippingTimeWithoutSupport = 0.0f;
-			TippingPivotWorld = FVector::ZeroVector;
-			TippingAxisWorld = FVector::ZeroVector;
+			ClearTippingState();
 		}
 	}
 	else if (!bHasStableSupport)
@@ -340,10 +335,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		if (AngularVelocity.SizeSquared() <= AngularSleepSpeed * AngularSleepSpeed)
 		{
 			AngularVelocity = FVector::ZeroVector;
-			bTipping = false;
-			TippingTimeWithoutSupport = 0.0f;
-			TippingPivotWorld = FVector::ZeroVector;
-			TippingAxisWorld = FVector::ZeroVector;
+			ClearTippingState();
 		}
 	}
 
@@ -366,13 +358,9 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		StableRestTime += DeltaTime;
 		if (StableRestTime >= RestingAngularStopDelay)
 		{
-			FlattenRestingRotationToYaw(Support);
 			Velocity = FVector::ZeroVector;
 			AngularVelocity = FVector::ZeroVector;
-			bTipping = false;
-			TippingTimeWithoutSupport = 0.0f;
-			TippingPivotWorld = FVector::ZeroVector;
-			TippingAxisWorld = FVector::ZeroVector;
+			ClearTippingState();
 			StableRestTime = 0.0f;
 		}
 	}
@@ -387,10 +375,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 	{
 		Velocity = FVector::ZeroVector;
 		AngularVelocity = FVector::ZeroVector;
-		bTipping = false;
-		TippingTimeWithoutSupport = 0.0f;
-		TippingPivotWorld = FVector::ZeroVector;
-		TippingAxisWorld = FVector::ZeroVector;
+		ClearTippingState();
 	}
 
 	USceneComponent* CurrentUpdatedComponent = GetUpdatedComponent();
@@ -691,29 +676,35 @@ void URigidBodyComponent::ConstrainAngularVelocityToAxis(const FVector& AxisWorl
 	AngularVelocity = Axis * SpeedAlongAxis;
 }
 
-void URigidBodyComponent::FlattenRestingRotationToYaw(const FSupportState& Support)
+void URigidBodyComponent::ClearTippingState()
 {
-	USceneComponent* Scene = GetUpdatedComponent();
-	if (Scene == nullptr || Owner == nullptr || !Support.bHasSupport || !Support.bStable)
+	bTipping = false;
+	TippingTimeWithoutSupport = 0.0f;
+	TippingPivotWorld = FVector::ZeroVector;
+	TippingAxisWorld = FVector::ZeroVector;
+}
+
+void URigidBodyComponent::CacheInitialRotationIfNeeded()
+{
+	if (bHasInitialRelativeRotation)
 	{
 		return;
 	}
 
-	const FVector Rotation = Scene->GetRelativeRotation();
-	Scene->SetRelativeRotation(FVector(0.0f, 0.0f, Rotation.Z));
-
-	float NewBottomZ = std::numeric_limits<float>::max();
-	for (UPrimitiveComponent* Primitive : Owner->GetPrimitiveComponents())
+	if (const USceneComponent* Scene = GetUpdatedComponent())
 	{
-		if (Primitive != nullptr && Primitive->IsBlockComponent())
-		{
-			NewBottomZ = std::min(NewBottomZ, Primitive->GetWorldAABB().Min.Z);
-		}
+		InitialRelativeRotation = Scene->GetRelativeRotation();
+		bHasInitialRelativeRotation = true;
 	}
+}
 
-	if (NewBottomZ != std::numeric_limits<float>::max())
+void URigidBodyComponent::ResetRotationToInitial()
+{
+	CacheInitialRotationIfNeeded();
+
+	if (USceneComponent* Scene = GetUpdatedComponent())
 	{
-		Scene->AddWorldOffset(FVector(0.0f, 0.0f, Support.PivotWorld.Z - NewBottomZ));
+		Scene->SetRelativeRotation(InitialRelativeRotation);
 	}
 }
 
