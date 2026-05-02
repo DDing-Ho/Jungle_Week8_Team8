@@ -56,15 +56,15 @@ inline bool ShouldBypassSceneCompositePasses(EViewMode ViewMode)
 struct FShowFlags
 {
 	bool bPrimitives = true;
-	bool bGrid = true;
-	bool bAxis = true;
-	bool bGizmo = true;
+	bool bGrid = false;
+	bool bAxis = false;
+	bool bGizmo = false;
 	bool bBillboardText = false;
 	bool bBoundingVolume = false;
 	bool bBVHBoundingVolume = false;
 	bool bAudioRange = false;
-	bool bAudioComponentRange = true;
-	bool bAudioZoneRange = true;
+	bool bAudioComponentRange = false;
+	bool bAudioZoneRange = false;
 	bool bEnableLOD = true;
 	bool bDecals = true;
 	bool bFog = true;

@@ -1,20 +1,29 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine/Runtime/Engine.h"
+
+#include <memory>
+
+class FGameViewportClient;
 
 class UGameEngine : public UEngine
 {
 public:
-    DECLARE_CLASS(UGameEngine, UEngine)
+	DECLARE_CLASS(UGameEngine, UEngine)
 
-    UGameEngine() = default;
-    ~UGameEngine() override = default;
+	UGameEngine();
+	~UGameEngine() override;
 
-    void Init(FWindowsWindow* InWindow) override;
-    void Shutdown() override;
-    void Tick(float DeltaTime) override;
-    void OnWindowResized(uint32 Width, uint32 Height) override;
+	void Init(FWindowsWindow* InWindow) override;
+	void Shutdown() override;
+	void Tick(float DeltaTime) override;
+	void OnWindowResized(uint32 Width, uint32 Height) override;
+
+	FGameViewportClient* GetGameViewport() const { return GameViewport.get(); }
 
 private:
-    void LoadStartupScene();
+	void LoadStartupScene();
+
+private:
+	std::unique_ptr<FGameViewportClient> GameViewport;
 };

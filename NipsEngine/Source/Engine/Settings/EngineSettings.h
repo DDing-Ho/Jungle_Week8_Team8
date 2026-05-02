@@ -5,7 +5,6 @@
 #include "Spatial/WorldSpatialIndex.h"
 
 // 에디터와 게임이 함께 사용하는 런타임 엔진 설정을 보관합니다. 
-// Engine 폴더 안에 있는 파일들에 대한 세팅을 이 곳에 저장합니다.
 class FEngineSettings : public TSingleton<FEngineSettings>
 {
 	friend class TSingleton<FEngineSettings>;

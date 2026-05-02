@@ -5,7 +5,7 @@
 #include "Engine/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Engine/Input/InputSystem.h"
-#include "Runtime/ViewportRect.h"
+#include "Viewport/ViewportRect.h"
 #include "Component/GizmoComponent.h"
 #include "Component/CameraComponent.h"
 #include "Component/PrimitiveComponent.h"
@@ -260,7 +260,7 @@ namespace
 		return nullptr;
 	}
 
-	void SyncEngineSettingsFromEditorSettings()
+	void SyncEngineSettings()
 	{
 		const FEditorSettings& EditorSettings = FEditorSettings::Get();
 		FEngineSettings& EngineSettings = FEngineSettings::Get();
@@ -279,7 +279,7 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
     UEngine::Init(InWindow);
     FEditorSettings::Get().LoadFromFile(FEditorSettings::GetDefaultSettingsPath());
-	SyncEngineSettingsFromEditorSettings();
+	SyncEngineSettings();
 
     MainPanel.Create(Window, Renderer, this);
     if (WorldList.empty())
@@ -721,8 +721,7 @@ void UEditorEngine::NewScene()
 
 void UEditorEngine::ApplySpatialIndexMaintenanceSettings(UWorld* TargetWorld)
 {
-    // Init 초반에는 ViewportLayout이 아직 연결되지 않았을 수 있으므로
-    // FocusedWorld보다 ActiveWorld(GetWorld) 경로를 우선 사용한다.
+    // Init 초반에는 ViewportLayout이 아직 연결되지 않았을 수 있으므로 FocusedWorld보다 ActiveWorld(GetWorld) 경로를 우선 사용한다.
     UWorld* World = (TargetWorld != nullptr) ? TargetWorld : GetWorld();
     if (World == nullptr)
     {
@@ -733,7 +732,7 @@ void UEditorEngine::ApplySpatialIndexMaintenanceSettings(UWorld* TargetWorld)
         }
     }
 
-	SyncEngineSettingsFromEditorSettings();
+	SyncEngineSettings();
     FWorldSpatialIndex::FMaintenancePolicy& Policy = World->GetSpatialIndex().GetMaintenancePolicy();
 	FEngineSettings::Get().ApplyToSpatialPolicy(Policy);
 }

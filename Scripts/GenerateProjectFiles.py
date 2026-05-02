@@ -164,7 +164,7 @@ def collect_all_filters(files: dict[str, list[str]]) -> set[str]:
 def include_paths_for_config(cfg: str) -> list[str]:
     """Return include paths for a configuration."""
     if cfg == "Game":
-        return [path for path in INCLUDE_PATHS if path != "Source\\Editor"]
+        return ["Source\\Game"] + [path for path in INCLUDE_PATHS if path != "Source\\Editor"]
     return INCLUDE_PATHS
 
 

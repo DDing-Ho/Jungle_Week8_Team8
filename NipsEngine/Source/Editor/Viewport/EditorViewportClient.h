@@ -3,11 +3,11 @@
 #include "Render/Common/RenderTypes.h"
 #include "Engine/Geometry/Ray.h"
 #include "Core/CollisionTypes.h"
-#include "Runtime/ViewportClient.h"
+#include "Viewport/ViewportClient.h"
 #include "Editor/Input/EditorInputRouter.h"
 #include "Spatial/WorldSpatialIndex.h"
 #include "Editor/Utility/EditorUIUtils.h"
-#include "Editor/Viewport/ViewportCamera.h"
+#include "Engine/Viewport/ViewportCamera.h"
 
 enum EEditorViewportType
 {

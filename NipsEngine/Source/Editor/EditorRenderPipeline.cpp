@@ -1,7 +1,7 @@
 ﻿#include "EditorRenderPipeline.h"
 
 #include "Editor/EditorEngine.h"
-#include "Editor/Viewport/ViewportCamera.h"
+#include "Engine/Viewport/ViewportCamera.h"
 #include "Render/Renderer/Renderer.h"
 #include "GameFramework/World.h"
 #include "Core/Logging/Stats.h"
