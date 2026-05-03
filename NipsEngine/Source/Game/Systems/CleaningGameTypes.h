@@ -41,9 +41,13 @@ struct FCleaningToolData
 {
 	FString ToolId;
 	FString DisplayName;
+	FString MeshAssetPath;
 	FString AnimationSetId;
 	FString EffectId;
 	float CleaningPower = 1.0f;
+	float UseBobAmplitude = 0.15f;
+	float UseBobSpeed = 8.0f;
+	float UseReturnSpeed = 14.0f;
 	TArray<FString> ValidSurfaceTypes;
 	FString InteractionSoundId;
 };

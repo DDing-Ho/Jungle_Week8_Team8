@@ -2,6 +2,11 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
+#include "Game/GameTypes.h"
+#include "Game/Systems/CleaningToolSystem.h"
+#include "Game/Systems/GameContext.h"
+#include "Game/Systems/GameItemDataLoader.h"
+#include "Game/Systems/ItemSystem.h"
 #include "Game/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Engine/Input/InputRouter.h"
@@ -26,6 +31,18 @@ REGISTER_FACTORY(UEditorEngine)
 
 namespace
 {
+	void InitializePlayGameData()
+	{
+		Game::RegisterGameTypes();
+
+		FItemSystem& Items = FItemSystem::Get();
+		Items.ClearItemData();
+		FCleaningToolSystem::Get().ClearToolData();
+		FGameItemDataLoader::LoadFromFile("Asset/Data/Items.json", Items);
+		GGameContext::Get().Reset();
+		Items.ResetRuntimeState();
+	}
+
 	int32 FindComponentIndex(AActor* Actor, UActorComponent* Component)
 	{
 		if (Actor == nullptr || Component == nullptr)
@@ -468,6 +485,7 @@ void UEditorEngine::StartPlaySession()
 		FSceneSaveManager::GetSceneDirectory(),
 		FPaths::ToWide(CurrentSceneName + ".Scene")));
 
+	InitializePlayGameData();
 	GameUISystem::Get().ResetGameData();
 	GameUISystem::Get().SetState(GameUIStateFromBootMode(FSceneSaveManager::GetGameUIBootMode(CurrentScenePath)));
 	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });

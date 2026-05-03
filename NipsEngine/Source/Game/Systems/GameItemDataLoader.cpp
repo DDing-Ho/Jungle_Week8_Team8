@@ -1,10 +1,12 @@
 #include "Game/Systems/GameItemDataLoader.h"
 
+#include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/ItemSystem.h"
 #include "Engine/Core/Logger.h"
 #include "Engine/Core/Paths.h"
 #include "SimpleJSON/json.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -115,6 +117,23 @@ namespace
 		return ItemData;
 	}
 
+	FCleaningToolData ReadCleaningToolData(const json::JSON& Node, const FGameItemData& ItemData)
+	{
+		FCleaningToolData ToolData;
+		ToolData.ToolId = ItemData.ItemId;
+		ToolData.DisplayName = ItemData.DisplayName;
+		ToolData.MeshAssetPath = GetStringField(Node, "meshAssetPath");
+		ToolData.AnimationSetId = GetStringField(Node, "animationSetId");
+		ToolData.EffectId = GetStringField(Node, "effectId");
+		ToolData.InteractionSoundId = GetStringField(Node, "interactionSoundId");
+		ToolData.CleaningPower = std::max(0.0f, static_cast<float>(Node.hasKey("cleaningPower") ? Node.at("cleaningPower").ToFloat() : 1.0));
+		ToolData.UseBobAmplitude = std::max(0.0f, static_cast<float>(Node.hasKey("useBobAmplitude") ? Node.at("useBobAmplitude").ToFloat() : 0.15));
+		ToolData.UseBobSpeed = std::max(0.0f, static_cast<float>(Node.hasKey("useBobSpeed") ? Node.at("useBobSpeed").ToFloat() : 8.0));
+		ToolData.UseReturnSpeed = std::max(0.0f, static_cast<float>(Node.hasKey("useReturnSpeed") ? Node.at("useReturnSpeed").ToFloat() : 14.0));
+		ToolData.ValidSurfaceTypes = ReadStringArray(Node, "validSurfaceTypes");
+		return ToolData;
+	}
+
 	const json::JSON* FindItemsArray(const json::JSON& Root)
 	{
 		if (Root.JSONType() == json::JSON::Class::Array)
@@ -172,6 +191,13 @@ bool FGameItemDataLoader::LoadFromFile(const FString& RelativePath, FItemSystem&
 		}
 
 		ItemSystem.RegisterItemData(ItemData);
+		if (ItemData.ItemType == EGameItemType::CleaningTool)
+		{
+			UE_LOG("[CleaningTool] Loading cleaning tool item: id=%s type=CleaningTool mesh=%s",
+				ItemData.ItemId.c_str(),
+				GetStringField(ItemNode, "meshAssetPath").c_str());
+			FCleaningToolSystem::Get().RegisterToolData(ReadCleaningToolData(ItemNode, ItemData));
+		}
 		++LoadedCount;
 	}
 

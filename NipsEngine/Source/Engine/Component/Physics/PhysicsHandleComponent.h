@@ -21,7 +21,7 @@ public:
 
 	bool TryGrab(UWorld* World, const FViewportCamera* Camera);
 	void Release();
-	void TickHandle(float DeltaTime, const FViewportCamera* Camera);
+	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector);
 
 	bool IsHolding() const { return HeldBody != nullptr; }
 	URigidBodyComponent* GetHeldBody() const { return HeldBody; }
@@ -31,7 +31,7 @@ public:
 
 private:
 	URigidBodyComponent* FindRigidBodyFromHit(const FHitResult& Hit) const;
-	FVector GetHoldTarget(const FViewportCamera* Camera) const;
+	FVector GetHoldTarget(const FViewportCamera* Camera, const FVector& TargetOffset) const;
 	void ClampEditableValues();
 
 private:

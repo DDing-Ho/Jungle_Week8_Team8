@@ -763,6 +763,9 @@
     <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="Source\Game\Systems\CleaningToolAnimator.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Game\Systems\CleaningToolSystem.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
@@ -1064,6 +1067,7 @@
     <ClInclude Include="Source\Game\Render\GameRenderPipeline.h" />
     <ClInclude Include="Source\Game\Settings\GameSettings.h" />
     <ClInclude Include="Source\Game\Systems\CleaningGameTypes.h" />
+    <ClInclude Include="Source\Game\Systems\CleaningToolAnimator.h" />
     <ClInclude Include="Source\Game\Systems\CleaningToolSystem.h" />
     <ClInclude Include="Source\Game\Systems\EndingSystem.h" />
     <ClInclude Include="Source\Game\Systems\GameContext.h" />

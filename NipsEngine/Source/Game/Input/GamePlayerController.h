@@ -63,6 +63,8 @@ public:
 private:
 	void SetupDefaultInputMappings();
 	void ApplyInputAxes();
+	bool TryBeginCleaningUse();
+	void EndCleaningUse();
 	void TogglePickup();
 	UPhysicsHandleComponent* GetPhysicsHandle();
 	void DestroyPhysicsHandle();
@@ -89,6 +91,7 @@ private:
 	float FreeCameraPitch = 0.0f;
 	bool bFreeCameraInitialized = false;
 	bool bInitialRigidBodyRotationsCaptured = false;
+	bool bIsCleaningUseHeld = false;
 	std::function<void()> OnRequestToggleInputCapture;
 	std::function<void()> OnRequestTogglePause;
 };

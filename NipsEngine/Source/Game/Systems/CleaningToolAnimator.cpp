@@ -1,0 +1,64 @@
+#include "Game/Systems/CleaningToolAnimator.h"
+
+#include <algorithm>
+#include <cmath>
+
+FCleaningToolAnimator& FCleaningToolAnimator::Get()
+{
+	static FCleaningToolAnimator Instance;
+	return Instance;
+}
+
+void FCleaningToolAnimator::Reset()
+{
+	ActiveToolId.clear();
+	CameraLocalOffset = FVector::ZeroVector;
+	ElapsedTime = 0.0f;
+	BobAmplitude = 0.0f;
+	BobSpeed = 0.0f;
+	ReturnSpeed = 14.0f;
+	bIsUsing = false;
+}
+
+void FCleaningToolAnimator::BeginUse(const FCleaningToolData& ToolData)
+{
+	ActiveToolId = ToolData.ToolId;
+	BobAmplitude = std::max(0.0f, ToolData.UseBobAmplitude);
+	BobSpeed = std::max(0.0f, ToolData.UseBobSpeed);
+	ReturnSpeed = std::max(0.0f, ToolData.UseReturnSpeed);
+	bIsUsing = true;
+}
+
+void FCleaningToolAnimator::EndUse()
+{
+	bIsUsing = false;
+}
+
+void FCleaningToolAnimator::Tick(float DeltaTime)
+{
+	if (DeltaTime <= 0.0f)
+	{
+		return;
+	}
+
+	if (bIsUsing)
+	{
+		ElapsedTime += DeltaTime;
+		CameraLocalOffset.X = 0.0f;
+		CameraLocalOffset.Y = 0.0f;
+		CameraLocalOffset.Z = std::sin(ElapsedTime * BobSpeed) * BobAmplitude;
+		return;
+	}
+
+	const float Alpha = std::clamp(DeltaTime * ReturnSpeed, 0.0f, 1.0f);
+	CameraLocalOffset.X += (0.0f - CameraLocalOffset.X) * Alpha;
+	CameraLocalOffset.Y += (0.0f - CameraLocalOffset.Y) * Alpha;
+	CameraLocalOffset.Z += (0.0f - CameraLocalOffset.Z) * Alpha;
+
+	if (std::abs(CameraLocalOffset.X) < 0.001f
+		&& std::abs(CameraLocalOffset.Y) < 0.001f
+		&& std::abs(CameraLocalOffset.Z) < 0.001f)
+	{
+		CameraLocalOffset = FVector::ZeroVector;
+	}
+}

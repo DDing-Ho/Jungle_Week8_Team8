@@ -4,15 +4,23 @@
 #include "Component/Physics/PhysicsHandleComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/SceneComponent.h"
+#include "Component/StaticMeshComponent.h"
+#include "Core/Logger.h"
 #include "Engine/Runtime/SceneView.h"
 #include "Engine/Viewport/ViewportCamera.h"
+#include "Game/Systems/CleaningToolAnimator.h"
+#include "Game/Systems/CleaningToolSystem.h"
+#include "Game/Systems/GameContext.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Matrix.h"
 #include "Math/Utils.h"
 #include "Object/Object.h"
 #include "Physics/JoltPhysicsSystem.h"
+#include "Scripting/LuaScriptSystem.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <windows.h>
 
@@ -81,6 +89,85 @@ namespace
 		const float YawRad = MathUtil::DegreesToRadians(YawDegrees);
 		return FVector(-std::sin(YawRad), std::cos(YawRad), 0.0f).GetSafeNormal();
 	}
+
+	FVector ToWorldOffset(const FViewportCamera* Camera, const FVector& CameraLocalOffset)
+	{
+		if (!Camera)
+		{
+			return FVector::ZeroVector;
+		}
+
+		return Camera->GetForwardVector().GetSafeNormal() * CameraLocalOffset.X
+			+ Camera->GetRightVector().GetSafeNormal() * CameraLocalOffset.Y
+			+ Camera->GetUpVector().GetSafeNormal() * CameraLocalOffset.Z;
+	}
+
+	FString NormalizeToolMatchKey(FString Value)
+	{
+		std::replace(Value.begin(), Value.end(), '\\', '/');
+		std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char C)
+		{
+			return static_cast<char>(std::tolower(C));
+		});
+		return Value;
+	}
+
+	FString FindCleaningToolIdFromActor(const AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return "";
+		}
+
+		const FString ScriptToolId = FLuaScriptSystem::Get().GetStringGameStateValue("CleaningTool:" + Actor->GetFName().ToString());
+		if (!ScriptToolId.empty())
+		{
+			UE_LOG("[CleaningTool] Actor=%s resolved by Lua toolId=%s", Actor->GetFName().ToString().c_str(), ScriptToolId.c_str());
+			return ScriptToolId;
+		}
+
+		const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
+		UE_LOG("[CleaningTool] Actor=%s has no Lua tool id. Trying fallback match.", Actor->GetFName().ToString().c_str());
+		const TArray<FCleaningToolData>& ToolDataList = FCleaningToolSystem::Get().GetAllToolData();
+		for (const FCleaningToolData& ToolData : ToolDataList)
+		{
+			if (ActorName == NormalizeToolMatchKey(ToolData.ToolId))
+			{
+				UE_LOG("[CleaningTool] Actor=%s resolved by actor name toolId=%s", Actor->GetFName().ToString().c_str(), ToolData.ToolId.c_str());
+				return ToolData.ToolId;
+			}
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			const UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(Component);
+			if (!StaticMeshComponent)
+			{
+				continue;
+			}
+
+			const FString MeshPath = NormalizeToolMatchKey(StaticMeshComponent->GetStaticMeshAssetPath());
+			if (MeshPath.empty())
+			{
+				continue;
+			}
+
+			for (const FCleaningToolData& ToolData : ToolDataList)
+			{
+				if (!ToolData.MeshAssetPath.empty() && MeshPath == NormalizeToolMatchKey(ToolData.MeshAssetPath))
+				{
+					UE_LOG("[CleaningTool] Actor=%s resolved by mesh path=%s toolId=%s",
+						Actor->GetFName().ToString().c_str(),
+						StaticMeshComponent->GetStaticMeshAssetPath().c_str(),
+						ToolData.ToolId.c_str());
+					return ToolData.ToolId;
+				}
+			}
+		}
+
+		UE_LOG("[CleaningTool] Actor=%s is not a registered cleaning tool.", Actor->GetFName().ToString().c_str());
+		return "";
+	}
 }
 
 FGamePlayerController::FGamePlayerController()
@@ -99,9 +186,11 @@ void FGamePlayerController::Tick(float DeltaTime)
 	CaptureInitialRigidBodyRotations();
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
+	FCleaningToolAnimator::Get().Tick(DeltaTime);
 	if (PhysicsHandle)
 	{
-		PhysicsHandle->TickHandle(DeltaTime, FreeCamera);
+		const FVector ToolOffset = ToWorldOffset(FreeCamera, FCleaningToolAnimator::Get().GetCameraLocalOffset());
+		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset);
 	}
 }
 
@@ -120,10 +209,7 @@ void FGamePlayerController::OnLeftMouseClick(float X, float Y)
 {
 	(void)X;
 	(void)Y;
-	if (InputMapping.IsActionKey(ActionPickup(), VK_LBUTTON))
-	{
-		TogglePickup();
-	}
+	TryBeginCleaningUse();
 }
 
 void FGamePlayerController::OnLeftMouseDrag(float X, float Y)
@@ -136,12 +222,14 @@ void FGamePlayerController::OnLeftMouseDragEnd(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	EndCleaningUse();
 }
 
 void FGamePlayerController::OnLeftMouseButtonUp(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	EndCleaningUse();
 }
 
 void FGamePlayerController::OnRightMouseClick(float DeltaX, float DeltaY)
@@ -166,6 +254,11 @@ void FGamePlayerController::OnKeyPressed(int VK)
 	if (InputMapping.IsActionKey(ActionToggleInputCapture(), VK) && !Camera && OnRequestToggleInputCapture)
 	{
 		OnRequestToggleInputCapture();
+	}
+
+	if (InputMapping.IsActionKey(ActionPickup(), VK))
+	{
+		TogglePickup();
 	}
 }
 
@@ -289,7 +382,7 @@ void FGamePlayerController::SetupDefaultInputMappings()
 	// 예: InputMapping.AddActionMapping(ActionInteract(), 'E');
 	InputMapping.AddActionMapping(ActionToggleInputCapture(), VK_F4);
 	InputMapping.AddActionMapping(ActionTogglePause(), 'P');
-	InputMapping.AddActionMapping(ActionPickup(), VK_LBUTTON);
+	InputMapping.AddActionMapping(ActionPickup(), 'E');
 
 	// Axis Mapping: 여러 키를 하나의 연속 값으로 합칩니다.
 	// 예를 들어 W는 MoveForward에 +1, S는 -1을 더합니다.
@@ -343,6 +436,54 @@ void FGamePlayerController::ApplyInputAxes()
 	}
 }
 
+bool FGamePlayerController::TryBeginCleaningUse()
+{
+	if (!IsInputEnabled())
+	{
+		UE_LOG("[CleaningTool] BeginUse blocked: input disabled.");
+		return false;
+	}
+
+	if (!PhysicsHandle || !PhysicsHandle->IsHolding())
+	{
+		UE_LOG("[CleaningTool] BeginUse blocked: no held physics object.");
+		return false;
+	}
+
+	const FString& CurrentToolId = GGameContext::Get().GetCurrentToolId();
+	if (CurrentToolId.empty())
+	{
+		UE_LOG("[CleaningTool] BeginUse blocked: current tool id is empty.");
+		return false;
+	}
+
+	const FCleaningToolData* ToolData = FCleaningToolSystem::Get().FindToolData(CurrentToolId);
+	if (!ToolData)
+	{
+		UE_LOG("[CleaningTool] BeginUse blocked: tool data not found for toolId=%s.", CurrentToolId.c_str());
+		return false;
+	}
+
+	bIsCleaningUseHeld = true;
+	FCleaningToolAnimator::Get().BeginUse(*ToolData);
+	UE_LOG("[CleaningTool] BeginUse started: toolId=%s amplitude=%.3f speed=%.3f.",
+		CurrentToolId.c_str(),
+		ToolData->UseBobAmplitude,
+		ToolData->UseBobSpeed);
+	return true;
+}
+
+void FGamePlayerController::EndCleaningUse()
+{
+	if (!bIsCleaningUseHeld)
+	{
+		return;
+	}
+
+	bIsCleaningUseHeld = false;
+	FCleaningToolAnimator::Get().EndUse();
+}
+
 void FGamePlayerController::TogglePickup()
 {
 	if (!World || !FreeCamera || !IsInputEnabled())
@@ -358,6 +499,9 @@ void FGamePlayerController::TogglePickup()
 
 	if (Handle->IsHolding())
 	{
+		UE_LOG("[CleaningTool] Releasing held object. currentToolId=%s", GGameContext::Get().GetCurrentToolId().c_str());
+		EndCleaningUse();
+		GGameContext::Get().SetCurrentTool("");
 		Handle->Release();
 		return;
 	}
@@ -365,6 +509,25 @@ void FGamePlayerController::TogglePickup()
 	if (Handle->TryGrab(World, FreeCamera))
 	{
 		ResetHeldBodyRotationToInitial();
+		bool bSelectedHeldTool = false;
+		if (URigidBodyComponent* HeldBody = Handle->GetHeldBody())
+		{
+			if (AActor* HeldActor = HeldBody->GetOwner())
+			{
+				const FString HeldToolId = FindCleaningToolIdFromActor(HeldActor);
+				bSelectedHeldTool = !HeldToolId.empty() && FCleaningToolSystem::Get().SelectTool(HeldToolId);
+				UE_LOG("[CleaningTool] Picked actor=%s resolvedToolId=%s selected=%d",
+					HeldActor->GetFName().ToString().c_str(),
+					HeldToolId.c_str(),
+					bSelectedHeldTool ? 1 : 0);
+			}
+		}
+
+		if (!bSelectedHeldTool)
+		{
+			UE_LOG("[CleaningTool] Picked object is not a cleaning tool. Clearing current tool.");
+			GGameContext::Get().SetCurrentTool("");
+		}
 	}
 }
 

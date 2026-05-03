@@ -92,7 +92,14 @@
       "type": "CleaningTool",
       "foundDesc": "바닥을 닦는 데 쓰는 대걸레다.",
       "canClassify": false,
-      "requiredForSuccessEnding": false
+      "requiredForSuccessEnding": false,
+      "meshAssetPath": "Asset/Mesh/Game/Mop/mop0.obj",
+      "animationSetId": "mop_cleaning",
+      "effectId": "wet_wipe",
+      "cleaningPower": 1.0,
+      "useBobAmplitude": 0.18,
+      "useBobSpeed": 9.0,
+      "useReturnSpeed": 14.0
     }
   ]
 }

@@ -791,6 +791,9 @@
     <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp">
       <Filter>Source\Game\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Game\Systems\CleaningToolAnimator.cpp">
+      <Filter>Source\Game\Systems</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Game\Systems\CleaningToolSystem.cpp">
       <Filter>Source\Game\Systems</Filter>
     </ClCompile>
@@ -1554,6 +1557,9 @@
       <Filter>Source\Game\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Systems\CleaningGameTypes.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\CleaningToolAnimator.h">
       <Filter>Source\Game\Systems</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Systems\CleaningToolSystem.h">

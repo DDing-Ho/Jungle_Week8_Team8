@@ -13,7 +13,9 @@
 #include "Engine/Input/InputRouter.h"
 #include "Game/UI/GameUISystem.h"
 #include "Game/Systems/GameContext.h"
+#include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/ItemSystem.h"
+#include "Scripting/LuaScriptSystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -175,6 +177,32 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set_function("GetResolvedItemCount", []()
 	{
 		return static_cast<int32>(GGameContext::Get().GetResolvedItemCount());
+	});
+
+	Lua.set_function("SelectCleaningTool", [](const std::string& ToolId)
+	{
+		return FCleaningToolSystem::Get().SelectTool(ToolId);
+	});
+
+	Lua.set_function("RegisterCleaningToolActor", [](AActor* Actor, const std::string& ToolId)
+	{
+		if (!Actor || ToolId.empty())
+		{
+			UE_LOG("[CleaningTool] RegisterCleaningToolActor failed. actor=%s toolId=%s",
+				Actor ? Actor->GetFName().ToString().c_str() : "null",
+				ToolId.c_str());
+			return false;
+		}
+
+		const FString ActorName = Actor->GetFName().ToString();
+		const FString Key = "CleaningTool:" + ActorName;
+		const bool bRegistered = FLuaScriptSystem::Get().SetStringGameStateValue(Key, ToolId);
+		UE_LOG("[CleaningTool] Registered actor=%s key=%s toolId=%s result=%d",
+			ActorName.c_str(),
+			Key.c_str(),
+			ToolId.c_str(),
+			bRegistered ? 1 : 0);
+		return bRegistered;
 	});
 
 

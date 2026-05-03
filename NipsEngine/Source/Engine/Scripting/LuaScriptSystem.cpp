@@ -584,6 +584,42 @@ void FLuaScriptSystem::ReportCallError(ULuaScriptComponent* Component, const cha
 }
 #endif
 
+bool FLuaScriptSystem::SetStringGameStateValue(const FString& Key, const FString& Value)
+{
+#if WITH_LUA
+	if (Key.empty())
+	{
+		return false;
+	}
+
+	FGameStateValue StoredValue;
+	StoredValue.Type = FGameStateValue::EType::String;
+	StoredValue.StringValue = Value;
+	GameState[Key] = StoredValue;
+	return true;
+#else
+	(void)Key;
+	(void)Value;
+	return false;
+#endif
+}
+
+FString FLuaScriptSystem::GetStringGameStateValue(const FString& Key) const
+{
+#if WITH_LUA
+	auto It = GameState.find(Key);
+	if (It == GameState.end() || It->second.Type != FGameStateValue::EType::String)
+	{
+		return "";
+	}
+
+	return It->second.StringValue;
+#else
+	(void)Key;
+	return "";
+#endif
+}
+
 void FLuaScriptSystem::SetLastError(const FString& Error)
 {
 	LastError = Error;
