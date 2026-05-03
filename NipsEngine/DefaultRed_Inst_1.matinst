@@ -1,0 +1,9 @@
+{
+        "Name" : "DefaultRed_Inst_1.matinst",
+        "OverridedParams" : [{
+            "Name" : "BaseColor",
+            "Type" : "Vector3",
+            "Value" : [0.488811, 0.546640, 0.742616]
+          }],
+        "Parent" : "DefaultRed"
+      }

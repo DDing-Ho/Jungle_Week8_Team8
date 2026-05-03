@@ -3,7 +3,7 @@
         "OverridedParams" : [{
             "Name" : "DiffuseMap",
             "Type" : "Texture",
-            "Value" : "Asset/Texture/wood_shutter.png"
+            "Value" : "Asset/Texture/stainpink.png"
           }],
         "Parent" : "DecalMat"
       }

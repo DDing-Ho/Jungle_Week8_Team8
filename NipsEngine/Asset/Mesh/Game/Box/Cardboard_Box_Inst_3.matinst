@@ -1,0 +1,9 @@
+{
+        "Name" : "Asset/Mesh/Game/Box/Cardboard_Box_Inst_3.matinst",
+        "OverridedParams" : [{
+            "Name" : "EmissiveColor",
+            "Type" : "Vector3",
+            "Value" : [0.831224, 0.659367, 0.659367]
+          }],
+        "Parent" : "Box_4"
+      }
