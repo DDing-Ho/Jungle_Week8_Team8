@@ -29,6 +29,7 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	IO.IniFilename = nullptr;
 
 	ImGui_ImplWin32_Init(static_cast<void*>(Hwnd));
 	ImGui_ImplDX11_Init(Device, Context);
