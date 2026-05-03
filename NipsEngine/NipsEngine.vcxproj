@@ -787,6 +787,12 @@
     <ClCompile Include="Source\Game\UI\StartMenuPanel.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
@@ -1789,6 +1795,8 @@
     <ClInclude Include="Source\Game\UI\HUDPanel.h" />
     <ClInclude Include="Source\Game\UI\PauseMenuPanel.h" />
     <ClInclude Include="Source\Game\UI\StartMenuPanel.h" />
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.h" />
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.h" />
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h" />
     <ClInclude Include="ThirdParty\FreeType\builds\amiga\include\config\ftconfig.h" />
     <ClInclude Include="ThirdParty\FreeType\builds\amiga\include\config\ftmodule.h" />

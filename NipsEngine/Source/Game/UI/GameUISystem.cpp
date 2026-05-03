@@ -5,10 +5,24 @@
 #include "Game/UI/DialoguePanel.h"
 #include "Game/UI/PauseMenuPanel.h"
 #include "Game/UI/EndingPanel.h"
+#include "Game/UI/RmlUi/RmlUiRenderInterfaceD3D11.h"
+#include "Game/UI/RmlUi/RmlUiSystemInterface.h"
 
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx11.h"
-#include "ImGui/imgui_impl_win32.h"
+#include "Render/Common/RenderTypes.h"
+
+#ifdef GetFirstChild
+#undef GetFirstChild
+#endif
+#ifdef GetNextSibling
+#undef GetNextSibling
+#endif
+
+#include "RmlUi/Core.h"
+#include "RmlUi/Core/Context.h"
+#include "RmlUi/Core/Element.h"
+#include "RmlUi/Core/ElementDocument.h"
+
+#include <algorithm>
 
 // -------------------------------------------------------
 // 싱글턴
@@ -24,47 +38,106 @@ GameUISystem& GameUISystem::Get()
 // -------------------------------------------------------
 void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext* Context)
 {
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
+	(void)Hwnd;
 
-	ImGuiIO& IO = ImGui::GetIO();
-	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	if (bRmlUiInitialized)
+		return;
 
-	ImGui_ImplWin32_Init(static_cast<void*>(Hwnd));
-	ImGui_ImplDX11_Init(Device, Context);
+	D3DContext = Context;
+	RmlSystemInterface = std::make_unique<FRmlUiSystemInterface>();
+	RmlRenderInterface = std::make_unique<FRmlUiRenderInterfaceD3D11>();
+	if (!RmlRenderInterface->Initialize(Device, Context))
+	{
+		RmlRenderInterface.reset();
+		RmlSystemInterface.reset();
+		D3DContext = nullptr;
+		return;
+	}
 
-	bOwnsImGui = true;
+	Rml::SetSystemInterface(RmlSystemInterface.get());
+	Rml::SetRenderInterface(RmlRenderInterface.get());
+	if (!Rml::Initialise())
+	{
+		RmlRenderInterface.reset();
+		RmlSystemInterface.reset();
+		D3DContext = nullptr;
+		return;
+	}
+
+	Rml::LoadFontFace("C:/Windows/Fonts/malgun.ttf", true);
+
+	RmlContext = Rml::CreateContext("GameUI", Rml::Vector2i(1280, 720));
+	if (!RmlContext || !CreateTestDocument())
+	{
+		Shutdown();
+		return;
+	}
+
+	bRmlUiInitialized = true;
 }
 
 void GameUISystem::Shutdown()
 {
-	if (bOwnsImGui)
+	if (RmlDocument && RmlContext)
 	{
-		ImGui_ImplDX11_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
-		bOwnsImGui = false;
+		RmlContext->UnloadDocument(RmlDocument);
+		RmlDocument = nullptr;
+		RmlContext->Update();
 	}
+
+	if (RmlContext)
+	{
+		Rml::RemoveContext("GameUI");
+		RmlContext = nullptr;
+	}
+
+	if (bRmlUiInitialized)
+	{
+		Rml::Shutdown();
+		bRmlUiInitialized = false;
+	}
+
+	RmlRenderInterface.reset();
+	RmlSystemInterface.reset();
+	D3DContext = nullptr;
 }
 
 // -------------------------------------------------------
-// 게임 빌드 - 전체 ImGui 프레임
+// 게임 빌드 - 현재 렌더 타겟에 RmlUi 렌더
 // -------------------------------------------------------
 void GameUISystem::Render(EUIRenderMode Mode)
 {
-	if (bOwnsImGui)
-	{
-		ImGui_ImplDX11_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-	}
+	if (!D3DContext)
+		return;
 
-	RenderCurrentPanel(Mode);
+	UINT NumViewports = 1;
+	D3D11_VIEWPORT Viewport = {};
+	D3DContext->RSGetViewports(&NumViewports, &Viewport);
 
-	if (bOwnsImGui)
+	RenderToCurrentTarget(
+		Mode,
+		static_cast<int>(Viewport.Width),
+		static_cast<int>(Viewport.Height));
+}
+
+void GameUISystem::RenderToCurrentTarget(EUIRenderMode Mode, int Width, int Height)
+{
+	if (!bRmlUiInitialized || !RmlContext || !RmlRenderInterface)
+		return;
+
+	if (Width <= 0 || Height <= 0)
+		return;
+
+	RmlRenderInterface->BeginFrame(Width, Height);
+	RmlContext->SetDimensions(Rml::Vector2i(Width, Height));
+	UpdateRmlUiDocument(Mode);
+	RmlContext->Update();
+	RmlContext->Render();
+
+	if (D3DContext)
 	{
-		ImGui::Render();
-		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		ID3D11ShaderResourceView* NullSRV = nullptr;
+		D3DContext->PSSetShaderResources(0, 1, &NullSRV);
 	}
 }
 
@@ -73,7 +146,7 @@ void GameUISystem::Render(EUIRenderMode Mode)
 // -------------------------------------------------------
 void GameUISystem::RenderPanelsOnly(EUIRenderMode Mode)
 {
-	RenderCurrentPanel(Mode);
+	(void)Mode;
 }
 
 // -------------------------------------------------------
@@ -132,7 +205,7 @@ void GameUISystem::ResetGameData()
 // -------------------------------------------------------
 void GameUISystem::SetProgress(float InProgress)
 {
-	CleanProgress = InProgress;
+	CleanProgress = std::clamp(InProgress, 0.0f, 1.0f);
 }
 
 void GameUISystem::SetCurrentItem(const char* Name, const char* Desc)
@@ -237,4 +310,81 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 		}
 		break;
 	}
+}
+
+void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
+{
+	if (!RmlDocument)
+		return;
+
+	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
+
+	if (Rml::Element* Progress = RmlDocument->GetElementById("progress-value"))
+	{
+		const int Percent = static_cast<int>(CleanProgress * 100.0f);
+		Progress->SetInnerRML(std::to_string(Percent) + "%");
+	}
+
+	if (Rml::Element* Items = RmlDocument->GetElementById("item-count"))
+	{
+		Items->SetInnerRML(std::to_string(ItemCount));
+	}
+}
+
+bool GameUISystem::CreateTestDocument()
+{
+	if (!RmlContext)
+		return false;
+
+	static const char* DocumentRml = R"(
+<rml>
+<head>
+	<title>Game UI</title>
+	<style>
+		body {
+			width: 100%;
+			height: 100%;
+			font-family: "Malgun Gothic", "malgun";
+			color: #ffffff;
+		}
+		#panel {
+			position: absolute;
+			left: 32px;
+			top: 32px;
+			width: 280px;
+			padding: 18px;
+			background-color: rgba(12, 18, 28, 210);
+			border: 1px #7fb7ff;
+		}
+		#title {
+			font-size: 24px;
+			margin-bottom: 12px;
+			color: #9bd2ff;
+		}
+		.row {
+			font-size: 16px;
+			margin-top: 6px;
+		}
+		.value {
+			color: #ffe08a;
+		}
+	</style>
+</head>
+<body>
+	<div id="panel">
+		<div id="title">RmlUi Test Window</div>
+		<div class="row">Render target: current D3D11 target</div>
+		<div class="row">Progress: <span id="progress-value" class="value">0%</span></div>
+		<div class="row">Items: <span id="item-count" class="value">0</span></div>
+	</div>
+</body>
+</rml>
+)";
+
+	RmlDocument = RmlContext->LoadDocumentFromMemory(DocumentRml, "GameUITest");
+	if (!RmlDocument)
+		return false;
+
+	RmlDocument->Show();
+	return true;
 }

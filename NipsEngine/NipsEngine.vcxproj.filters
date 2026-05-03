@@ -160,6 +160,9 @@
     <Filter Include="Source\Game\UI">
       <UniqueIdentifier>{24b0520d-f070-bb4e-e2fa-92d953623ce5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Game\UI\RmlUi">
+      <UniqueIdentifier>{521f5ca5-d885-3663-120c-479fd46a0e23}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Game\Viewport">
       <UniqueIdentifier>{24b40836-3894-0777-eac4-651121dc7f81}</UniqueIdentifier>
     </Filter>
@@ -1150,6 +1153,12 @@
     </ClCompile>
     <ClCompile Include="Source\Game\UI\StartMenuPanel.cpp">
       <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.cpp">
+      <Filter>Source\Game\UI\RmlUi</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.cpp">
+      <Filter>Source\Game\UI\RmlUi</Filter>
     </ClCompile>
     <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
       <Filter>Source\Game\Viewport</Filter>
@@ -2596,6 +2605,12 @@
     </ClInclude>
     <ClInclude Include="Source\Game\UI\StartMenuPanel.h">
       <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.h">
+      <Filter>Source\Game\UI\RmlUi</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.h">
+      <Filter>Source\Game\UI\RmlUi</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h">
       <Filter>Source\Game\Viewport</Filter>

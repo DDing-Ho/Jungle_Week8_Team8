@@ -65,7 +65,10 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 	Renderer.Render(Bus);
 	Renderer.PresentToBackBuffer(Renderer.GetCurrentSceneSRV());
 
-	GameUISystem::Get().Render(EUIRenderMode::Play);
+	Renderer.RenderToCurrentTarget([](int32 Width, int32 Height)
+	{
+		GameUISystem::Get().RenderToCurrentTarget(EUIRenderMode::Play, Width, Height);
+	});
 }
 
 bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSceneView, FGameViewportClient*& OutViewportClient)

@@ -326,6 +326,21 @@ void FRenderer::PresentToBackBuffer(const ID3D11ShaderResourceView* FinalSRV)
 	CurrentRenderTargets = BackBufferRenderTargets;
 }
 
+void FRenderer::RenderToCurrentTarget(const std::function<void(int32 Width, int32 Height)>& RenderCallback)
+{
+	if (!RenderCallback)
+		return;
+
+	ID3D11DeviceContext* DeviceContext = Device.GetDeviceContext();
+	if (!DeviceContext)
+		return;
+
+	UINT NumViewports = 1;
+	D3D11_VIEWPORT Viewport = {};
+	DeviceContext->RSGetViewports(&NumViewports, &Viewport);
+	RenderCallback(static_cast<int32>(Viewport.Width), static_cast<int32>(Viewport.Height));
+}
+
 FViewportRenderResource& FRenderer::AcquireViewportResource(uint32 Width, uint32 Height, int32 Index)
 {
 	assert(Index < 4 && "Index Out of Bound");
