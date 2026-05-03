@@ -452,6 +452,7 @@ CMakeLists.txt
 # ignore Build Files
 NipsEngine/Build/
 NipsEngine/Saves/**
+vcpkg/
 vcpkg_installed/
 
 # Asset 폴더 관련 (그때그때 필요한 파일만 저장하도록 변경)
@@ -463,7 +464,3 @@ vcpkg_installed/
 NipsEngine/Asset/Mesh/I_*/
 
 NipsEngine/Asset/Mesh/Bin/**
-NipsEngine/Asset/Scene/**
-
-# 발제용 Scene
-!NipsEngine/Asset/Scene/Scene_*

@@ -399,6 +399,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
 
         if is_x64:
             defs += "WITH_LUA=1;"
+            defs += "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_OBJECT_STREAM;"
 
         defs += "RMLUI_STATIC_LIB;RMLUI_FONT_ENGINE_FREETYPE;FT2_BUILD_LIBRARY;_CRT_SECURE_NO_WARNINGS;"
         defs += "NOMINMAX;%(PreprocessorDefinitions);"
@@ -416,7 +417,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(link, "SubSystem").text = "Windows" if is_x64 else "Console"
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
         if is_x64:
-            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;%(AdditionalDependencies)"
+            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;Jolt.lib;%(AdditionalDependencies)"
 
         if is_game:
             pre_build = ET.SubElement(idg, "PreBuildEvent")

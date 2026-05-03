@@ -57,6 +57,7 @@ public:
 					 FEditorCameraState* OutCameraState = nullptr);
 
 	static TArray<FString> GetSceneFileList();
+	static FString GetGameUIBootMode(const FString& FilePath);
 
 private:
 	// ---- Serialization ----
@@ -71,6 +72,7 @@ private:
 	static json::JSON SerializeProperties(UActorComponent* Comp);
 	static json::JSON SerializePropertyValue(const FPropertyDescriptor& Prop);
 	static json::JSON SerializeCameraState(const FEditorCameraState* CameraState = nullptr);
+	static FString GetDefaultGameUIBootModeForSceneName(const FString& SceneName);
 
 	// ---- Deserialization ----
 	static void DeserializePrimitivesToWorld(json::JSON& PrimitivesNode, UWorld* World);

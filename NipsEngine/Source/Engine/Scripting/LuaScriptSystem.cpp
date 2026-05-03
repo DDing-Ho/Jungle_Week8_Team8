@@ -1,4 +1,4 @@
-#include "Scripting/LuaScriptSystem.h"
+﻿#include "Scripting/LuaScriptSystem.h"
 
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"

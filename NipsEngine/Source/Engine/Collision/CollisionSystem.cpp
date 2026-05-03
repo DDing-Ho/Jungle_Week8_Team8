@@ -304,6 +304,11 @@ void FCollisionSystem::ProcessBlocking(UPrimitiveComponent* A, UPrimitiveCompone
 	AActor* OwnerB = B->GetOwner();
 	URigidBodyComponent* BodyA = FindSimulatingRigidBody(OwnerA);
 	URigidBodyComponent* BodyB = FindSimulatingRigidBody(OwnerB);
+	if ((BodyA != nullptr && BodyA->IsUsingJoltPhysics()) ||
+		(BodyB != nullptr && BodyB->IsUsingJoltPhysics()))
+	{
+		return;
+	}
 
 	const bool bAMovable = BodyA != nullptr;
 	const bool bBMovable = BodyB != nullptr;

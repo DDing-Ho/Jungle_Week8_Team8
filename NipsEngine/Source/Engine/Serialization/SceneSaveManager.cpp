@@ -44,6 +44,7 @@ namespace SceneKeys
 	// PerspectiveCamera 섹션
 	static constexpr const char* PerspectiveCamera  = "PerspectiveCamera";
 	static constexpr const char* Primitives         = "Primitives";
+	static constexpr const char* GameUIBootMode     = "GameUIBootMode";
 	static constexpr const char* Scale              = "Scale";
 	static constexpr const char* Location           = "Location";
 	static constexpr const char* Rotation           = "Rotation";
@@ -72,6 +73,19 @@ static EWorldType StringToWorldType(const string& Str)
 	return EWorldType::Editor;
 }
 
+FString FSceneSaveManager::GetDefaultGameUIBootModeForSceneName(const FString& SceneName)
+{
+	if (SceneName == "Title" || SceneName == "Title.Scene")
+	{
+		return "StartMenu";
+	}
+	if (SceneName == "Scene_00_GameScene" || SceneName == "Scene_00_GameScene.Scene")
+	{
+		return "InGame";
+	}
+	return "None";
+}
+
 // ============================================================
 // Save
 // ============================================================
@@ -92,6 +106,7 @@ void FSceneSaveManager::SaveSceneAsJSON(const string& InSceneName, FWorldContext
     Root[SceneKeys::Name] = FinalName;
     Root[SceneKeys::ClassName] = WorldContext.World->GetTypeInfo()->name;
     Root[SceneKeys::WorldType] = WorldTypeToString(WorldContext.WorldType);
+    Root[SceneKeys::GameUIBootMode] = GetDefaultGameUIBootModeForSceneName(FinalName);
     Root[SceneKeys::PerspectiveCamera] = SerializeCameraState(CameraState);
     Root[SceneKeys::Primitives] = SerializeWorldToPrimitives(WorldContext.World, WorldContext);
     Root[SceneKeys::NextUUID] = static_cast<int>(EngineStatics::GetNextUUID());
@@ -396,11 +411,13 @@ void FSceneSaveManager::Save(const FString& FilePath, FWorldContext& WorldContex
 
 	int32 Version = 4;
 	uint32 NextUUID = EngineStatics::GetNextUUID();
+	FString GameUIBootMode = GetDefaultGameUIBootModeForSceneName(FinalName);
 
-	Writer << SceneKeys::ClassName << WorldContext.World->GetTypeInfo()->name;
-	Writer << SceneKeys::Name << FinalName;
-	Writer << SceneKeys::WorldType << WorldTypeToString(WorldContext.WorldType);
-	Writer << SceneKeys::Version << Version;
+		Writer << SceneKeys::ClassName << WorldContext.World->GetTypeInfo()->name;
+		Writer << SceneKeys::Name << FinalName;
+		Writer << SceneKeys::WorldType << WorldTypeToString(WorldContext.WorldType);
+		Writer << SceneKeys::GameUIBootMode << GameUIBootMode;
+		Writer << SceneKeys::Version << Version;
 	Writer << SceneKeys::NextUUID << NextUUID;
 
 	FEditorCameraState* CamState = const_cast<FEditorCameraState*>(CameraState);
@@ -449,6 +466,30 @@ void FSceneSaveManager::Save(const FString& FilePath, FWorldContext& WorldContex
 		File.flush();
 		File.close();
 	}
+}
+
+FString FSceneSaveManager::GetGameUIBootMode(const FString& FilePath)
+{
+	std::ifstream File(std::filesystem::path(FPaths::ToWide(FilePath)));
+	if (!File.is_open())
+	{
+		const std::filesystem::path Path(FPaths::ToWide(FilePath));
+		return GetDefaultGameUIBootModeForSceneName(FPaths::ToUtf8(Path.stem().wstring()));
+	}
+
+	string FileContent((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
+	json::JSON Root = json::JSON::Load(FileContent);
+	if (Root.hasKey(SceneKeys::GameUIBootMode))
+	{
+		return Root[SceneKeys::GameUIBootMode].ToString();
+	}
+	if (Root.hasKey(SceneKeys::Name))
+	{
+		return GetDefaultGameUIBootModeForSceneName(Root[SceneKeys::Name].ToString());
+	}
+
+	const std::filesystem::path Path(FPaths::ToWide(FilePath));
+	return GetDefaultGameUIBootModeForSceneName(FPaths::ToUtf8(Path.stem().wstring()));
 }
 
 void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldContext, FEditorCameraState* OutCameraState)

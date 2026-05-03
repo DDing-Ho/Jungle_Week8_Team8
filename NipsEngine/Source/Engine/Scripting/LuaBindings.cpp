@@ -1,4 +1,4 @@
-#include "Scripting/LuaBindings.h"
+﻿#include "Scripting/LuaBindings.h"
 
 #if WITH_LUA
 #include "GameFramework/AActor.h"
@@ -71,7 +71,8 @@ void RegisterLuaBindings(sol::state& Lua)
 	// -------------------------------------------------------
 	Lua.set_function("SetUIState", [](const std::string& StateName)
 	{
-		if      (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
+		if      (StateName == "None")      GameUISystem::Get().SetState(EGameUIState::None);
+		else if (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
 		else if (StateName == "Prologue")  GameUISystem::Get().SetState(EGameUIState::Prologue);
 		else if (StateName == "InGame")    GameUISystem::Get().SetState(EGameUIState::InGame);
 		else if (StateName == "Ending")    GameUISystem::Get().SetState(EGameUIState::Ending);

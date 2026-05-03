@@ -13,12 +13,14 @@ class FViewportCamera;
 struct FViewportRect;
 struct FCameraSnapshot;
 class UCameraComponent;
+class UPhysicsHandleComponent;
+class UWorld;
 
 class FGamePlayerController : public IBaseGameController
 {
 public:
 	FGamePlayerController();
-	~FGamePlayerController() override = default;
+	~FGamePlayerController() override;
 
 	void Tick(float DeltaTime) override;
 
@@ -38,6 +40,7 @@ public:
 
 	void SetPlayer(AActor* InPlayer) { Player = InPlayer; }
 	AActor* GetPlayer() const { return Player; }
+	void SetWorld(UWorld* InWorld) { World = InWorld; }
 
 	void SetCamera(UCameraComponent* InCamera);
 	UCameraComponent* GetCamera() const { return Camera; }
@@ -58,15 +61,20 @@ public:
 private:
 	void SetupDefaultInputMappings();
 	void ApplyInputAxes();
+	void TogglePickup();
+	UPhysicsHandleComponent* GetPhysicsHandle();
+	void DestroyPhysicsHandle();
 	void RotateActiveCamera(float DeltaX, float DeltaY);
 	void MoveActiveCamera(const FVector& Direction, float Scale);
 	void SyncFreeCameraAngles();
 	void UpdateFreeCameraRotation();
 
 private:
+	UWorld* World = nullptr;
 	AActor* Player = nullptr;
 	UCameraComponent* Camera = nullptr;
 	FViewportCamera* FreeCamera = nullptr;
+	UPhysicsHandleComponent* PhysicsHandle = nullptr;
 	FInputMappingContext InputMapping;
 
 	float MoveSpeed = 10.0f;

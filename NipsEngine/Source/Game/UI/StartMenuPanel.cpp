@@ -108,7 +108,7 @@ void StartMenuPanel::Render(EUIRenderMode Mode)
 	const float ExitY  = StartY + BtnH + 12.f;
 
 	if (TextButton(Draw, "START", VX, VY, BtnX, StartY, BtnW, BtnH, Mode))
-		GameUISystem::Get().SetState(EGameUIState::InGame);
+		GameUISystem::Get().RequestStartGame();
 
 	if (TextButton(Draw, "EXIT", VX, VY, BtnX, ExitY, BtnW, BtnH, Mode))
 		PostQuitMessage(0);

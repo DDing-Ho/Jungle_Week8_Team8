@@ -12,6 +12,7 @@ struct ID3D11DeviceContext;
 // -------------------------------------------------------
 enum class EGameUIState
 {
+    None,        // UI 없음
     StartMenu,   // 시작 화면
     Prologue,    // 프롤로그
     InGame,      // 게임 중 (HUD)
@@ -96,13 +97,16 @@ public:
     void SetExitPlayCallback(std::function<void()> Callback);
     void RequestExitPlay();   // EndingPanel 에서 호출
 
+    void SetStartGameCallback(std::function<void()> Callback);
+    void RequestStartGame();
+
 private:
     GameUISystem() = default;
 
     void RenderCurrentPanel(EUIRenderMode Mode);
     // 상태에 따라 커서/마우스 잠금을 자동으로 맞춤
 
-    EGameUIState CurrentState        = EGameUIState::StartMenu;
+    EGameUIState CurrentState        = EGameUIState::None;
     bool         bPauseMenuOpen     = false;
 
     // ImGui 소유권 (게임 빌드에서만 true)
@@ -116,4 +120,5 @@ private:
     std::string CurrentItemDesc;
 
     std::function<void()> ExitPlayCallback;
+    std::function<void()> StartGameCallback;
 };
