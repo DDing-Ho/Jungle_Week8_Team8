@@ -12,6 +12,7 @@ public:
 
 	void RegisterItemData(const FGameItemData& ItemData);
 	const FGameItemData* FindItemData(const FString& ItemId) const;
+	const TArray<FGameItemData>& GetAllItemData() const { return Items; }
 
 	bool DiscoverItem(const FString& ItemId);
 	bool KeepItem(const FString& ItemId);

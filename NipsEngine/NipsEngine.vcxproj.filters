@@ -800,6 +800,9 @@
     <ClCompile Include="Source\Game\Systems\GameContext.cpp">
       <Filter>Source\Game\Systems</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Game\Systems\GameItemDataLoader.cpp">
+      <Filter>Source\Game\Systems</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Game\Systems\ItemSystem.cpp">
       <Filter>Source\Game\Systems</Filter>
     </ClCompile>
@@ -1560,6 +1563,9 @@
       <Filter>Source\Game\Systems</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Systems\GameContext.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\GameItemDataLoader.h">
       <Filter>Source\Game\Systems</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\Systems\ItemSystem.h">

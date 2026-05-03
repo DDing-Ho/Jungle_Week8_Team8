@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine/Core/CoreMinimal.h"
 
@@ -16,16 +16,24 @@ enum class EItemDecisionBoxType
 	DiscardBox,
 };
 
+enum class EGameItemType
+{
+	StoryItem,
+	DummyItem,
+	CleaningTool,
+};
+
 struct FGameItemData
 {
 	FString ItemId;
 	FString DisplayName;
+	EGameItemType ItemType = EGameItemType::StoryItem;
 	FString DescriptionWhenFound;
 	FString DescriptionWhenKept;
 	FString DescriptionWhenDiscarded;
 	FString IconPath;
 	bool bCanClassify = true;
-	TArray<FString> EndingTags;
+	bool bRequiredForSuccessEnding = false;
 	TArray<FString> StoryFlags;
 };
 
@@ -53,5 +61,7 @@ struct FCleaningToolUseResult
 struct FEndingResult
 {
 	FString EndingId;
-	TArray<FString> MatchedTags;
+	bool bIsSuccess = false;
+	TArray<FString> MissingRequiredItemIds;
+	TArray<FString> KeptFailureItemIds;
 };

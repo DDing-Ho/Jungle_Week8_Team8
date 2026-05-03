@@ -12,15 +12,39 @@ FEndingSystem& FEndingSystem::Get()
 FEndingResult FEndingSystem::EvaluateEnding() const
 {
 	FEndingResult Result;
-	Result.EndingId = BuildEndingIdFromContext();
 
 	const GGameContext& Context = GGameContext::Get();
+	const FItemSystem& ItemSystem = FItemSystem::Get();
+
+	for (const FGameItemData& ItemData : ItemSystem.GetAllItemData())
+	{
+		if (ItemData.bRequiredForSuccessEnding && !Context.HasKeptItem(ItemData.ItemId))
+		{
+			Result.MissingRequiredItemIds.push_back(ItemData.ItemId);
+		}
+	}
+
 	for (const FString& ItemId : Context.GetKeptItemIds())
 	{
-		if (const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId))
+		const FGameItemData* ItemData = ItemSystem.FindItemData(ItemId);
+		if (ItemData && ItemData->ItemType == EGameItemType::DummyItem)
 		{
-			Result.MatchedTags.insert(Result.MatchedTags.end(), ItemData->EndingTags.begin(), ItemData->EndingTags.end());
+			Result.KeptFailureItemIds.push_back(ItemId);
 		}
+	}
+
+	Result.bIsSuccess = Result.MissingRequiredItemIds.empty() && Result.KeptFailureItemIds.empty();
+	if (Result.bIsSuccess)
+	{
+		Result.EndingId = "Ending_Success";
+	}
+	else if (!Result.KeptFailureItemIds.empty())
+	{
+		Result.EndingId = "Ending_Failed_DummyItem";
+	}
+	else
+	{
+		Result.EndingId = "Ending_Failed_MissingRequiredItem";
 	}
 
 	return Result;
@@ -28,19 +52,5 @@ FEndingResult FEndingSystem::EvaluateEnding() const
 
 FString FEndingSystem::BuildEndingIdFromContext() const
 {
-	const GGameContext& Context = GGameContext::Get();
-	const size_t KeptCount = Context.GetKeptItemIds().size();
-	const size_t DiscardedCount = Context.GetDiscardedItemIds().size();
-
-	if (KeptCount == 0 && DiscardedCount == 0)
-	{
-		return "Ending_Unresolved";
-	}
-
-	if (KeptCount >= DiscardedCount)
-	{
-		return "Ending_Collector";
-	}
-
-	return "Ending_Discarder";
+	return EvaluateEnding().EndingId;
 }

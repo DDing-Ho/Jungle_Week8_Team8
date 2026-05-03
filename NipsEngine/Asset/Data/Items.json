@@ -1,0 +1,98 @@
+{
+  "items": [
+    {
+      "id": "old_fairy_tale_book",
+      "name": "낡은 동화책",
+      "type": "StoryItem",
+      "desc": [
+        "바다 생물들이 그려진 동화책이다.",
+        "페이지 가장자리가 닳아 있다.",
+        "몇 번이고 펼쳐 본 흔적이 남아 있다."
+      ],
+      "keptDesc": "몇 번이고 펼쳐 본 흔적이 마음에 걸려 보관하기로 했다.",
+      "discardedDesc": "낡은 동화책은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": true,
+      "storyFlags": [ "found_old_book" ]
+    },
+    {
+      "id": "chocolate_bar",
+      "name": "뜯어져 있는 초콜릿",
+      "type": "StoryItem",
+      "desc": [
+        "포장이 뜯어진 초콜릿 바다."
+      ],
+      "keptDesc": "포장이 뜯어진 초콜릿 바는 마음이 걸려 보관하기로 했다.",
+      "discardedDesc": "뜯어져 있는 초콜릿은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": true,
+      "storyFlags": [ "found_chocolate" ]
+    },
+    {
+      "id": "medicine_bottle",
+      "name": "빈 약병",
+      "type": "StoryItem",
+      "desc": [
+        "꽤나 많은 양의 약병이다.",
+        "각각 복용 시간이 적혀 있다.",
+        "오랫동안 사용한 흔적이 남아 있다."
+      ],
+      "keptDesc": "빈 약병을 따로 보관하기로 했다.",
+      "discardedDesc": "빈 약병은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": true,
+      "storyFlags": [ "found_medicine_bottle" ]
+    },
+    {
+      "id": "shell",
+      "name": "조개 껍데기",
+      "type": "StoryItem",
+      "desc": [
+        "바다에서 주운 것 같은 조개 껍데기다.",
+        "표면이 매끄럽게 닳아 있다.",
+        "한쪽에 쪽지가 끼워져 있다.",
+        "\"엄마에게\"라고 적혀 있다."
+      ],
+      "keptDesc": "조개 껍데기를 따로 보관하기로 했다.",
+      "discardedDesc": "조개 껍데기는 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": true,
+      "storyFlags": [ "found_shell" ]
+    },
+    {
+      "id": "globe",
+      "name": "지구본",
+      "type": "DummyItem",
+      "desc": [
+        "먼지가 쌓인 지구본이다."
+      ],
+      "keptDesc": "지구본을 따로 보관하기로 했다.",
+      "discardedDesc": "지구본은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": false,
+      "storyFlags": [ "found_globe" ]
+    },
+    {
+      "id": "painting",
+      "name": "어린아이의 그림",
+      "type": "DummyItem",
+      "desc": [
+        "크레파스로 그린 것 같은 그림이다.",
+        "색이 조금 흐려졌다."
+      ],
+      "keptDesc": "어린아이의 그림을 따로 보관하기로 했다.",
+      "discardedDesc": "어린아이의 그림은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "requiredForSuccessEnding": false,
+      "storyFlags": [ "found_painting" ]
+    },
+    {
+      "id": "mop",
+      "name": "대걸레",
+      "type": "CleaningTool",
+      "foundDesc": "바닥을 닦는 데 쓰는 대걸레다.",
+      "canClassify": false,
+      "requiredForSuccessEnding": false
+    }
+  ]
+}

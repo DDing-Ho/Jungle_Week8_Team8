@@ -135,6 +135,7 @@ void RegisterLuaBindings(sol::state& Lua)
 		return GameUISystem::Get().IsDialogueActive();
 	});
 
+	// 아이템 상호작용
 	Lua.set_function("PlaceItemInKeepBox", [](const std::string& ItemId)
 	{
 		return FItemSystem::Get().PlaceItemInDecisionBox(ItemId, EItemDecisionBoxType::KeepBox);

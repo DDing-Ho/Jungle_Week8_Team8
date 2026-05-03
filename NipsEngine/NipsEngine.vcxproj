@@ -772,6 +772,9 @@
     <ClCompile Include="Source\Game\Systems\GameContext.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="Source\Game\Systems\GameItemDataLoader.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Game\Systems\ItemSystem.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
@@ -1064,6 +1067,7 @@
     <ClInclude Include="Source\Game\Systems\CleaningToolSystem.h" />
     <ClInclude Include="Source\Game\Systems\EndingSystem.h" />
     <ClInclude Include="Source\Game\Systems\GameContext.h" />
+    <ClInclude Include="Source\Game\Systems\GameItemDataLoader.h" />
     <ClInclude Include="Source\Game\Systems\ItemSystem.h" />
     <ClInclude Include="Source\Game\UI\DialoguePanel.h" />
     <ClInclude Include="Source\Game\UI\EndingPanel.h" />
