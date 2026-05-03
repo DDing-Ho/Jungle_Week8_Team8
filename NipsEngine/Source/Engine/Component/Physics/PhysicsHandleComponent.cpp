@@ -66,7 +66,7 @@ namespace
 	bool IsDynamicRigidActor(AActor* Actor)
 	{
 		URigidBodyComponent* Body = FindRigidBody(Actor);
-		return Body != nullptr && Body->IsDynamicBody();
+		return Body != nullptr && Body->IsDynamicBody() && Body->IsSimulatingPhysics();
 	}
 
 	bool IntersectsAABB(const FAABB& A, const FAABB& B)
@@ -234,7 +234,7 @@ namespace
 			}
 
 			URigidBodyComponent* OtherBody = FindRigidBody(OtherActor);
-			if (OtherBody == nullptr || !OtherBody->IsDynamicBody() || OtherBody->IsHeldByPhysicsHandle())
+			if (OtherBody == nullptr || !OtherBody->IsDynamicBody() || !OtherBody->IsSimulatingPhysics() || OtherBody->IsHeldByPhysicsHandle())
 			{
 				continue;
 			}

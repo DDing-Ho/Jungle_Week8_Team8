@@ -48,7 +48,7 @@ namespace
 		for (UActorComponent* Component : Actor->GetComponents())
 		{
 			URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component);
-			if (Body != nullptr && (Body->IsSimulatingPhysics() || Body->IsHeldByPhysicsHandle()))
+			if (Body != nullptr && ((Body->IsDynamicBody() && Body->IsSimulatingPhysics()) || Body->IsHeldByPhysicsHandle()))
 			{
 				return Body;
 			}

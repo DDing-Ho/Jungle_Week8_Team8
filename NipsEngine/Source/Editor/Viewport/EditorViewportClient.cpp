@@ -45,6 +45,24 @@ namespace
 		}
 		return Pawn;
 	}
+
+	UCameraComponent* FindPawnCamera(APawnActor* Pawn)
+	{
+		if (Pawn == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Pawn->GetComponents())
+		{
+			if (UCameraComponent* CameraComponent = Cast<UCameraComponent>(Component))
+			{
+				return CameraComponent;
+			}
+		}
+
+		return nullptr;
+	}
 }
 
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow, UEditorEngine* InEditor)
@@ -72,21 +90,33 @@ void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
 	APawnActor* Pawn = EnsurePlayerPawn(InWorld);
-	if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+	UCameraComponent* PawnCamera = FindPawnCamera(Pawn);
+	if (PawnCamera == nullptr)
 	{
-		Camera.SetProjectionType(EViewportProjectionType::Perspective);
-		Camera.ClearCustomLookDir();
-		Camera.SetLocation(PlayerStart->GetActorLocation());
-		Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+		if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+		{
+			Camera.SetProjectionType(EViewportProjectionType::Perspective);
+			Camera.ClearCustomLookDir();
+			Camera.SetLocation(PlayerStart->GetActorLocation());
+			Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+		}
 	}
 
-	GamePlayerController.SetCamera(nullptr);
 	GamePlayerController.SetWorld(InWorld);
 	GamePlayerController.SetPlayer(Pawn);
-	GamePlayerController.SetFreeCamera(&Camera);
-	if (bHasCameraSnapshot)
+	GamePlayerController.SetCamera(PawnCamera);
+	if (PawnCamera != nullptr)
 	{
-		GamePlayerController.InitializeFreeCameraFromSnapshot(SavedCamera);
+		GamePlayerController.SetFreeCamera(nullptr);
+		InWorld->SetActiveCameraComponent(PawnCamera);
+	}
+	else
+	{
+		GamePlayerController.SetFreeCamera(&Camera);
+		if (bHasCameraSnapshot)
+		{
+			GamePlayerController.InitializeFreeCameraFromSnapshot(SavedCamera);
+		}
 	}
 	FInputRouter::ResetMouseDelta(2);
 }

@@ -624,6 +624,30 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
 		return "AActor";
 	};
 
+	auto IsLegacyPawnActorNode = [&](uint32 RootUUID, const string& ActorClass, const FString& CompType) -> bool
+	{
+		if (ActorClass != "ASceneActor" || CompType != "USceneComponent")
+		{
+			return false;
+		}
+
+		for (const auto& Pair : NonSceneToRootMap)
+		{
+			if (Pair.second != RootUUID)
+			{
+				continue;
+			}
+
+			const FString Type = GetNormalizedType(PrimitivesNode[std::to_string(Pair.first)][SceneKeys::Type].ToString());
+			if (Type == "UPhysicsHandleComponent")
+			{
+				return true;
+			}
+		}
+
+		return false;
+	};
+
 	// 재귀 매핑 함수: Actor의 기본 컴포넌트와 JSON의 컴포넌트를 UUID 및 타입으로 매칭
 	std::function<void(AActor*, USceneComponent*, uint32)> MapSceneComp;
 	MapSceneComp = [&](AActor* Actor, USceneComponent* ActorComp, uint32 JSONUUID)
@@ -677,6 +701,10 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
 		string ActorClass = PrimitivesNode[std::to_string(RootUUID)].hasKey(SceneKeys::ActorClass)
 			? PrimitivesNode[std::to_string(RootUUID)][SceneKeys::ActorClass].ToString()
 			: InferActorClass(CompType);
+		if (IsLegacyPawnActorNode(RootUUID, ActorClass, GetNormalizedType(CompType)))
+		{
+			ActorClass = "APawnActor";
+		}
 		
 		AActor* NewActor = Cast<AActor>(FObjectFactory::Get().Create(ActorClass));
 		if (NewActor)
@@ -837,6 +865,31 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
         return "AActor";
     };
 
+    auto IsLegacyPawnActorNode = [&](uint32 RootUUID, const string& ActorClass, const string& CompType) -> bool
+    {
+        if (ActorClass != "ASceneActor" || CompType != "USceneComponent")
+        {
+            return false;
+        }
+
+        for (const auto& Pair : NonSceneNodeMap)
+        {
+            json::JSON* CompJSON = Pair.second;
+            if (CompJSON == nullptr || !CompJSON->hasKey(SceneKeys::OwnerRootUUID) || !CompJSON->hasKey(SceneKeys::Type))
+            {
+                continue;
+            }
+
+            const uint32 OwnerRootUUID = static_cast<uint32>((*CompJSON)[SceneKeys::OwnerRootUUID].ToInt());
+            if (OwnerRootUUID == RootUUID && (*CompJSON)[SceneKeys::Type].ToString() == "UPhysicsHandleComponent")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     // UUID → SceneComponent* 맵: SceneComponentRef 역직렬화에 사용
     std::unordered_map<uint32, USceneComponent*> UUIDToSceneComp;
     // 루트SceneComponent UUID → Actor* 맵: 비씬 컴포넌트 귀속에 사용
@@ -861,9 +914,13 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
         if (!ParentComp)
         {
             // 루트 컴포넌트: 저장된 ActorClass가 있으면 그대로, 없으면 컴포넌트 타입으로 추론합니다.
-            const string ActorClass = PrimJSON.hasKey(SceneKeys::ActorClass)
+            string ActorClass = PrimJSON.hasKey(SceneKeys::ActorClass)
                 ? PrimJSON[SceneKeys::ActorClass].ToString()
                 : InferActorClass(CompType);
+            if (IsLegacyPawnActorNode(UUID, ActorClass, CompType))
+            {
+                ActorClass = "APawnActor";
+            }
             UObject* Obj = FObjectFactory::Get().Create(ActorClass);
             AActor* NewActor = Cast<AActor>(Obj);
             if (!NewActor) return;

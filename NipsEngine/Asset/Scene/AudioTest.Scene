@@ -1,16 +1,21 @@
 {
   "ClassName" : "UWorld",
+  "GameUIBootMode" : "None",
   "Name" : "AudioTest",
-  "NextUUID" : 2306,
+  "NextUUID" : 2922,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-6.648961, 14.629665, 1.840785],
+    "Location" : [-0.365570, 2.421263, 1.381634],
     "NearClip" : 0.100000,
-    "Rotation" : [18.094698, 10.226371, -61.482666]
+    "Rotation" : [21.090496, -1.622162, -94.197876]
   },
   "Primitives" : {
     "139" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -30,6 +35,10 @@
       "Visible" : true
     },
     "142" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASkyAtmosphereActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DayHorizonColor" : [0.680000, 0.820000, 0.950000, 1.000000],
       "DayZenithColor" : [0.110000, 0.270000, 0.580000, 1.000000],
@@ -50,7 +59,7 @@
       "Scale" : [1.000000, 1.000000, 1.000000],
       "StarsIntensity" : 0.650000,
       "SunDiskIntensity" : 14.000000,
-      "SunDiskSize" : 1.500000,
+      "SunDiskSize" : 0.500000,
       "SunHaloIntensity" : 2.000000,
       "SunsetHorizonColor" : [0.980000, 0.560000, 0.280000, 1.000000],
       "SunsetZenithColor" : [0.280000, 0.160000, 0.340000, 1.000000],
@@ -77,6 +86,10 @@
       "Width" : 1.000000
     },
     "146" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : true,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -96,6 +109,10 @@
       "Visible" : true
     },
     "1460" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -115,6 +132,10 @@
       "Visible" : true
     },
     "1462" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -134,6 +155,10 @@
       "Visible" : true
     },
     "1466" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -153,6 +178,10 @@
       "Visible" : true
     },
     "1468" : {
+      "ActorActive" : true,
+      "ActorClass" : "APointLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 10.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -192,6 +221,10 @@
       "Width" : 1.000000
     },
     "148" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -211,6 +244,10 @@
       "Visible" : true
     },
     "1547" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -230,6 +267,10 @@
       "Visible" : true
     },
     "165" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADirectionalLightActor",
+      "ActorTickInEditor" : true,
+      "ActorVisible" : true,
       "CascadeSplitWeight" : 0.500000,
       "CastShadows" : true,
       "EditorOnly" : false,
@@ -271,6 +312,10 @@
       "Width" : 1.000000
     },
     "1894" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -311,6 +356,7 @@
     "1896" : {
       "AngularDamping" : 0.000000,
       "AngularVelocity" : [0.000000, 0.000000, 0.000000],
+      "BodyType" : 1,
       "CanBePickedUp" : true,
       "DropSoundPath" : "",
       "EditorOnly" : false,
@@ -392,7 +438,8 @@
     "1984" : {
       "AngularDamping" : 0.000000,
       "AngularVelocity" : [0.000000, 0.000000, 0.000000],
-      "CanBePickedUp" : true,
+      "BodyType" : 0,
+      "CanBePickedUp" : false,
       "DropSoundPath" : "",
       "EditorOnly" : false,
       "EnableTick" : true,
@@ -407,15 +454,19 @@
       "SimulatePhysics" : false,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 0,
+      "UpdatedComponentUUID" : 146,
       "UseGravity" : false,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "2142" : {
+      "ActorActive" : true,
+      "ActorClass" : "APawnActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
-      "Location" : [-5.341043, 7.514898, 0.000000],
+      "Location" : [-5.341043, 8.844798, 0.000000],
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "USceneComponent"
@@ -438,13 +489,32 @@
       "Visible" : true,
       "Width" : 1.000000
     },
+    "2396" : {
+      "Damping" : 12.000000,
+      "DefaultHoldDistance" : 4.000000,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "HoldDistance" : 4.000000,
+      "MaxHoldSpeed" : 30.000000,
+      "MaxSizeDistanceOffset" : 5.000000,
+      "OwnerRootUUID" : 2142,
+      "SizeDistanceScale" : 2.000000,
+      "SpringStrength" : 70.000000,
+      "TraceDistance" : 5.000000,
+      "Type" : "UPhysicsHandleComponent"
+    },
     "259" : {
+      "ActorActive" : true,
+      "ActorClass" : "AAmbientLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "CastShadows" : true,
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
-      "Intensity" : 0.489040,
-      "LightColor" : [0.000055, 0.000237, 0.002338, 1.000000],
+      "Intensity" : 0.341993,
+      "LightColor" : [0.000025, 0.000067, 0.000616, 1.000000],
       "LightType" : 3,
       "Location" : [0.000000, 17.618336, 0.000000],
       "Rotation" : [0.000000, 0.000000, 0.000000],
@@ -474,7 +544,24 @@
       "Visible" : true,
       "Width" : 1.000000
     },
+    "2615" : {
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "FOV" : 1.047198,
+      "FarClip" : 1000.000000,
+      "HiddenInEditor" : false,
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "NearClip" : 0.100000,
+      "ParentUUID" : 2142,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "UCameraComponent"
+    },
     "329" : {
+      "ActorActive" : true,
+      "ActorClass" : "AAudioZoneActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AmbientVolume" : 1.000000,
       "AudioRangeVisibility" : 0,
       "BoxExtent" : [8.000000, 8.000000, 3.000000],
