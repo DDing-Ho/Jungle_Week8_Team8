@@ -53,6 +53,9 @@ namespace SceneKeys
 	static constexpr const char* FarClip            = "FarClip";
 	static constexpr const char* Type               = "Type";
 	static constexpr const char* ActorClass         = "ActorClass";
+	static constexpr const char* ActorVisible       = "ActorVisible";
+	static constexpr const char* ActorActive        = "ActorActive";
+	static constexpr const char* ActorTickInEditor  = "ActorTickInEditor";
 	static constexpr const char* NextUUID           = "NextUUID";
 	static constexpr const char* ParentUUID         = "ParentUUID";
 	static constexpr const char* OwnerRootUUID      = "OwnerRootUUID"; // 비씬 컴포넌트가 속한 Actor의 루트 컴포넌트 UUID
@@ -72,6 +75,41 @@ static EWorldType StringToWorldType(const string& Str)
 	if (Str == "Game") return EWorldType::Game;
 	if (Str == "PIE")  return EWorldType::PIE;
 	return EWorldType::Editor;
+}
+
+static void SerializeActorMetadata(AActor* Actor, json::JSON& RootComponentNode)
+{
+	if (Actor == nullptr)
+	{
+		return;
+	}
+
+	RootComponentNode[SceneKeys::ActorVisible] = Actor->IsVisible();
+	RootComponentNode[SceneKeys::ActorActive] = Actor->IsActive();
+	RootComponentNode[SceneKeys::ActorTickInEditor] = Actor->ShouldTickInEditor();
+}
+
+static void DeserializeActorMetadata(AActor* Actor, json::JSON& RootComponentNode)
+{
+	if (Actor == nullptr)
+	{
+		return;
+	}
+
+	if (RootComponentNode.hasKey(SceneKeys::ActorVisible))
+	{
+		Actor->SetVisible(RootComponentNode[SceneKeys::ActorVisible].ToBool());
+	}
+
+	if (RootComponentNode.hasKey(SceneKeys::ActorActive))
+	{
+		Actor->SetActive(RootComponentNode[SceneKeys::ActorActive].ToBool());
+	}
+
+	if (RootComponentNode.hasKey(SceneKeys::ActorTickInEditor))
+	{
+		Actor->SetTickInEditor(RootComponentNode[SceneKeys::ActorTickInEditor].ToBool());
+	}
 }
 
 FString FSceneSaveManager::GetDefaultGameUIBootModeForSceneName(const FString& SceneName)
@@ -132,6 +170,7 @@ json::JSON FSceneSaveManager::SerializeWorldToPrimitives(UWorld* World, const FW
             {
                 CollectComponentsFlat(RootComp, 0, Primitives);
                 Primitives[std::to_string(RootComp->GetUUID())][SceneKeys::ActorClass] = Actor->GetTypeInfo()->name;
+                SerializeActorMetadata(Actor, Primitives[std::to_string(RootComp->GetUUID())]);
                 CollectNonSceneComponents(Actor, Primitives);
             }
         }
@@ -452,6 +491,12 @@ void FSceneSaveManager::Save(const FString& FilePath, FWorldContext& WorldContex
 				if (SceneComp == Actor->GetRootComponent())
 				{
 					Writer << SceneKeys::ActorClass << Actor->GetTypeInfo()->name;
+                    bool bActorVisible = Actor->IsVisible();
+                    bool bActorActive = Actor->IsActive();
+                    bool bActorTickInEditor = Actor->ShouldTickInEditor();
+                    Writer << SceneKeys::ActorVisible << bActorVisible;
+                    Writer << SceneKeys::ActorActive << bActorActive;
+                    Writer << SceneKeys::ActorTickInEditor << bActorTickInEditor;
 				}
 			}
 			else
@@ -638,6 +683,7 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
         {
             NewActor->SetWorld(World);
 			NewActor->InitDefaultComponents();
+			DeserializeActorMetadata(NewActor, PrimitivesNode[std::to_string(RootUUID)]);
 			if (ULevel* Level = World->GetPersistentLevel())
 				Level->AddActor(NewActor);
 
@@ -822,8 +868,9 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
             AActor* NewActor = Cast<AActor>(Obj);
             if (!NewActor) return;
 
-            NewActor->InitDefaultComponents();
             NewActor->SetWorld(World);
+            NewActor->InitDefaultComponents();
+            DeserializeActorMetadata(NewActor, PrimJSON);
             if (ULevel* Level = World->GetPersistentLevel())
                 Level->AddActor(NewActor);
 

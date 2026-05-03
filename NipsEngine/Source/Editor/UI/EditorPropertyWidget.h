@@ -24,6 +24,7 @@ public:
 private:
 	// 선택 상태 관리
 	void UpdateSelectionState(AActor* PrimaryActor);
+	void SyncGizmoToSelection(AActor* PrimaryActor);
 
 	// 헤더 영역
 	void RenderActorHeaderRegion(AActor* PrimaryActor, const TArray<AActor*>& SelectedActors);
@@ -33,7 +34,7 @@ private:
 
 	// 컴포넌트 트리
 	void RenderComponentTree(AActor* Actor);
-	void RenderSceneComponentNode(AActor* Actor, class USceneComponent* Comp, UActorComponent*& OutCompToDelete);
+	void RenderSceneComponentNode(AActor* Actor, class USceneComponent* Comp, UActorComponent*& OutCompToDelete, UActorComponent*& OutCompToDuplicate);
 
 	// 디테일 패널
 	void RenderDetails(AActor* PrimaryActor, const TArray<AActor*>& SelectedActors);
@@ -48,6 +49,7 @@ private:
 
 	// 유틸리티
 	void AttachAndSelectNewComponent(AActor* PrimaryActor, UActorComponent* NewComp);
+	void DuplicateAndSelectComponent(AActor* PrimaryActor, UActorComponent* SourceComp);
 
 	// 이름 변경 및 UI 렌더링
 	template<typename T>

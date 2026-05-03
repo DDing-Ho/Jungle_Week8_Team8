@@ -143,6 +143,8 @@ void ADecalActor::InitDefaultComponents()
 
 void ADirectionalLightActor::InitDefaultComponents()
 {
+	SetTickInEditor(true);
+
 	UDirectionalLightComponent* DirLight = AddComponent<UDirectionalLightComponent>();
 	SetRootComponent(DirLight);
 	SetupBillboard(DirLight);

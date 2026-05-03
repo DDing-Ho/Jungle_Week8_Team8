@@ -23,6 +23,7 @@
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
 #include "Component/AudioZoneComponent.h"
+#include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -36,6 +37,37 @@
 #include "Editor/UI/EditorConsoleWidget.h"
 
 #define SEPARATOR(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); ImGui::Spacing();
+
+void FEditorPropertyWidget::DuplicateAndSelectComponent(AActor* PrimaryActor, UActorComponent* SourceComp)
+{
+	if (!PrimaryActor || !SourceComp || !SourceComp->IsA<UPrimitiveComponent>())
+		return;
+
+	UActorComponent* NewComp = Cast<UActorComponent>(SourceComp->Duplicate());
+	if (!NewComp)
+		return;
+
+	PrimaryActor->RegisterComponent(NewComp);
+
+	if (USceneComponent* NewSceneComp = Cast<USceneComponent>(NewComp))
+	{
+		USceneComponent* SourceSceneComp = Cast<USceneComponent>(SourceComp);
+		USceneComponent* AttachTarget = SourceSceneComp ? SourceSceneComp->GetParent() : nullptr;
+		if (!AttachTarget)
+			AttachTarget = PrimaryActor->GetRootComponent();
+
+		if (AttachTarget && AttachTarget != NewSceneComp)
+			NewSceneComp->AttachToComponent(AttachTarget);
+		else if (!PrimaryActor->GetRootComponent())
+			PrimaryActor->SetRootComponent(NewSceneComp);
+
+		NewSceneComp->MarkTransformDirty();
+	}
+
+	SelectedComponent = NewComp;
+	bActorSelected = false;
+	SyncGizmoToSelection(PrimaryActor);
+}
 
 namespace
 {
@@ -166,6 +198,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 	// 컴포넌트 트리 영역
 	SEPARATOR();
 	RenderComponentTree(PrimaryActor);
+	SyncGizmoToSelection(PrimaryActor);
 
 	// 디테일 프로퍼티 영역
 	SEPARATOR();
@@ -211,6 +244,26 @@ void FEditorPropertyWidget::UpdateSelectionState(AActor* PrimaryActor)
 }
 
 // 단일 선택과 다중 선택 상황에 맞춰 상단 헤더 영역을 그립니다.
+void FEditorPropertyWidget::SyncGizmoToSelection(AActor* PrimaryActor)
+{
+	if (!SelectionManager || !SelectionManager->GetGizmo() || !PrimaryActor)
+	{
+		return;
+	}
+
+	if (!bActorSelected)
+	{
+		if (USceneComponent* SceneComp = Cast<USceneComponent>(SelectedComponent))
+		{
+			SelectionManager->GetGizmo()->SetTargetComponent(SceneComp);
+			return;
+		}
+	}
+
+	SelectionManager->GetGizmo()->SetTarget(PrimaryActor);
+	SelectionManager->GetGizmo()->SetSelectedActors(&SelectionManager->GetSelectedActors());
+}
+
 void FEditorPropertyWidget::RenderActorHeaderRegion(AActor* PrimaryActor, const TArray<AActor*>& SelectedActors)
 {
 	const int32 SelectionCount = static_cast<int32>(SelectedActors.size());
@@ -317,10 +370,11 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 
 	USceneComponent* Root = Actor->GetRootComponent();
 	UActorComponent* ComponentToDelete = nullptr;
+	UActorComponent* ComponentToDuplicate = nullptr;
 
 	if (Root)
 	{
-		RenderSceneComponentNode(Actor, Root, ComponentToDelete);
+		RenderSceneComponentNode(Actor, Root, ComponentToDelete, ComponentToDuplicate);
 	}
 
 	// Non-scene ActorComponents 및 MovementComponent들 하단 출력
@@ -364,6 +418,17 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 			bActorSelected = false;
 		}
 
+		if (Comp->IsA<UPrimitiveComponent>())
+		{
+			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin - 24.0f);
+			char DuplicateId[64];
+			snprintf(DuplicateId, sizeof(DuplicateId), "+##DuplicateComp%p", static_cast<void*>(Comp));
+			if (ImGui::SmallButton(DuplicateId))
+				ComponentToDuplicate = Comp;
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Duplicate Component");
+		}
+
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);
 		char XId[64];
 		EditorUIUtils::MakeXButtonId(XId, sizeof(XId), Comp);
@@ -398,10 +463,15 @@ void FEditorPropertyWidget::RenderComponentTree(AActor* Actor)
 		else
 			Actor->RemoveComponent(ComponentToDelete);
 	}
+
+	if (ComponentToDuplicate && UObject::IsValid(ComponentToDuplicate))
+	{
+		DuplicateAndSelectComponent(Actor, ComponentToDuplicate);
+	}
 }
 
 // 씬 컴포넌트의 계층 구조를 재귀적으로 그리며 드래그 앤 드롭 이동을 지원합니다.
-void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneComponent* Comp, UActorComponent*& OutCompToDelete)
+void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneComponent* Comp, UActorComponent*& OutCompToDelete, UActorComponent*& OutCompToDuplicate)
 {
 	if (!Comp || Comp->IsHiddenInEditor())
 		return;
@@ -486,11 +556,22 @@ void FEditorPropertyWidget::RenderSceneComponentNode(AActor* Actor, USceneCompon
 	if (bOpen && Comp)
 	{
 		for (USceneComponent* Child : Comp->GetChildren())
-			RenderSceneComponentNode(Actor, Child, OutCompToDelete);
+			RenderSceneComponentNode(Actor, Child, OutCompToDelete, OutCompToDuplicate);
 		ImGui::TreePop();
 	}
 
 	// 루트를 제외한 모든 컴포넌트에 삭제 버튼 표시
+	if (Comp->IsA<UPrimitiveComponent>())
+	{
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin - 24.0f);
+		char DuplicateId[64];
+		snprintf(DuplicateId, sizeof(DuplicateId), "+##DuplicateSceneComp%p", static_cast<void*>(Comp));
+		if (ImGui::SmallButton(DuplicateId))
+			OutCompToDuplicate = Comp;
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Duplicate Component");
+	}
+
 	if (!bIsRoot)
 	{
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - UIConstants::TreeRightMargin);

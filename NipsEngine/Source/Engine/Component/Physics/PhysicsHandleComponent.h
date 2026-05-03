@@ -30,7 +30,16 @@ public:
 	URigidBodyComponent* GetHeldBody() const { return HeldBody; }
 
 	void SetTraceDistance(float InTraceDistance) { TraceDistance = InTraceDistance; }
-	void SetHoldDistance(float InHoldDistance) { HoldDistance = InHoldDistance; ClampEditableValues(); CurrentHoldDistance = HoldDistance + HoldDistanceOffset; }
+	void SetHoldDistance(float InHoldDistance, bool bUseSizeDistanceOffset = true)
+	{
+		HoldDistance = InHoldDistance;
+		if (!bUseSizeDistanceOffset)
+		{
+			HoldDistanceOffset = 0.0f;
+		}
+		ClampEditableValues();
+		CurrentHoldDistance = HoldDistance + (bUseSizeDistanceOffset ? HoldDistanceOffset : 0.0f);
+	}
 	void ResetHoldDistance() { HoldDistance = DefaultHoldDistance; ClampEditableValues(); CurrentHoldDistance = HoldDistance + HoldDistanceOffset; }
 
 private:

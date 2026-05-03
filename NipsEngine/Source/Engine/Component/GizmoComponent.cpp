@@ -1,4 +1,6 @@
 ﻿#include "GizmoComponent.h"
+#include "Component/Collision/BoxComponent.h"
+#include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"
 #include "Render/Mesh/MeshManager.h"
 #include "Core/ResourceManager.h"
@@ -7,6 +9,7 @@ DEFINE_CLASS(UGizmoComponent, UPrimitiveComponent)
 REGISTER_FACTORY(UGizmoComponent)
 
 #include <cfloat>
+#include <algorithm>
 #include <cmath>
 
 UGizmoComponent::UGizmoComponent()
@@ -122,13 +125,17 @@ void UGizmoComponent::HandleDrag(float DragAmount)
 
 void UGizmoComponent::TranslateTarget(float DragAmount)
 {
-    if (!TargetActor || !TargetActor->GetRootComponent()) return;
+    if (!TargetActor || !GetEffectiveTargetComponent()) return;
 
     FVector ConstrainedDelta = GetVectorForAxis(SelectedAxis) * DragAmount;
 
     AddWorldOffset(ConstrainedDelta);
 
-    if (AllSelectedActors)
+    if (TargetComponent)
+    {
+        TargetComponent->AddWorldOffset(ConstrainedDelta);
+    }
+    else if (AllSelectedActors)
     {
         for (AActor* Actor : *AllSelectedActors)
         {
@@ -143,10 +150,18 @@ void UGizmoComponent::TranslateTarget(float DragAmount)
 
 void UGizmoComponent::RotateTarget(float DragAmount)
 {
-    if (!TargetActor || !TargetActor->GetRootComponent()) return;
+    if (!TargetActor || !GetEffectiveTargetComponent()) return;
 
     FVector RotationAxis = GetVectorForAxis(SelectedAxis);
     FQuat DeltaQuat(RotationAxis, DragAmount);
+
+    if (TargetComponent)
+    {
+        FQuat CurQuat = TargetComponent->GetRelativeQuat();
+        FQuat NewQuat = CurQuat * DeltaQuat;
+        TargetComponent->SetRelativeRotationQuat(NewQuat);
+        return;
+    }
 
     auto ApplyRotation = [&](AActor* Actor)
         {
@@ -171,9 +186,44 @@ void UGizmoComponent::RotateTarget(float DragAmount)
 
 void UGizmoComponent::ScaleTarget(float DragAmount)
 {
-    if (!TargetActor || !TargetActor->GetRootComponent()) return;
+    if (!TargetActor || !GetEffectiveTargetComponent()) return;
 
     float ScaleDelta = DragAmount * ScaleSensitivity;
+
+    if (TargetComponent)
+    {
+        if (UBoxComponent* Box = Cast<UBoxComponent>(TargetComponent))
+        {
+            FVector NewExtent = Box->GetBoxExtent();
+            switch (SelectedAxis)
+            {
+            case 0: NewExtent.X += ScaleDelta; break;
+            case 1: NewExtent.Y += ScaleDelta; break;
+            case 2: NewExtent.Z += ScaleDelta; break;
+            }
+
+            NewExtent.X = std::max(0.001f, NewExtent.X);
+            NewExtent.Y = std::max(0.001f, NewExtent.Y);
+            NewExtent.Z = std::max(0.001f, NewExtent.Z);
+            Box->SetBoxExtent(NewExtent);
+        }
+        else
+        {
+            FVector NewScale = TargetComponent->GetRelativeScale();
+            switch (SelectedAxis)
+            {
+            case 0: NewScale.X += ScaleDelta; break;
+            case 1: NewScale.Y += ScaleDelta; break;
+            case 2: NewScale.Z += ScaleDelta; break;
+            }
+
+            NewScale.X = std::max(0.001f, NewScale.X);
+            NewScale.Y = std::max(0.001f, NewScale.Y);
+            NewScale.Z = std::max(0.001f, NewScale.Z);
+            TargetComponent->SetRelativeScale(NewScale);
+        }
+        return;
+    }
 
     auto ApplyScale = [&](AActor* Actor)
         {
@@ -205,7 +255,10 @@ void UGizmoComponent::SetTargetLocation(FVector NewLocation)
 {
     if (!TargetActor) return;
 
-    TargetActor->SetActorLocation(NewLocation);
+    if (TargetComponent)
+        TargetComponent->SetWorldLocation(NewLocation);
+    else
+        TargetActor->SetActorLocation(NewLocation);
     UpdateGizmoTransform();
 }
 
@@ -213,7 +266,10 @@ void UGizmoComponent::SetTargetRotation(FVector NewRotation)
 {
     if (!TargetActor) return;
 
-    TargetActor->SetActorRotation(NewRotation);
+    if (TargetComponent)
+        TargetComponent->SetRelativeRotation(NewRotation);
+    else
+        TargetActor->SetActorRotation(NewRotation);
     UpdateGizmoTransform();
 }
 
@@ -226,7 +282,10 @@ void UGizmoComponent::SetTargetScale(FVector NewScale)
     if (SafeScale.Y < 0.001f) SafeScale.Y = 0.001f;
     if (SafeScale.Z < 0.001f) SafeScale.Z = 0.001f;
 
-    TargetActor->SetActorScale(SafeScale);
+    if (TargetComponent)
+        TargetComponent->SetRelativeScale(SafeScale);
+    else
+        TargetActor->SetActorScale(SafeScale);
 }
 
 bool UGizmoComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
@@ -294,6 +353,29 @@ FVector UGizmoComponent::GetVectorForAxis(int32 Axis)
     }
 }
 
+USceneComponent* UGizmoComponent::GetEffectiveTargetComponent() const
+{
+    return TargetComponent ? TargetComponent : (TargetActor ? TargetActor->GetRootComponent() : nullptr);
+}
+
+FVector UGizmoComponent::GetTargetLocation() const
+{
+    if (USceneComponent* Component = GetEffectiveTargetComponent())
+    {
+        return Component->GetWorldLocation();
+    }
+    return FVector::ZeroVector;
+}
+
+FVector UGizmoComponent::GetTargetRotation() const
+{
+    if (USceneComponent* Component = GetEffectiveTargetComponent())
+    {
+        return Component->GetWorldTransform().GetRotation().Euler();
+    }
+    return FVector::ZeroVector;
+}
+
 void UGizmoComponent::SetTarget(AActor* NewTarget)
 {
     if (!NewTarget || !NewTarget->GetRootComponent())
@@ -301,9 +383,36 @@ void UGizmoComponent::SetTarget(AActor* NewTarget)
         return;
     }
 
+    if (TargetActor == NewTarget && TargetComponent == nullptr)
+    {
+        return;
+    }
+
     TargetActor = NewTarget;
+    TargetComponent = nullptr;
 
     SetWorldLocation(TargetActor->GetActorLocation());
+    UpdateGizmoTransform();
+    SetVisibility(true);
+}
+
+void UGizmoComponent::SetTargetComponent(USceneComponent* NewTargetComponent)
+{
+    if (!NewTargetComponent || !NewTargetComponent->GetOwner())
+    {
+        return;
+    }
+
+    if (TargetComponent == NewTargetComponent)
+    {
+        return;
+    }
+
+    TargetActor = NewTargetComponent->GetOwner();
+    TargetComponent = NewTargetComponent;
+    AllSelectedActors = nullptr;
+
+    SetWorldLocation(TargetComponent->GetWorldLocation());
     UpdateGizmoTransform();
     SetVisibility(true);
 }
@@ -421,7 +530,7 @@ void UGizmoComponent::UpdateDrag(const FRay& Ray)
         return;
     }
 
-    if (SelectedAxis == -1 || TargetActor == nullptr)
+    if (SelectedAxis == -1 || TargetActor == nullptr || GetEffectiveTargetComponent() == nullptr)
     {
         return;
     }
@@ -459,26 +568,26 @@ void UGizmoComponent::UpdateGizmoMode(EGizmoMode NewMode)
 
 void UGizmoComponent::UpdateGizmoTransform()
 {
-    if (!TargetActor || !TargetActor->GetRootComponent()) return;
+    if (!TargetActor || !GetEffectiveTargetComponent()) return;
 
-    SetWorldLocation(TargetActor->GetActorLocation());
+    SetWorldLocation(GetTargetLocation());
 
-    FVector ActorRot = TargetActor->GetActorRotation();
+    FVector TargetRot = GetTargetRotation();
 
     switch (CurMode)
     {
     case EGizmoMode::Scale:
-        SetRelativeRotation(ActorRot);
+        SetRelativeRotation(TargetRot);
         GizmoMeshData = &FEditorMeshLibrary::Get().GetScaleGizmo();
         break;
 
     case EGizmoMode::Rotate:
-        SetRelativeRotation(bIsWorldSpace ? FVector() : ActorRot);
+        SetRelativeRotation(bIsWorldSpace ? FVector() : TargetRot);
         GizmoMeshData = &FEditorMeshLibrary::Get().GetRotationGizmo();
         break;
 
     case EGizmoMode::Translate:
-        SetRelativeRotation(bIsWorldSpace ? FVector() : ActorRot);
+        SetRelativeRotation(bIsWorldSpace ? FVector() : TargetRot);
         GizmoMeshData = &FEditorMeshLibrary::Get().GetTranslationGizmo();
         break;
     }
@@ -512,6 +621,7 @@ void UGizmoComponent::SetWorldSpace(bool bWorldSpace)
 void UGizmoComponent::Deactivate()
 {
     TargetActor = nullptr;
+    TargetComponent = nullptr;
     AllSelectedActors = nullptr;
     SetVisibility(false);
     SelectedAxis = -1;

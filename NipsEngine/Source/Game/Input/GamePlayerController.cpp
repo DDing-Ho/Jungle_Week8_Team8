@@ -575,7 +575,7 @@ void FGamePlayerController::TogglePickup()
 				{
 					if (const FCleaningToolData* ToolData = FCleaningToolSystem::Get().FindToolData(HeldToolId))
 					{
-						Handle->SetHoldDistance(ToolData->HoldDistance);
+						Handle->SetHoldDistance(ToolData->HoldDistance, false);
 						FCleaningToolAnimator::Get().SetActiveTool(*ToolData);
 					}
 				}
