@@ -9,12 +9,20 @@
 
 namespace
 {
-	static constexpr int InputKeys[] = {
-		'W', 'A', 'S', 'D', 'Q', 'E',
-		VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN,
-		VK_SPACE, VK_ESCAPE, VK_F4,
-		VK_DELETE, 'X', 'F', 'G',
-	};
+	bool IsRoutableKeyboardKey(int VK)
+	{
+		switch (VK)
+		{
+		case VK_LBUTTON:
+		case VK_RBUTTON:
+		case VK_MBUTTON:
+		case VK_XBUTTON1:
+		case VK_XBUTTON2:
+			return false;
+		default:
+			return true;
+		}
+	}
 }
 
 EWorldType FInputRouter::WorldType = EWorldType::Editor;
@@ -394,8 +402,13 @@ void FInputRouter::TickKeyboardInput(const FInputRouteContext& Context)
 		return;
 	}
 
-	for (int VK : InputKeys)
+	for (int VK = 0; VK < 256; ++VK)
 	{
+		if (!IsRoutableKeyboardKey(VK))
+		{
+			continue;
+		}
+
 		if (WorldType == EWorldType::PIE && VK == VK_ESCAPE)
 		{
 			if (IS.GetKeyDown(VK))
