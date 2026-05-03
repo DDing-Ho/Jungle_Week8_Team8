@@ -8,7 +8,6 @@
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Object/ObjectFactory.h"
-#include "Physics/JoltPhysicsSystem.h"
 #include "Serialization/Archive.h"
 
 #include <algorithm>
@@ -138,14 +137,10 @@ void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 		bGrounded = false;
 		Velocity = FVector::ZeroVector;
 		AngularVelocity = FVector::ZeroVector;
-		FJoltPhysicsSystem::Get().SetBodyKinematic(this);
-		FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(this);
 	}
 	else
 	{
 		bSimulatePhysics = bWasSimulatingBeforeHold;
-		FJoltPhysicsSystem::Get().SetBodyDynamic(this);
-		FJoltPhysicsSystem::Get().SetBodyLinearVelocity(this, Velocity);
 	}
 }
 
@@ -156,19 +151,11 @@ void URigidBodyComponent::SetVelocity(const FVector& InVelocity)
 	{
 		bGrounded = false;
 	}
-
-	FJoltPhysicsSystem::Get().SetBodyLinearVelocity(this, Velocity);
 }
 
 void URigidBodyComponent::AddImpulse(const FVector& Impulse)
 {
 	ClampEditableValues();
-	if (FJoltPhysicsSystem::Get().IsBodyManaged(this))
-	{
-		FJoltPhysicsSystem::Get().AddBodyImpulse(this, Impulse);
-		return;
-	}
-
 	Velocity += Impulse / Mass;
 	bGrounded = false;
 	bGroundPushOutSinceLastTick = false;
@@ -214,14 +201,12 @@ void URigidBodyComponent::SetPhysicsLocation(const FVector& NewLocation)
 	if (USceneComponent* Scene = GetUpdatedComponent())
 	{
 		Scene->SetWorldLocation(NewLocation);
-		FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(this);
 		return;
 	}
 
 	if (Owner != nullptr)
 	{
 		Owner->SetActorLocation(NewLocation);
-		FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(this);
 	}
 }
 
@@ -243,11 +228,6 @@ void URigidBodyComponent::PlayDropSound() const
 
 void URigidBodyComponent::TickComponent(float DeltaTime)
 {
-	if (FJoltPhysicsSystem::Get().IsBodyManaged(this))
-	{
-		return;
-	}
-
 	if (DeltaTime <= 0.0f || !bSimulatePhysics || bHeldByPhysicsHandle)
 	{
 		return;

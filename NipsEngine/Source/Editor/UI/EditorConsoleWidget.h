@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/CoreMinimal.h"
 #include "Core/Logger.h"
 #include <cstdarg>
@@ -55,6 +55,6 @@ private:
 
 private:
 	void CmdStat(const TArray<FString>& Args);
-    void CmdShadowFilter(const TArray<FString>& Args);
+	void CmdShadowFilter(const TArray<FString>& Args);
 };
 

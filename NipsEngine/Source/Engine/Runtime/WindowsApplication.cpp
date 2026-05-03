@@ -1,8 +1,8 @@
-﻿#include "Engine/Runtime/WindowsApplication.h"
+#include "Engine/Runtime/WindowsApplication.h"
 
 #include <windowsx.h>
 
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Slate/SWidget.h"
 
@@ -39,7 +39,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 
 	auto ShouldRouteToSlate = [&](int32 X, int32 Y)
 	{
-		const FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+		const FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 		return SlateApplication.GetCapturedWidget() != nullptr || GuiState.IsInViewportHost(X, Y);
 	};
 
@@ -84,7 +84,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		break;
 	}
 	case WM_MOUSEWHEEL:
-		InputSystem::Get().AddScrollDelta(GET_WHEEL_DELTA_WPARAM(wParam));
+		FInputRouter::AddScrollDelta(GET_WHEEL_DELTA_WPARAM(wParam));
 		return 0;
 	case WM_SIZE:
 		if (wParam != SIZE_MINIMIZED)

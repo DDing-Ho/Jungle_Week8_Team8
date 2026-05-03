@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ImGui/imgui.h"
 #include "Editor/UI/EditorConsoleWidget.h"

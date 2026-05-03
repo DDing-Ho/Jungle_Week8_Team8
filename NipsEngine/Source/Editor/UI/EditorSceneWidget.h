@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Editor/UI/EditorWidget.h"
 #include "Core/CoreMinimal.h"

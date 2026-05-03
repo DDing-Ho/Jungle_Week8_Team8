@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Editor/UI/EditorWidget.h"
 #include "Render/Resource/Material.h"
@@ -20,19 +20,19 @@ class UDecalComponent;
 class FEditorMaterialWidget : public FEditorWidget
 {
 public:
-    void Render(float DeltaTime) override;
-    void ResetSelection();
+	void Render(float DeltaTime) override;
+	void ResetSelection();
 
 private:
 	void RenderMaterialEditor(UPrimitiveComponent* PrimitiveComp);
 
-    void RenderSectionList(UPrimitiveComponent* PrimitiveComp);
-    void RenderMaterialDetails(UPrimitiveComponent* PrimitiveComp);
+	void RenderSectionList(UPrimitiveComponent* PrimitiveComp);
+	void RenderMaterialDetails(UPrimitiveComponent* PrimitiveComp);
 	void RenderMaterialProperties();
 
 private:
-    int32 SelectedSectionIndex    = -1;
-    UMaterialInterface* SelectedMaterialPtr = nullptr;  // 원본 포인터 (Apply 대상)
+	int32 SelectedSectionIndex    = -1;
+	UMaterialInterface* SelectedMaterialPtr = nullptr;  // 원본 포인터 (Apply 대상)
 
 	USceneComponent* SelectedComponent = nullptr;
 };
