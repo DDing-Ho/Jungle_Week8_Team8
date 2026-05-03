@@ -46,6 +46,14 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
+	if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+	{
+		Camera.SetProjectionType(EViewportProjectionType::Perspective);
+		Camera.ClearCustomLookDir();
+		Camera.SetLocation(PlayerStart->GetActorLocation());
+		Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+	}
+
 	GamePlayerController.SetCamera(nullptr);
 	GamePlayerController.SetFreeCamera(&Camera);
 	if (bHasCameraSnapshot)

@@ -3,11 +3,13 @@
 #include "GameFramework/AActor.h"
 #include "Level.h"
 #include "Spatial/WorldSpatialIndex.h"
+#include "Core/CollisionTypes.h"
 
 class UCameraComponent;
 class ULineBatchComponent;
 class FViewportCamera;
 class ULightComponentBase;
+class APlayerStartActor;
 
 /**
  * 원래는 데이터 복사본을 넣고 Dirty 여부에 따라 업데이트 해줘야 하지만
@@ -85,6 +87,7 @@ public:
     }
 
 	TArray<AActor*> GetActors() const { return PersistentLevel->GetActors(); }
+	APlayerStartActor* FindPlayerStart() const;
 
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
 
@@ -109,6 +112,8 @@ public:
 
     /** @brief Access the world-level primitive AABB/BVH manager. */
     const FWorldSpatialIndex& GetSpatialIndex() const { return SpatialIndex; }
+
+    bool LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& OutHit, const AActor* IgnoredActor = nullptr);
 
 	EWorldType GetWorldType() const { return WorldType; }
 	void SetWorldType(EWorldType InWorldType) { WorldType = InWorldType; }

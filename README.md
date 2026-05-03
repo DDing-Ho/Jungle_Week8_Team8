@@ -1,5 +1,64 @@
 # NipsEngine
 
+## Current Dependency Setup
+
+After pulling the latest `main`, run `InstallLuaWithVcpkg.bat` from the repository root.
+The batch file uses `vcpkg.json` in manifest mode and installs the engine dependencies under the project-local `vcpkg_installed/` folder.
+
+Current vcpkg dependencies:
+
+- `luajit`: LuaJIT runtime for Lua scripting. This is Lua 5.1 compatible, so avoid Lua 5.4-only syntax/API.
+- `miniaudio`: audio playback and spatial audio backend.
+- `joltphysics`: rigid body physics backend used by `RigidBodyComponent` and `PhysicsHandleComponent`.
+
+Do not install dependencies one by one with commands like `vcpkg install lua`.
+Use the project manifest instead:
+
+```bat
+InstallLuaWithVcpkg.bat
+```
+
+The Visual Studio project expects:
+
+- `vcpkg_installed/x64-windows/include/Jolt/Jolt.h`
+- `vcpkg_installed/x64-windows/debug/lib/Jolt.lib`
+- `vcpkg_installed/x64-windows/lib/Jolt.lib`
+
+Build and test with `x64` configurations. `Debug | x64`, `Release | x64`, and `Game | x64` are the supported paths for the current dependency setup.
+
+## Play Input
+
+- `Mouse Left Click`: pick up or drop a physics object during PIE.
+- `W / A / S / D`: move the PIE camera.
+- `Mouse Move`: look around while the PIE cursor is captured.
+- `F4`: toggle PIE cursor capture.
+
+## Player Start
+
+Place a `Player Start` actor in the scene to control the initial player camera position and direction.
+When PIE or Game mode starts, the engine uses the first active `Player Start` actor it finds.
+If no `Player Start` exists, PIE falls back to the current editor camera.
+
+## Physics Pickup Setup
+
+To make an object pickable during PIE, the actor should have:
+
+- A blocking shape component, such as `UBoxComponent`, `USphereComponent`, or `UCapsuleComponent`.
+- `URigidBodyComponent` with `Can Be Picked Up` enabled.
+- `Simulate Physics` enabled when the object should fall, collide, and be released back into physics.
+
+The engine pickup handle preserves the object's current rotation when grabbed.
+If a game object should snap to a specific viewing pose, handle that in game logic or Lua instead of relying on the engine default.
+
+Use these physics settings as the baseline:
+
+- Fixed room geometry, walls, floors, and furniture that should never move: blocking shape enabled, `Simulate Physics` disabled.
+- Heavy props that can move but should resist being pushed: blocking shape enabled, `Simulate Physics` enabled, high `Mass`, `Can Be Picked Up` disabled.
+- Small props the player can hold: blocking shape enabled, `Simulate Physics` enabled, lower `Mass`, `Can Be Picked Up` enabled.
+
+`Mass` is applied to Jolt dynamic bodies when `Simulate Physics` is enabled.
+Turning `Use Gravity` off only disables gravity; it does not make the object fixed.
+
 ## 실행 준비
 
 이 프로젝트는 Windows, Visual Studio 2022, DirectX 11, ImGui 기반의 C++ 3D 엔진입니다. 처음 실행하는 팀원은 프로젝트 루트에서 아래 순서대로 준비하면 됩니다.
@@ -8,7 +67,7 @@
 
 `Scripts/GenerateProjectFiles.py`를 실행해 Visual Studio 프로젝트 파일을 현재 소스 구성에 맞게 갱신합니다. 새 `.cpp`/`.h` 파일이 추가된 뒤에도 이 배치 파일을 다시 실행하면 됩니다.
 
-### 2. Lua/vcpkg 의존성 설치
+### 2. vcpkg 의존성 설치
 
 실행하면 폴더 선택 창이 열립니다. 사용자는 `vcpkg` 폴더를 만들 부모 폴더를 선택할 수 있습니다.
 
@@ -17,7 +76,7 @@
 - vcpkg가 없으면 확인 후 선택한 폴더 아래 `vcpkg` 폴더를 만들고 clone/bootstrap합니다.
 - `vcpkg install --triplet x64-windows`는 반드시 프로젝트 루트에서 실행되어 `vcpkg_installed` 폴더가 프로젝트 루트 아래에 생성됩니다.
 
-LuaJIT, miniaudio 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니다. LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다. `vcpkg install lua`처럼 개별 패키지만 따로 설치하지 말고 프로젝트 루트에서 `vcpkg install --triplet x64-windows`를 실행합니다.
+LuaJIT, miniaudio, Jolt Physics 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니다. LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다. `vcpkg install lua`처럼 개별 패키지만 따로 설치하지 말고 프로젝트 루트에서 `vcpkg install --triplet x64-windows`를 실행합니다.
 
 ### 3. 빌드 및 실행
 
@@ -25,6 +84,7 @@ LuaJIT, miniaudio 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니
 
 - `Debug | x64`: 에디터 개발용 기본 구성
 - `Release | x64`: 릴리스 구성
+- `Game | x64`: 게임 실행용 구성
 - `ObjViewer | x64`: OBJ 모델 확인 전용 실행 모드
 
 LuaJIT 사용 구성에서는 빌드 후 `lua51.dll`이 출력 폴더로 자동 복사됩니다.

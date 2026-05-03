@@ -38,21 +38,22 @@ namespace
 		void (*Spawn)(UWorld*, const FVector&);
 	};
 
-	static const FSpawnEntry PrimitiveTypes[] = {
-		{ "Scene", SpawnActor<ASceneActor> },
-		{ "StaticMesh", SpawnActor<AStaticMeshActor> },
-		{ "TextRender", SpawnActor<ATextRenderActor> },
-		{ "SubUV", SpawnActor<ASubUVActor> },
-		{ "Billboard", SpawnActor<ABillboardActor> },
-		{ "Decal", SpawnActor<ADecalActor> },
-		{ "Directional Light", SpawnActor<ADirectionalLightActor> },
-		{ "Ambient Light", SpawnActor<AAmbientLightActor> },
-		{ "Point Light", SpawnActor<APointLightActor> },
-		{ "Spot Light", SpawnActor<ASpotLightActor> },
-		{ "Sky Atmosphere", SpawnActor<ASkyAtmosphereActor> },
-		{ "Height Fog", SpawnActor<AHeightFogActor> },
-		{ "Audio Zone", SpawnActor<AAudioZoneActor> },
-	};
+    static const FSpawnEntry PrimitiveTypes[] = {
+        { "Scene", SpawnActor<ASceneActor> },
+        { "StaticMesh", SpawnActor<AStaticMeshActor> },
+        { "TextRender", SpawnActor<ATextRenderActor> },
+        { "SubUV", SpawnActor<ASubUVActor> },
+        { "Billboard", SpawnActor<ABillboardActor> },
+        { "Decal", SpawnActor<ADecalActor> },
+        { "Directional Light", SpawnActor<ADirectionalLightActor> },
+        { "Ambient Light", SpawnActor<AAmbientLightActor> },
+        { "Point Light", SpawnActor<APointLightActor> },
+        { "Spot Light", SpawnActor<ASpotLightActor> },
+        { "Sky Atmosphere", SpawnActor<ASkyAtmosphereActor> },
+        { "Height Fog", SpawnActor<AHeightFogActor> },
+        { "Audio Zone", SpawnActor<AAudioZoneActor> },
+        { "Player Start", SpawnActor<APlayerStartActor> },
+    };
 }
 
 // 에디터 컨트롤 위젯을 초기화하고 기본 상태를 설정합니다.

@@ -68,6 +68,8 @@ INCLUDE_PATHS = [
     "ThirdParty\\ImGui",
     "Source\\Editor",
     ".",
+    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\include",
+    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\include\\luajit",
 ]
 
 GAME_EXCLUDED_PREFIXES = (
@@ -81,6 +83,14 @@ EDITOR_EXCLUDED_PREFIXES = (
 
 # Library paths (relative to project dir)
 LIBRARY_PATHS = []
+
+VCPKG_DEBUG_LIBRARY_PATHS = [
+    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\debug\\lib",
+]
+
+VCPKG_RELEASE_LIBRARY_PATHS = [
+    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\lib",
+]
 
 # NuGet packages (id, version) — restored via packages.config
 NUGET_PACKAGES = [
@@ -172,10 +182,23 @@ def should_exclude_from_config(rel_path: str, cfg: str) -> bool:
     """Return true when a source file should be hidden from a configuration."""
     normalized = rel_path.replace("/", "\\")
     if cfg == "Game":
+        if normalized == "Source\\Engine\\Render\\Renderer\\GameRenderPipeline.cpp":
+            return True
         return normalized.startswith(GAME_EXCLUDED_PREFIXES)
     if cfg == "ObjViewer":
         return normalized.startswith(EDITOR_EXCLUDED_PREFIXES)
     return False
+
+
+def library_paths_for_config(cfg: str, plat: str) -> list[str]:
+    """Return library paths for a configuration."""
+    paths = list(LIBRARY_PATHS)
+    if plat == "x64":
+        if cfg == "Debug":
+            paths += VCPKG_DEBUG_LIBRARY_PATHS
+        else:
+            paths += VCPKG_RELEASE_LIBRARY_PATHS
+    return paths
 
 
 def add_source_exclusions(elem, rel_path: str):
@@ -270,10 +293,11 @@ def generate_vcxproj(files: dict[str, list[str]]):
     ET.SubElement(proj, "PropertyGroup", Label="UserMacros")
 
     # OutDir, IntDir, IncludePath, LibraryPath, WorkingDirectory for all configurations
-    library_path_value = ";".join(LIBRARY_PATHS) + ";$(LibraryPath)" if LIBRARY_PATHS else "$(LibraryPath)"
     for cfg, plat in CONFIGURATIONS:
         cond = f"'$(Configuration)|$(Platform)'=='{cfg}|{plat}'"
         include_path_value = ";".join(include_paths_for_config(cfg)) + ";$(IncludePath)"
+        library_paths = library_paths_for_config(cfg, plat)
+        library_path_value = ";".join(library_paths) + ";$(LibraryPath)" if library_paths else "$(LibraryPath)"
         pg = ET.SubElement(proj, "PropertyGroup", Condition=cond)
         ET.SubElement(pg, "OutDir").text = f"$(ProjectDir)Bin\\$(Configuration)\\"
         ET.SubElement(pg, "IntDir").text = f"$(ProjectDir)Build\\$(Configuration)\\"
@@ -312,6 +336,10 @@ def generate_vcxproj(files: dict[str, list[str]]):
             if is_viewer:
                 defs += "IS_OBJ_VIEWER=1;"
 
+        if is_x64:
+            defs += "WITH_LUA=1;"
+            defs += "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_OBJECT_STREAM;"
+
         defs += "NOMINMAX;%(PreprocessorDefinitions);"
         ET.SubElement(cl, "PreprocessorDefinitions").text = defs
 
@@ -326,6 +354,8 @@ def generate_vcxproj(files: dict[str, list[str]]):
         link = ET.SubElement(idg, "Link")
         ET.SubElement(link, "SubSystem").text = "Windows" if is_x64 else "Console"
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
+        if is_x64:
+            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;Jolt.lib;%(AdditionalDependencies)"
 
         if is_game:
             pre_build = ET.SubElement(idg, "PreBuildEvent")

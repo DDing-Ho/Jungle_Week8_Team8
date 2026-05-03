@@ -93,8 +93,6 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 
 	Game::RegisterGameTypes();
 
-	SetRenderPipeline(std::make_unique<FGameRenderPipeline>(this, Renderer));
-
 	LoadStartupScene();
 
 	GameViewport = std::make_unique<FGameViewportClient>();

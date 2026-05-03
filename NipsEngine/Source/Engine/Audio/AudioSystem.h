@@ -25,7 +25,7 @@ enum class EAudioBus : int32
 struct FAudioPlayParams
 {
 	bool bLoop = false;
-	bool bSpatial = false;
+	bool bSpatial = false;  
 	bool bAffectedByAudioZones = true;
 	EAudioBus Bus = EAudioBus::SFX;
 	float Volume = 1.0f;

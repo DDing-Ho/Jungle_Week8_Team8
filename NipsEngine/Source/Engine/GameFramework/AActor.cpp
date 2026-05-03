@@ -3,6 +3,7 @@
 #include "Component/ActorComponent.h"
 #include "Component/Light/LightComponent.h"
 #include "Component/Movement/MovementComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
 #include "GameFramework/World.h"
 
 DEFINE_CLASS(AActor, UObject)
@@ -111,6 +112,26 @@ void AActor::PostDuplicate(UObject* Original)
 				DuplicatedMoveComp->SetUpdatedComponent(GetRootComponent());
 			}
 		}
+
+		if (URigidBodyComponent* OriginalBodyComp = Cast<URigidBodyComponent>(OriginalComp))
+		{
+			URigidBodyComponent* DuplicatedBodyComp = Cast<URigidBodyComponent>(DuplicatedComp);
+			if (DuplicatedBodyComp == nullptr)
+			{
+				continue;
+			}
+
+			USceneComponent* OldTarget = OriginalBodyComp->GetUpdatedComponent();
+
+			if (OldTarget && ComponentMap.find(OldTarget) != ComponentMap.end())
+			{
+				DuplicatedBodyComp->SetUpdatedComponent(ComponentMap[OldTarget]);
+			}
+			else
+			{
+				DuplicatedBodyComp->SetUpdatedComponent(GetRootComponent());
+			}
+		}
 	}
 
 	// 복제된 액터가 월드에 있다면 모든 컴포넌트를 등록합니다.
@@ -207,6 +228,13 @@ void AActor::RemoveComponent(UActorComponent* Component)
 			if (MoveComp->GetUpdatedComponent() == Component)
 			{
 				MoveComp->SetUpdatedComponent(nullptr);
+			}
+		}
+		if (URigidBodyComponent* BodyComp = Cast<URigidBodyComponent>(Comp))
+		{
+			if (BodyComp->GetUpdatedComponent() == Component)
+			{
+				BodyComp->SetUpdatedComponent(nullptr);
 			}
 		}
 	}

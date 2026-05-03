@@ -19,7 +19,7 @@ struct FMaterial
     FVector SpecularColor  = { 0.0f, 0.0f, 0.0f }; // Ks
     FVector EmissiveColor  = { 0.0f, 0.0f, 0.0f }; // Ke
 
-    float Shininess  = 0.0f; 
+    float Shininess  = 30.0f; 
     float Opacity    = 1.0f; 
     int   IllumModel = 2;    
 
