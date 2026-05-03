@@ -323,10 +323,11 @@ void FInputRouter::TickCursorCapture(const FInputRouteContext& Context)
 
 	if (WorldType == EWorldType::Game)
 	{
-		if (!Context.bInputActive || !Context.Window || !Context.Window->GetHWND())
+		if (Context.bControlLocked || !Context.bInputActive || !Context.Window || !Context.Window->GetHWND())
 		{
 			IS.SetCursorVisibility(true);
 			IS.LockMouse(false);
+			IS.ResetMouseDelta();
 			return;
 		}
 

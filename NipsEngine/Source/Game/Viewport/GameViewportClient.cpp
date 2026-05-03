@@ -5,6 +5,7 @@
 #include "Engine/Runtime/SceneView.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/PrimitiveActors.h"
+#include "Game/UI/GameUISystem.h"
 #include "Math/Utils.h"
 
 #include <windows.h>
@@ -42,11 +43,14 @@ void FGameViewportClient::SetViewportSize(float InWidth, float InHeight)
 
 void FGameViewportClient::Tick(float DeltaTime)
 {
+	const bool bUIWantsMouse = GameUISystem::Get().WantsMouseCursor();
+
 	FInputRouteContext RouteContext;
 	RouteContext.Window = Window;
 	RouteContext.ViewportRect = FViewportRect(0, 0, static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
 	RouteContext.bHovered = true;
-	RouteContext.bInputActive = bInputActive;
+	RouteContext.bControlLocked = bUIWantsMouse;
+	RouteContext.bInputActive = bInputActive && !bUIWantsMouse;
 	RouteContext.bHasActiveCamera = ActiveCamera != nullptr;
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
