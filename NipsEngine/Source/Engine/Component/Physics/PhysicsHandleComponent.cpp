@@ -1,7 +1,9 @@
 #include "Component/Physics/PhysicsHandleComponent.h"
 
+#include "Component/Collision/ShapeComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/PrimitiveComponent.h"
+#include "Engine/Geometry/AABB.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -13,6 +15,8 @@
 
 namespace
 {
+	constexpr float HoldCollisionSkin = 0.005f;
+
 	bool IsLiveObjectPointer(const UObject* Object)
 	{
 		if (Object == nullptr)
@@ -29,6 +33,172 @@ namespace
 		}
 
 		return false;
+	}
+
+	bool IsBlockingShape(UPrimitiveComponent* Primitive)
+	{
+		return Primitive != nullptr && Primitive->IsBlockComponent() && Cast<UShapeComponent>(Primitive) != nullptr;
+	}
+
+	bool IntersectsAABB(const FAABB& A, const FAABB& B)
+	{
+		return A.Min.X < B.Max.X && A.Max.X > B.Min.X &&
+			A.Min.Y < B.Max.Y && A.Max.Y > B.Min.Y &&
+			A.Min.Z < B.Max.Z && A.Max.Z > B.Min.Z;
+	}
+
+	bool OverlapsExceptAxis(const FAABB& A, const FAABB& B, int32 ExcludedAxis)
+	{
+		for (int32 Axis = 0; Axis < 3; ++Axis)
+		{
+			if (Axis == ExcludedAxis)
+			{
+				continue;
+			}
+
+			if (A.Min[Axis] >= B.Max[Axis] || A.Max[Axis] <= B.Min[Axis])
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	float GetAxisOverlap(const FAABB& A, const FAABB& B, int32 Axis)
+	{
+		return std::min(A.Max[Axis], B.Max[Axis]) - std::max(A.Min[Axis], B.Min[Axis]);
+	}
+
+	FAABB ShiftAABB(const FAABB& Bounds, const FVector& Delta)
+	{
+		return FAABB(Bounds.Min + Delta, Bounds.Max + Delta);
+	}
+
+	void GatherBlockingShapes(AActor* Actor, TArray<UPrimitiveComponent*>& OutShapes)
+	{
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+		{
+			if (IsBlockingShape(Primitive))
+			{
+				OutShapes.push_back(Primitive);
+			}
+		}
+	}
+
+	float ResolveAxisMove(
+		UWorld* World,
+		const TArray<UPrimitiveComponent*>& HeldShapes,
+		AActor* HeldOwner,
+		const FVector& DeltaBeforeAxis,
+		int32 Axis,
+		float AxisDelta)
+	{
+		if (World == nullptr || HeldOwner == nullptr || HeldShapes.empty() || AxisDelta == 0.0f)
+		{
+			return AxisDelta;
+		}
+
+		float ResolvedDelta = AxisDelta;
+		const bool bMovingPositive = AxisDelta > 0.0f;
+		for (UPrimitiveComponent* HeldShape : HeldShapes)
+		{
+			if (HeldShape == nullptr)
+			{
+				continue;
+			}
+
+			const FAABB CurrentBounds = ShiftAABB(HeldShape->GetWorldAABB(), DeltaBeforeAxis);
+			FVector CandidateDelta = DeltaBeforeAxis;
+			CandidateDelta[Axis] += ResolvedDelta;
+			const FAABB CandidateBounds = ShiftAABB(HeldShape->GetWorldAABB(), CandidateDelta);
+
+			for (AActor* OtherActor : World->GetActors())
+			{
+				if (OtherActor == nullptr || OtherActor == HeldOwner || !OtherActor->IsActive())
+				{
+					continue;
+				}
+
+				for (UPrimitiveComponent* OtherPrimitive : OtherActor->GetPrimitiveComponents())
+				{
+					if (!IsBlockingShape(OtherPrimitive))
+					{
+						continue;
+					}
+
+					const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
+					const bool bAlreadyOverlapping = IntersectsAABB(CurrentBounds, OtherBounds);
+					const bool bCandidateOverlapping = IntersectsAABB(CandidateBounds, OtherBounds);
+					if (bAlreadyOverlapping)
+					{
+						const float CurrentAxisOverlap = GetAxisOverlap(CurrentBounds, OtherBounds, Axis);
+						const float CandidateAxisOverlap = GetAxisOverlap(CandidateBounds, OtherBounds, Axis);
+						if (CandidateAxisOverlap > CurrentAxisOverlap + HoldCollisionSkin)
+						{
+							ResolvedDelta = 0.0f;
+							return 0.0f;
+						}
+						continue;
+					}
+
+					const bool bSweptIntoBounds = OverlapsExceptAxis(CandidateBounds, OtherBounds, Axis) &&
+						((bMovingPositive && CurrentBounds.Max[Axis] <= OtherBounds.Min[Axis] && CandidateBounds.Max[Axis] > OtherBounds.Min[Axis]) ||
+						(!bMovingPositive && CurrentBounds.Min[Axis] >= OtherBounds.Max[Axis] && CandidateBounds.Min[Axis] < OtherBounds.Max[Axis]));
+					if (!bCandidateOverlapping && !bSweptIntoBounds)
+					{
+						continue;
+					}
+
+					if (bMovingPositive)
+					{
+						const float Allowed = OtherBounds.Min[Axis] - CurrentBounds.Max[Axis] - HoldCollisionSkin;
+						ResolvedDelta = std::min(ResolvedDelta, std::max(0.0f, Allowed));
+					}
+					else
+					{
+						const float Allowed = OtherBounds.Max[Axis] - CurrentBounds.Min[Axis] + HoldCollisionSkin;
+						ResolvedDelta = std::max(ResolvedDelta, std::min(0.0f, Allowed));
+					}
+
+					if (ResolvedDelta == 0.0f)
+					{
+						return 0.0f;
+					}
+				}
+			}
+		}
+
+		return ResolvedDelta;
+	}
+
+	FVector ResolveHeldBodyMovement(UWorld* World, URigidBodyComponent* Body, const FVector& DesiredDelta)
+	{
+		if (World == nullptr || Body == nullptr || Body->GetOwner() == nullptr || DesiredDelta.IsNearlyZero())
+		{
+			return DesiredDelta;
+		}
+
+		TArray<UPrimitiveComponent*> HeldShapes;
+		GatherBlockingShapes(Body->GetOwner(), HeldShapes);
+		if (HeldShapes.empty())
+		{
+			return DesiredDelta;
+		}
+
+		FVector ResolvedDelta = FVector::ZeroVector;
+		for (int32 Axis = 0; Axis < 3; ++Axis)
+		{
+			const float AxisDelta = ResolveAxisMove(World, HeldShapes, Body->GetOwner(), ResolvedDelta, Axis, DesiredDelta[Axis]);
+			ResolvedDelta[Axis] += AxisDelta;
+		}
+
+		return ResolvedDelta;
 	}
 }
 
@@ -94,6 +264,7 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FViewportCamera* Came
 	}
 
 	HeldBody = Body;
+	HeldWorld = World;
 	HoldLocation = Body->GetPhysicsLocation();
 	LastHoldLocation = HoldLocation;
 	HoldVelocity = FVector::ZeroVector;
@@ -113,6 +284,7 @@ void UPhysicsHandleComponent::Release()
 	if (!IsLiveObjectPointer(HeldBody))
 	{
 		HeldBody = nullptr;
+		HeldWorld = nullptr;
 		HoldVelocity = FVector::ZeroVector;
 		return;
 	}
@@ -121,6 +293,7 @@ void UPhysicsHandleComponent::Release()
 	HeldBody->SetVelocity(HoldVelocity);
 	HeldBody->PlayDropSound();
 	HeldBody = nullptr;
+	HeldWorld = nullptr;
 	HoldVelocity = FVector::ZeroVector;
 }
 
@@ -134,6 +307,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	if (!IsLiveObjectPointer(HeldBody))
 	{
 		HeldBody = nullptr;
+		HeldWorld = nullptr;
 		HoldVelocity = FVector::ZeroVector;
 		return;
 	}
@@ -154,9 +328,12 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	}
 
 	LastHoldLocation = HoldLocation;
-	HoldLocation += HoldVelocity * DeltaTime;
+	const FVector DesiredDelta = HoldVelocity * DeltaTime;
+	const FVector ResolvedDelta = ResolveHeldBodyMovement(HeldWorld, HeldBody, DesiredDelta);
+	HoldLocation += ResolvedDelta;
+	HoldVelocity = DeltaTime > 0.0f ? ResolvedDelta / DeltaTime : FVector::ZeroVector;
 	HeldBody->SetPhysicsLocation(HoldLocation);
-	HeldBody->SetVelocity(DeltaTime > 0.0f ? (HoldLocation - LastHoldLocation) / DeltaTime : FVector::ZeroVector);
+	HeldBody->SetVelocity(HoldVelocity);
 }
 
 URigidBodyComponent* UPhysicsHandleComponent::FindRigidBodyFromHit(const FHitResult& Hit) const

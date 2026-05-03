@@ -6,6 +6,7 @@
 #include "Render/Common/ViewTypes.h"
 
 #include <functional>
+#include <unordered_map>
 
 class AActor;
 struct FSceneView;
@@ -14,6 +15,7 @@ struct FViewportRect;
 struct FCameraSnapshot;
 class UCameraComponent;
 class UPhysicsHandleComponent;
+class URigidBodyComponent;
 class UWorld;
 
 class FGamePlayerController : public IBaseGameController
@@ -40,7 +42,7 @@ public:
 
 	void SetPlayer(AActor* InPlayer) { Player = InPlayer; }
 	AActor* GetPlayer() const { return Player; }
-	void SetWorld(UWorld* InWorld) { World = InWorld; }
+	void SetWorld(UWorld* InWorld);
 
 	void SetCamera(UCameraComponent* InCamera);
 	UCameraComponent* GetCamera() const { return Camera; }
@@ -64,6 +66,9 @@ private:
 	void TogglePickup();
 	UPhysicsHandleComponent* GetPhysicsHandle();
 	void DestroyPhysicsHandle();
+	void CaptureInitialRigidBodyRotations();
+	void ResetHeldBodyRotationToInitial();
+	bool IsRuntimeWorld() const;
 	void RotateActiveCamera(float DeltaX, float DeltaY);
 	void MoveActiveCamera(const FVector& Direction, float Scale);
 	void SyncFreeCameraAngles();
@@ -76,12 +81,14 @@ private:
 	FViewportCamera* FreeCamera = nullptr;
 	UPhysicsHandleComponent* PhysicsHandle = nullptr;
 	FInputMappingContext InputMapping;
+	std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;
 
 	float MoveSpeed = 10.0f;
 	float RotateSensitivity = 0.15f;
 	float FreeCameraYaw = 0.0f;
 	float FreeCameraPitch = 0.0f;
 	bool bFreeCameraInitialized = false;
+	bool bInitialRigidBodyRotationsCaptured = false;
 	std::function<void()> OnRequestToggleInputCapture;
 	std::function<void()> OnRequestTogglePause;
 };

@@ -29,7 +29,10 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
@@ -150,11 +153,11 @@ namespace
 		return Value > 0.001f ? Value : Fallback;
 	}
 
-	UShapeComponent* FindFirstBlockingShape(AActor* Actor)
+	void GatherBlockingShapes(AActor* Actor, TArray<UShapeComponent*>& OutShapes)
 	{
 		if (Actor == nullptr)
 		{
-			return nullptr;
+			return;
 		}
 
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
@@ -162,11 +165,9 @@ namespace
 			UShapeComponent* Shape = Cast<UShapeComponent>(Primitive);
 			if (Shape != nullptr && Shape->IsBlockComponent())
 			{
-				return Shape;
+				OutShapes.push_back(Shape);
 			}
 		}
-
-		return nullptr;
 	}
 
 	URigidBodyComponent* FindRigidBody(AActor* Actor)
@@ -186,6 +187,11 @@ namespace
 		}
 
 		return nullptr;
+	}
+
+	JPH::Vec3 ToJoltLocalPosition(const FVector& Vector)
+	{
+		return JPH::Vec3(Vector.X, Vector.Y, Vector.Z);
 	}
 
 	JPH::ShapeRefC CreateJoltShape(UPrimitiveComponent* Primitive)
@@ -214,6 +220,107 @@ namespace
 		}
 
 		return nullptr;
+	}
+
+	JPH::ShapeRefC CreateShapeFromSettings(const JPH::ShapeSettings& Settings)
+	{
+		JPH::ShapeSettings::ShapeResult Result = Settings.Create();
+		if (!Result.IsValid())
+		{
+			if (Result.HasError())
+			{
+				UE_LOG("[Jolt] Failed to create shape: %s", Result.GetError().c_str());
+			}
+			return nullptr;
+		}
+
+		return Result.Get();
+	}
+
+	void GetLocalShapeTransform(const USceneComponent* ShapeComponent, const USceneComponent* BodyComponent, FVector& OutPosition, FQuat& OutRotation)
+	{
+		if (ShapeComponent == nullptr || BodyComponent == nullptr)
+		{
+			OutPosition = FVector::ZeroVector;
+			OutRotation = FQuat::Identity;
+			return;
+		}
+
+		const FTransform BodyTransform = BodyComponent->GetWorldTransform();
+		const FTransform ShapeTransform = ShapeComponent->GetWorldTransform();
+		OutPosition = BodyTransform.InverseTransformPositionNoScale(ShapeTransform.GetTranslation());
+		OutRotation = (BodyTransform.GetRotation().Inverse() * ShapeTransform.GetRotation()).GetNormalized();
+	}
+
+	JPH::ShapeRefC ForceCenterOfMassToBodyOrigin(JPH::ShapeRefC Shape)
+	{
+		if (Shape == nullptr)
+		{
+			return nullptr;
+		}
+
+		const JPH::Vec3 CenterOfMass = Shape->GetCenterOfMass();
+		if (CenterOfMass.LengthSq() <= 0.000001f)
+		{
+			return Shape;
+		}
+
+		JPH::OffsetCenterOfMassShapeSettings OffsetSettings(-CenterOfMass, Shape.GetPtr());
+		return CreateShapeFromSettings(OffsetSettings);
+	}
+
+	JPH::ShapeRefC CreateJoltBodyShape(AActor* Actor, const USceneComponent* BodyComponent)
+	{
+		TArray<UShapeComponent*> BlockingShapes;
+		GatherBlockingShapes(Actor, BlockingShapes);
+		if (BlockingShapes.empty() || BodyComponent == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (BlockingShapes.size() == 1)
+		{
+			UShapeComponent* ShapeComponent = BlockingShapes[0];
+			JPH::ShapeRefC LeafShape = CreateJoltShape(ShapeComponent);
+			if (LeafShape == nullptr)
+			{
+				return nullptr;
+			}
+
+			FVector LocalPosition;
+			FQuat LocalRotation;
+			GetLocalShapeTransform(ShapeComponent, BodyComponent, LocalPosition, LocalRotation);
+			if (LocalPosition.IsNearlyZero(0.001f) && LocalRotation.IsIdentity(0.001f))
+			{
+				return LeafShape;
+			}
+
+			JPH::RotatedTranslatedShapeSettings OffsetSettings(
+				ToJoltLocalPosition(LocalPosition),
+				ToJoltQuat(LocalRotation),
+				LeafShape.GetPtr());
+			return ForceCenterOfMassToBodyOrigin(CreateShapeFromSettings(OffsetSettings));
+		}
+
+		JPH::StaticCompoundShapeSettings CompoundSettings;
+		for (UShapeComponent* ShapeComponent : BlockingShapes)
+		{
+			JPH::ShapeRefC LeafShape = CreateJoltShape(ShapeComponent);
+			if (LeafShape == nullptr)
+			{
+				continue;
+			}
+
+			FVector LocalPosition;
+			FQuat LocalRotation;
+			GetLocalShapeTransform(ShapeComponent, BodyComponent, LocalPosition, LocalRotation);
+			CompoundSettings.AddShape(
+				ToJoltLocalPosition(LocalPosition),
+				ToJoltQuat(LocalRotation),
+				LeafShape.GetPtr());
+		}
+
+		return ForceCenterOfMassToBodyOrigin(CreateShapeFromSettings(CompoundSettings));
 	}
 
 	JPH::BodyID MakeBodyID(uint32 RawBodyID)
@@ -402,7 +509,9 @@ void FJoltPhysicsSystem::RebuildWorld(UWorld* World)
 		}
 
 		URigidBodyComponent* Body = FindRigidBody(Actor);
-		if (Body != nullptr && Body->IsSimulatingPhysics() && FindFirstBlockingShape(Actor) != nullptr)
+		TArray<UShapeComponent*> BlockingShapes;
+		GatherBlockingShapes(Actor, BlockingShapes);
+		if (Body != nullptr && Body->IsSimulatingPhysics() && !BlockingShapes.empty())
 		{
 			RegisterDynamicBody(Body);
 			continue;
@@ -456,14 +565,13 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 		return;
 	}
 
-	UShapeComponent* ShapeComponent = FindFirstBlockingShape(Body->GetOwner());
 	USceneComponent* UpdatedComponent = Body->GetUpdatedComponent();
-	if (ShapeComponent == nullptr || UpdatedComponent == nullptr)
+	if (UpdatedComponent == nullptr)
 	{
 		return;
 	}
 
-	JPH::ShapeRefC Shape = CreateJoltShape(ShapeComponent);
+	JPH::ShapeRefC Shape = CreateJoltBodyShape(Body->GetOwner(), UpdatedComponent);
 	if (Shape == nullptr)
 	{
 		return;

@@ -2,6 +2,8 @@
 
 #include "Component/CameraComponent.h"
 #include "Component/Physics/PhysicsHandleComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
+#include "Component/SceneComponent.h"
 #include "Engine/Runtime/SceneView.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/AActor.h"
@@ -9,6 +11,7 @@
 #include "Math/Matrix.h"
 #include "Math/Utils.h"
 #include "Object/Object.h"
+#include "Physics/JoltPhysicsSystem.h"
 
 #include <cmath>
 #include <windows.h>
@@ -93,6 +96,7 @@ FGamePlayerController::~FGamePlayerController()
 void FGamePlayerController::Tick(float DeltaTime)
 {
 	IBaseGameController::Tick(DeltaTime);
+	CaptureInitialRigidBodyRotations();
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
 	if (PhysicsHandle)
@@ -184,6 +188,19 @@ void FGamePlayerController::OnWheelScrolled(float Notch)
 {
 	MoveActiveCamera(ToForward(Camera ? Camera->GetPitchDegrees() : FreeCameraPitch,
 		Camera ? Camera->GetYawDegrees() : FreeCameraYaw), Notch * MoveSpeed * 0.25f);
+}
+
+void FGamePlayerController::SetWorld(UWorld* InWorld)
+{
+	if (World == InWorld)
+	{
+		return;
+	}
+
+	World = InWorld;
+	InitialRigidBodyRotations.clear();
+	bInitialRigidBodyRotationsCaptured = false;
+	DestroyPhysicsHandle();
 }
 
 void FGamePlayerController::SetCamera(UCameraComponent* InCamera)
@@ -345,7 +362,10 @@ void FGamePlayerController::TogglePickup()
 		return;
 	}
 
-	Handle->TryGrab(World, FreeCamera);
+	if (Handle->TryGrab(World, FreeCamera))
+	{
+		ResetHeldBodyRotationToInitial();
+	}
 }
 
 UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
@@ -366,6 +386,80 @@ void FGamePlayerController::DestroyPhysicsHandle()
 		UObjectManager::Get().DestroyObject(PhysicsHandle);
 		PhysicsHandle = nullptr;
 	}
+}
+
+void FGamePlayerController::CaptureInitialRigidBodyRotations()
+{
+	if (bInitialRigidBodyRotationsCaptured || !IsRuntimeWorld())
+	{
+		return;
+	}
+
+	InitialRigidBodyRotations.clear();
+	for (AActor* Actor : World->GetActors())
+	{
+		if (Actor == nullptr)
+		{
+			continue;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component);
+			if (Body == nullptr)
+			{
+				continue;
+			}
+
+			if (USceneComponent* UpdatedComponent = Body->GetUpdatedComponent())
+			{
+				InitialRigidBodyRotations[Body] = UpdatedComponent->GetRelativeRotation();
+			}
+		}
+	}
+
+	bInitialRigidBodyRotationsCaptured = true;
+}
+
+void FGamePlayerController::ResetHeldBodyRotationToInitial()
+{
+	if (!IsRuntimeWorld() || PhysicsHandle == nullptr || !PhysicsHandle->IsHolding())
+	{
+		return;
+	}
+
+	URigidBodyComponent* Body = PhysicsHandle->GetHeldBody();
+	if (Body == nullptr)
+	{
+		return;
+	}
+
+	USceneComponent* UpdatedComponent = Body->GetUpdatedComponent();
+	if (UpdatedComponent == nullptr)
+	{
+		return;
+	}
+
+	auto It = InitialRigidBodyRotations.find(Body);
+	if (It == InitialRigidBodyRotations.end())
+	{
+		It = InitialRigidBodyRotations.emplace(Body, UpdatedComponent->GetRelativeRotation()).first;
+	}
+
+	UpdatedComponent->SetRelativeRotation(It->second);
+	Body->SetAngularVelocity(FVector::ZeroVector);
+	FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(Body);
+}
+
+bool FGamePlayerController::IsRuntimeWorld() const
+{
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	const EWorldType WorldType = World->GetWorldType();
+	return WorldType == EWorldType::PIE || WorldType == EWorldType::Game;
 }
 
 void FGamePlayerController::RotateActiveCamera(float DeltaX, float DeltaY)

@@ -24,7 +24,7 @@ namespace
 			return false;
 		}
 
-		for (const UObject* LiveObject : GUObjectArray)
+		for (const UObject* LiveObject : GUObjectArray)   
 		{
 			if (LiveObject == Object)
 			{
