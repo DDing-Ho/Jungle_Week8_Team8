@@ -13,6 +13,8 @@ void FCleaningToolAnimator::Reset()
 {
 	ActiveToolId.clear();
 	CameraLocalOffset = FVector::ZeroVector;
+	HoldCameraLocalOffset = FVector::ZeroVector;
+	StrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
 	ElapsedTime = 0.0f;
 	BobAmplitude = 0.0f;
 	BobSpeed = 0.0f;
@@ -20,12 +22,23 @@ void FCleaningToolAnimator::Reset()
 	bIsUsing = false;
 }
 
-void FCleaningToolAnimator::BeginUse(const FCleaningToolData& ToolData)
+void FCleaningToolAnimator::SetActiveTool(const FCleaningToolData& ToolData)
 {
 	ActiveToolId = ToolData.ToolId;
+	HoldCameraLocalOffset = ToolData.HoldCameraLocalOffset;
+	StrokeCameraLocalDirection = ToolData.UseStrokeCameraLocalDirection.GetSafeNormal();
+	if (StrokeCameraLocalDirection.IsNearlyZero())
+	{
+		StrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
+	}
 	BobAmplitude = std::max(0.0f, ToolData.UseBobAmplitude);
 	BobSpeed = std::max(0.0f, ToolData.UseBobSpeed);
 	ReturnSpeed = std::max(0.0f, ToolData.UseReturnSpeed);
+}
+
+void FCleaningToolAnimator::BeginUse(const FCleaningToolData& ToolData)
+{
+	SetActiveTool(ToolData);
 	bIsUsing = true;
 }
 
@@ -44,9 +57,7 @@ void FCleaningToolAnimator::Tick(float DeltaTime)
 	if (bIsUsing)
 	{
 		ElapsedTime += DeltaTime;
-		CameraLocalOffset.X = 0.0f;
-		CameraLocalOffset.Y = 0.0f;
-		CameraLocalOffset.Z = std::sin(ElapsedTime * BobSpeed) * BobAmplitude;
+		CameraLocalOffset = StrokeCameraLocalDirection * (std::sin(ElapsedTime * BobSpeed) * BobAmplitude);
 		return;
 	}
 

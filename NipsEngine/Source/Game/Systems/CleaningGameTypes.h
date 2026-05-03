@@ -45,6 +45,10 @@ struct FCleaningToolData
 	FString AnimationSetId;
 	FString EffectId;
 	float CleaningPower = 1.0f;
+	float HoldDistance = 4.0f;
+	FVector HoldCameraLocalOffset = FVector::ZeroVector;
+	FVector UseStrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
+	FVector HandleCameraLocalDirection = FVector::ZeroVector;
 	float UseBobAmplitude = 0.15f;
 	float UseBobSpeed = 8.0f;
 	float UseReturnSpeed = 14.0f;

@@ -35,6 +35,66 @@ namespace
 		return bOk ? Value : DefaultValue;
 	}
 
+	float GetFloatField(const json::JSON& Node, const char* Key, float DefaultValue)
+	{
+		if (!Node.hasKey(Key))
+		{
+			return DefaultValue;
+		}
+
+		bool bOk = false;
+		float Value = static_cast<float>(Node.at(Key).ToFloat(bOk));
+		if (bOk)
+		{
+			return Value;
+		}
+
+		Value = static_cast<float>(Node.at(Key).ToInt(bOk));
+		return bOk ? Value : DefaultValue;
+	}
+
+	FVector GetVectorField(const json::JSON& Node, const char* Key, const FVector& DefaultValue)
+	{
+		if (!Node.hasKey(Key))
+		{
+			return DefaultValue;
+		}
+
+		const json::JSON& ArrayNode = Node.at(Key);
+		if (ArrayNode.JSONType() != json::JSON::Class::Array || ArrayNode.size() < 3)
+		{
+			return DefaultValue;
+		}
+
+		auto ReadNumber = [](const json::JSON& ValueNode, float DefaultNumber)
+		{
+			bool bOk = false;
+			float Result = static_cast<float>(ValueNode.ToFloat(bOk));
+			if (bOk)
+			{
+				return Result;
+			}
+
+			Result = static_cast<float>(ValueNode.ToInt(bOk));
+			return bOk ? Result : DefaultNumber;
+		};
+
+		float Components[3] = { DefaultValue.X, DefaultValue.Y, DefaultValue.Z };
+		int32 Index = 0;
+		for (const json::JSON& ValueNode : ArrayNode.ArrayRange())
+		{
+			if (Index >= 3)
+			{
+				break;
+			}
+
+			Components[Index] = ReadNumber(ValueNode, Components[Index]);
+			++Index;
+		}
+
+		return FVector(Components[0], Components[1], Components[2]);
+	}
+
 	EGameItemType ParseItemType(const FString& TypeName)
 	{
 		if (TypeName == "DummyItem")
@@ -126,10 +186,18 @@ namespace
 		ToolData.AnimationSetId = GetStringField(Node, "animationSetId");
 		ToolData.EffectId = GetStringField(Node, "effectId");
 		ToolData.InteractionSoundId = GetStringField(Node, "interactionSoundId");
-		ToolData.CleaningPower = std::max(0.0f, static_cast<float>(Node.hasKey("cleaningPower") ? Node.at("cleaningPower").ToFloat() : 1.0));
-		ToolData.UseBobAmplitude = std::max(0.0f, static_cast<float>(Node.hasKey("useBobAmplitude") ? Node.at("useBobAmplitude").ToFloat() : 0.15));
-		ToolData.UseBobSpeed = std::max(0.0f, static_cast<float>(Node.hasKey("useBobSpeed") ? Node.at("useBobSpeed").ToFloat() : 8.0));
-		ToolData.UseReturnSpeed = std::max(0.0f, static_cast<float>(Node.hasKey("useReturnSpeed") ? Node.at("useReturnSpeed").ToFloat() : 14.0));
+		ToolData.CleaningPower = std::max(0.0f, GetFloatField(Node, "cleaningPower", 1.0f));
+		ToolData.HoldDistance = std::max(0.1f, GetFloatField(Node, "holdDistance", 4.0f));
+		ToolData.HoldCameraLocalOffset = GetVectorField(Node, "holdCameraLocalOffset", FVector::ZeroVector);
+		ToolData.UseStrokeCameraLocalDirection = GetVectorField(Node, "useStrokeCameraLocalDirection", FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal();
+		if (ToolData.UseStrokeCameraLocalDirection.IsNearlyZero())
+		{
+			ToolData.UseStrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
+		}
+		ToolData.HandleCameraLocalDirection = GetVectorField(Node, "handleCameraLocalDirection", FVector::ZeroVector).GetSafeNormal();
+		ToolData.UseBobAmplitude = std::max(0.0f, GetFloatField(Node, "useBobAmplitude", 0.15f));
+		ToolData.UseBobSpeed = std::max(0.0f, GetFloatField(Node, "useBobSpeed", 8.0f));
+		ToolData.UseReturnSpeed = std::max(0.0f, GetFloatField(Node, "useReturnSpeed", 14.0f));
 		ToolData.ValidSurfaceTypes = ReadStringArray(Node, "validSurfaceTypes");
 		return ToolData;
 	}

@@ -1,4 +1,4 @@
-#include "Component/Physics/PhysicsHandleComponent.h"
+﻿#include "Component/Physics/PhysicsHandleComponent.h"
 
 #include "Component/Collision/ShapeComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
@@ -214,6 +214,7 @@ void UPhysicsHandleComponent::Serialize(FArchive& Ar)
 {
 	UActorComponent::Serialize(Ar);
 	Ar << "TraceDistance" << TraceDistance;
+	Ar << "DefaultHoldDistance" << DefaultHoldDistance;
 	Ar << "HoldDistance" << HoldDistance;
 	Ar << "SpringStrength" << SpringStrength;
 	Ar << "Damping" << Damping;
@@ -229,6 +230,7 @@ void UPhysicsHandleComponent::GetEditableProperties(TArray<FPropertyDescriptor>&
 {
 	UActorComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Trace Distance", EPropertyType::Float, &TraceDistance, 0.1f, 100.0f, 0.1f });
+	OutProps.push_back({ "Default Hold Distance", EPropertyType::Float, &DefaultHoldDistance, 0.1f, 20.0f, 0.1f });
 	OutProps.push_back({ "Hold Distance", EPropertyType::Float, &HoldDistance, 0.1f, 20.0f, 0.1f });
 	OutProps.push_back({ "Spring Strength", EPropertyType::Float, &SpringStrength, 0.0f, 1000.0f, 1.0f });
 	OutProps.push_back({ "Damping", EPropertyType::Float, &Damping, 0.0f, 1000.0f, 0.1f });
@@ -297,7 +299,7 @@ void UPhysicsHandleComponent::Release()
 	HoldVelocity = FVector::ZeroVector;
 }
 
-void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset)
+void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset, const FQuat* TargetRotation)
 {
 	if (DeltaTime <= 0.0f || HeldBody == nullptr || Camera == nullptr)
 	{
@@ -334,6 +336,11 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	HoldVelocity = DeltaTime > 0.0f ? ResolvedDelta / DeltaTime : FVector::ZeroVector;
 	HeldBody->SetPhysicsLocation(HoldLocation);
 	HeldBody->SetVelocity(HoldVelocity);
+	if (TargetRotation)
+	{
+		HeldBody->SetPhysicsRotation(*TargetRotation);
+	}
+	HeldBody->SetVelocity(DeltaTime > 0.0f ? (HoldLocation - LastHoldLocation) / DeltaTime : FVector::ZeroVector);
 }
 
 URigidBodyComponent* UPhysicsHandleComponent::FindRigidBodyFromHit(const FHitResult& Hit) const
@@ -367,6 +374,7 @@ FVector UPhysicsHandleComponent::GetHoldTarget(const FViewportCamera* Camera, co
 void UPhysicsHandleComponent::ClampEditableValues()
 {
 	TraceDistance = std::max(0.1f, TraceDistance);
+	DefaultHoldDistance = std::max(0.1f, DefaultHoldDistance);
 	HoldDistance = std::max(0.1f, HoldDistance);
 	SpringStrength = std::max(0.0f, SpringStrength);
 	Damping = std::max(0.0f, Damping);

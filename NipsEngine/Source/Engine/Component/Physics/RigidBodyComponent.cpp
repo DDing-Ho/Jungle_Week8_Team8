@@ -246,6 +246,22 @@ void URigidBodyComponent::SetPhysicsLocation(const FVector& NewLocation)
 	}
 }
 
+void URigidBodyComponent::SetPhysicsRotation(const FQuat& NewRotation)
+{
+	if (USceneComponent* Scene = GetUpdatedComponent())
+	{
+		Scene->SetRelativeRotationQuat(NewRotation);
+		FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(this);
+		return;
+	}
+
+	if (Owner != nullptr)
+	{
+		Owner->SetActorRotation(NewRotation.Euler());
+		FJoltPhysicsSystem::Get().SetBodyTransformFromComponent(this);
+	}
+}
+
 void URigidBodyComponent::PlayPickupSound() const
 {
 	if (!PickupSoundPath.empty())

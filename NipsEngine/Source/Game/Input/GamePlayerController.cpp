@@ -102,6 +102,35 @@ namespace
 			+ Camera->GetUpVector().GetSafeNormal() * CameraLocalOffset.Z;
 	}
 
+	FQuat BuildCameraLocalHandleRotation(const FViewportCamera* Camera, const FVector& HandleCameraLocalDirection)
+	{
+		if (!Camera)
+		{
+			return FQuat::Identity;
+		}
+
+		const FVector HandleWorldDirection = ToWorldOffset(Camera, HandleCameraLocalDirection).GetSafeNormal();
+		const FVector CameraForward = Camera->GetForwardVector().GetSafeNormal();
+		if (HandleWorldDirection.IsNearlyZero() || CameraForward.IsNearlyZero())
+		{
+			return FQuat::Identity;
+		}
+
+		FVector YAxis = FVector::CrossProduct(CameraForward, HandleWorldDirection).GetSafeNormal();
+		if (YAxis.IsNearlyZero())
+		{
+			YAxis = Camera->GetRightVector().GetSafeNormal();
+		}
+
+		const FVector ZAxis = FVector::CrossProduct(HandleWorldDirection, YAxis).GetSafeNormal();
+		FMatrix RotationMatrix = FMatrix::Identity;
+		RotationMatrix.SetAxes(HandleWorldDirection, YAxis, ZAxis);
+
+		FQuat Rotation(RotationMatrix);
+		Rotation.Normalize();
+		return Rotation;
+	}
+
 	FString NormalizeToolMatchKey(FString Value)
 	{
 		std::replace(Value.begin(), Value.end(), '\\', '/');
@@ -189,8 +218,19 @@ void FGamePlayerController::Tick(float DeltaTime)
 	FCleaningToolAnimator::Get().Tick(DeltaTime);
 	if (PhysicsHandle)
 	{
-		const FVector ToolOffset = ToWorldOffset(FreeCamera, FCleaningToolAnimator::Get().GetCameraLocalOffset());
-		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset);
+		const FString& CurrentToolId = GGameContext::Get().GetCurrentToolId();
+		const FCleaningToolData* ToolData = CurrentToolId.empty() ? nullptr : FCleaningToolSystem::Get().FindToolData(CurrentToolId);
+		const FVector ToolCameraLocalOffset = FCleaningToolAnimator::Get().GetHoldCameraLocalOffset()
+			+ FCleaningToolAnimator::Get().GetCameraLocalOffset();
+		const FVector ToolOffset = ToWorldOffset(FreeCamera, ToolCameraLocalOffset);
+		FQuat ToolRotation = FQuat::Identity;
+		const FQuat* ToolRotationPtr = nullptr;
+		if (ToolData && !ToolData->HandleCameraLocalDirection.IsNearlyZero())
+		{
+			ToolRotation = BuildCameraLocalHandleRotation(FreeCamera, ToolData->HandleCameraLocalDirection);
+			ToolRotationPtr = &ToolRotation;
+		}
+		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset, ToolRotationPtr);
 	}
 }
 
@@ -501,8 +541,10 @@ void FGamePlayerController::TogglePickup()
 	{
 		UE_LOG("[CleaningTool] Releasing held object. currentToolId=%s", GGameContext::Get().GetCurrentToolId().c_str());
 		EndCleaningUse();
+		FCleaningToolAnimator::Get().Reset();
 		GGameContext::Get().SetCurrentTool("");
 		Handle->Release();
+		Handle->ResetHoldDistance();
 		return;
 	}
 
@@ -516,6 +558,14 @@ void FGamePlayerController::TogglePickup()
 			{
 				const FString HeldToolId = FindCleaningToolIdFromActor(HeldActor);
 				bSelectedHeldTool = !HeldToolId.empty() && FCleaningToolSystem::Get().SelectTool(HeldToolId);
+				if (bSelectedHeldTool)
+				{
+					if (const FCleaningToolData* ToolData = FCleaningToolSystem::Get().FindToolData(HeldToolId))
+					{
+						Handle->SetHoldDistance(ToolData->HoldDistance);
+						FCleaningToolAnimator::Get().SetActiveTool(*ToolData);
+					}
+				}
 				UE_LOG("[CleaningTool] Picked actor=%s resolvedToolId=%s selected=%d",
 					HeldActor->GetFName().ToString().c_str(),
 					HeldToolId.c_str(),
@@ -527,6 +577,8 @@ void FGamePlayerController::TogglePickup()
 		{
 			UE_LOG("[CleaningTool] Picked object is not a cleaning tool. Clearing current tool.");
 			GGameContext::Get().SetCurrentTool("");
+			FCleaningToolAnimator::Get().Reset();
+			Handle->ResetHoldDistance();
 		}
 	}
 }

@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "None",
   "Name" : "test",
-  "NextUUID" : 12023,
+  "NextUUID" : 12482,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-15.448833, -4.878426, 10.079112],
+    "Location" : [-13.775341, -5.934014, 9.830905],
     "NearClip" : 0.100000,
-    "Rotation" : [1.370973, 26.030859, -3.121490]
+    "Rotation" : [7.733659, 48.860771, -10.221893]
   },
   "Primitives" : {
     "11356" : {
@@ -2479,7 +2479,7 @@
       "Location" : [-11.134586, -6.332959, 4.504965],
       "Materials" : ["lambert1.001"],
       "NormalizeOnImport" : false,
-      "ObjStaticMeshAsset" : "Asset/Mesh/Game/Mop/mop0.obj",
+      "ObjStaticMeshAsset" : "Asset/Mesh/Game/Mop/Mop.obj",
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Scroll U" : 0.000000,

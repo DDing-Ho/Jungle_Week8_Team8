@@ -2,6 +2,7 @@
 
 #include "Component/ActorComponent.h"
 #include "Core/CollisionTypes.h"
+#include "Math/Quat.h"
 #include "Math/Vector.h"
 
 class FViewportCamera;
@@ -21,13 +22,14 @@ public:
 
 	bool TryGrab(UWorld* World, const FViewportCamera* Camera);
 	void Release();
-	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector);
+	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector, const FQuat* TargetRotation = nullptr);
 
 	bool IsHolding() const { return HeldBody != nullptr; }
 	URigidBodyComponent* GetHeldBody() const { return HeldBody; }
 
 	void SetTraceDistance(float InTraceDistance) { TraceDistance = InTraceDistance; }
 	void SetHoldDistance(float InHoldDistance) { HoldDistance = InHoldDistance; }
+	void ResetHoldDistance() { HoldDistance = DefaultHoldDistance; }
 
 private:
 	URigidBodyComponent* FindRigidBodyFromHit(const FHitResult& Hit) const;
@@ -42,6 +44,7 @@ private:
 	FVector LastHoldLocation = FVector::ZeroVector;
 
 	float TraceDistance = 5.0f;
+	float DefaultHoldDistance = 4.0f;
 	float HoldDistance = 4.0f;
 	float SpringStrength = 70.0f;
 	float Damping = 12.0f;

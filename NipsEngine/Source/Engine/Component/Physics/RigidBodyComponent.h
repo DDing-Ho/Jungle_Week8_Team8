@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Component/ActorComponent.h"
+#include "Math/Quat.h"
 #include "Math/Vector.h"
 
 class USceneComponent;
@@ -51,6 +52,7 @@ public:
 
 	FVector GetPhysicsLocation() const;
 	void SetPhysicsLocation(const FVector& NewLocation);
+	void SetPhysicsRotation(const FQuat& NewRotation);
 
 	void PlayPickupSound() const;
 	void PlayDropSound() const;
