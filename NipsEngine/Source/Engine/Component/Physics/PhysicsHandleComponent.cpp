@@ -12,6 +12,7 @@
 #include "Serialization/Archive.h"
 
 #include <algorithm>
+#include <cstring>
 #include <limits>
 
 namespace
@@ -39,6 +40,33 @@ namespace
 	bool IsBlockingShape(UPrimitiveComponent* Primitive)
 	{
 		return Primitive != nullptr && Primitive->IsBlockComponent() && Cast<UShapeComponent>(Primitive) != nullptr;
+	}
+
+	URigidBodyComponent* FindRigidBody(AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component))
+			{
+				if (IsLiveObjectPointer(Body))
+				{
+					return Body;
+				}
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool IsDynamicRigidActor(AActor* Actor)
+	{
+		URigidBodyComponent* Body = FindRigidBody(Actor);
+		return Body != nullptr && Body->IsDynamicBody();
 	}
 
 	bool IntersectsAABB(const FAABB& A, const FAABB& B)
@@ -133,6 +161,11 @@ namespace
 						continue;
 					}
 
+					if (IsDynamicRigidActor(OtherActor))
+					{
+						continue;
+					}
+
 					const FAABB OtherBounds = OtherPrimitive->GetWorldAABB();
 					const bool bAlreadyOverlapping = IntersectsAABB(CurrentBounds, OtherBounds);
 					const bool bCandidateOverlapping = IntersectsAABB(CandidateBounds, OtherBounds);
@@ -176,6 +209,76 @@ namespace
 		}
 
 		return ResolvedDelta;
+	}
+
+	void MoveOverlappingDynamicBodies(UWorld* World, URigidBodyComponent* HeldBody, const FVector& Delta, const FVector& Velocity)
+	{
+		if (World == nullptr || HeldBody == nullptr || HeldBody->GetOwner() == nullptr || Delta.IsNearlyZero())
+		{
+			return;
+		}
+
+		TArray<UPrimitiveComponent*> HeldShapes;
+		GatherBlockingShapes(HeldBody->GetOwner(), HeldShapes);
+		if (HeldShapes.empty())
+		{
+			return;
+		}
+
+		TArray<URigidBodyComponent*> BodiesToMove;
+		for (AActor* OtherActor : World->GetActors())
+		{
+			if (OtherActor == nullptr || OtherActor == HeldBody->GetOwner() || !OtherActor->IsActive())
+			{
+				continue;
+			}
+
+			URigidBodyComponent* OtherBody = FindRigidBody(OtherActor);
+			if (OtherBody == nullptr || !OtherBody->IsDynamicBody() || OtherBody->IsHeldByPhysicsHandle())
+			{
+				continue;
+			}
+
+			bool bShouldMove = false;
+			for (UPrimitiveComponent* HeldShape : HeldShapes)
+			{
+				if (HeldShape == nullptr)
+				{
+					continue;
+				}
+
+				const FAABB HeldBounds = HeldShape->GetWorldAABB();
+				for (UPrimitiveComponent* OtherPrimitive : OtherActor->GetPrimitiveComponents())
+				{
+					if (!IsBlockingShape(OtherPrimitive))
+					{
+						continue;
+					}
+
+					if (IntersectsAABB(HeldBounds, OtherPrimitive->GetWorldAABB()))
+					{
+						bShouldMove = true;
+						break;
+					}
+				}
+
+				if (bShouldMove)
+				{
+					break;
+				}
+			}
+
+			if (bShouldMove)
+			{
+				BodiesToMove.push_back(OtherBody);
+			}
+		}
+
+		for (URigidBodyComponent* Body : BodiesToMove)
+		{
+			Body->SetPhysicsLocation(Body->GetPhysicsLocation() + Delta);
+			Body->SetVelocity(Velocity);
+		}
 	}
 
 	FVector ResolveHeldBodyMovement(UWorld* World, URigidBodyComponent* Body, const FVector& DesiredDelta)
@@ -270,6 +373,11 @@ namespace
 					for (UPrimitiveComponent* OtherPrimitive : OtherActor->GetPrimitiveComponents())
 					{
 						if (!IsBlockingShape(OtherPrimitive))
+						{
+							continue;
+						}
+
+						if (IsDynamicRigidActor(OtherActor))
 						{
 							continue;
 						}
@@ -384,6 +492,7 @@ void UPhysicsHandleComponent::Serialize(FArchive& Ar)
 	if (Ar.IsLoading())
 	{
 		ClampEditableValues();
+		DefaultHoldDistance = HoldDistance;
 	}
 }
 
@@ -404,6 +513,21 @@ void UPhysicsHandleComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 	ClampEditableValues();
+
+	if (PropertyName != nullptr)
+	{
+		if (std::strcmp(PropertyName, "Hold Distance") == 0)
+		{
+			DefaultHoldDistance = HoldDistance;
+		}
+		else if (std::strcmp(PropertyName, "Default Hold Distance") == 0)
+		{
+			HoldDistance = DefaultHoldDistance;
+		}
+	}
+
+	ClampEditableValues();
+	CurrentHoldDistance = HoldDistance + HoldDistanceOffset;
 }
 
 bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FViewportCamera* Camera)
@@ -524,6 +648,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FVector& CameraL
 		HoldLocation += ResolvedDelta;
 		HoldVelocity = DeltaTime > 0.0f ? ResolvedDelta / DeltaTime : FVector::ZeroVector;
 		HeldBody->SetPhysicsLocation(HoldLocation);
+		MoveOverlappingDynamicBodies(HeldWorld, HeldBody, ResolvedDelta, HoldVelocity);
 		const FVector PenetrationPush = ResolveHeldBodyPenetration(HeldWorld, HeldBody);
 		if (!PenetrationPush.IsNearlyZero())
 		{
@@ -536,6 +661,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FVector& CameraL
 
 			HoldLocation += PenetrationPush;
 			HeldBody->SetPhysicsLocation(HoldLocation);
+			MoveOverlappingDynamicBodies(HeldWorld, HeldBody, PenetrationPush, HoldVelocity);
 		}
 		if (TargetRotation)
 		{
@@ -560,6 +686,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FVector& CameraL
 	HoldLocation += ResolvedDelta;
 	HoldVelocity = DeltaTime > 0.0f ? ResolvedDelta / DeltaTime : FVector::ZeroVector;
 	HeldBody->SetPhysicsLocation(HoldLocation);
+	MoveOverlappingDynamicBodies(HeldWorld, HeldBody, ResolvedDelta, HoldVelocity);
 	const FVector PenetrationPush = ResolveHeldBodyPenetration(HeldWorld, HeldBody);
 	if (!PenetrationPush.IsNearlyZero())
 	{
@@ -572,6 +699,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FVector& CameraL
 
 		HoldLocation += PenetrationPush;
 		HeldBody->SetPhysicsLocation(HoldLocation);
+		MoveOverlappingDynamicBodies(HeldWorld, HeldBody, PenetrationPush, HoldVelocity);
 	}
 	if (TargetRotation)
 	{
