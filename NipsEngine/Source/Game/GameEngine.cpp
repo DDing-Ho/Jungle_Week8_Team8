@@ -2,6 +2,8 @@
 
 #include "Game/GameTypes.h"
 #include "Game/Settings/GameSettings.h"
+#include "Game/Systems/GameContext.h"
+#include "Game/Systems/ItemSystem.h"
 #include "Game/Viewport/GameViewportClient.h"
 #include "Game/Render/GameRenderPipeline.h"
 #include "Engine/Audio/AudioSystem.h"
@@ -92,6 +94,8 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	);
 
 	Game::RegisterGameTypes();
+	GGameContext::Get().Reset();
+	FItemSystem::Get().ResetRuntimeState();
 
 	LoadStartupScene();
 
@@ -136,6 +140,8 @@ void UGameEngine::Tick(float DeltaTime)
 
 void UGameEngine::Shutdown()
 {
+	FItemSystem::Get().ResetRuntimeState();
+	GGameContext::Get().Reset();
 	GameUISystem::Get().Shutdown();
 	GameViewport.reset();
 	UEngine::Shutdown();

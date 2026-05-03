@@ -151,6 +151,9 @@
     <Filter Include="Source\Game\Settings">
       <UniqueIdentifier>{01fbe95f-106d-f15c-9519-d37eb877a7df}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Game\Systems">
+      <UniqueIdentifier>{d1a37d05-f509-49b1-a9a1-b2c4a81c41f9}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Game\UI">
       <UniqueIdentifier>{24b0520d-f070-bb4e-e2fa-92d953623ce5}</UniqueIdentifier>
     </Filter>
@@ -799,6 +802,18 @@
     </ClCompile>
     <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp">
       <Filter>Source\Game\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Systems\CleaningToolSystem.cpp">
+      <Filter>Source\Game\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Systems\EndingSystem.cpp">
+      <Filter>Source\Game\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Systems\GameContext.cpp">
+      <Filter>Source\Game\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\Systems\ItemSystem.cpp">
+      <Filter>Source\Game\Systems</Filter>
     </ClCompile>
     <ClCompile Include="Source\Game\UI\DialoguePanel.cpp">
       <Filter>Source\Game\UI</Filter>
@@ -1537,6 +1552,21 @@
     </ClInclude>
     <ClInclude Include="Source\Game\Settings\GameSettings.h">
       <Filter>Source\Game\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\CleaningGameTypes.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\CleaningToolSystem.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\EndingSystem.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\GameContext.h">
+      <Filter>Source\Game\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\Systems\ItemSystem.h">
+      <Filter>Source\Game\Systems</Filter>
     </ClInclude>
     <ClInclude Include="Source\Game\UI\DialoguePanel.h">
       <Filter>Source\Game\UI</Filter>
