@@ -1,8 +1,9 @@
 ﻿#pragma once
 
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "Engine/Viewport/ViewportClient.h"
-#include "Game/Input/GameInputRouter.h"
+#include "Game/Input/GamePlayerController.h"
 
 class FWindowsWindow;
 class UCameraComponent;
@@ -27,28 +28,19 @@ public:
 	FViewportCamera& GetFreeCamera() { return FreeCamera; }
 	const FViewportCamera& GetFreeCamera() const { return FreeCamera; }
 
-	FGameInputRouter& GetInputRouter() { return InputRouter; }
-	const FGameInputRouter& GetInputRouter() const { return InputRouter; }
+	FInputRouter& GetInputRouter() { return InputRouter; }
+	const FInputRouter& GetInputRouter() const { return InputRouter; }
+	FGamePlayerController& GetPlayerController() { return PlayerController; }
+	const FGamePlayerController& GetPlayerController() const { return PlayerController; }
 
 private:
-	void TickKeyboardInput();
-	void TickMouseInput();
-	void UpdateControllerViewportDim();
-	void UpdateCursorCapture();
-	void HideMouseCursor();
-	void ShowMouseCursor();
-	void ConfineMouseCursorToWindow();
-	void LockMouseCursor();
-	void ReleaseMouseCursor();
-
 	void ToggleInteractionMode();
 
 private:
 	UWorld* World = nullptr;
 	UCameraComponent* ActiveCamera = nullptr;
 	FViewportCamera FreeCamera;
-	FGameInputRouter InputRouter;
+	FGamePlayerController PlayerController;
+	FInputRouter InputRouter;
 	bool bInputActive = true;
-	bool bCursorVisible = true;
-	bool bCursorConfined = false;
 };

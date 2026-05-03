@@ -1,4 +1,4 @@
-﻿#include "Scripting/LuaBindings.h"
+#include "Scripting/LuaBindings.h"
 
 #if WITH_LUA
 #include "GameFramework/AActor.h"
@@ -8,8 +8,8 @@
 #include "Core/CollisionTypes.h"
 #include "Core/Logger.h"
 #include "Audio/AudioSystem.h"
-#include "Engine/Input/InputSystem.h"
-#include "Engine/UI/GameUISystem.h"
+#include "Engine/Input/InputRouter.h"
+#include "Game/UI/GameUISystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -140,12 +140,12 @@ void RegisterLuaBindings(sol::state& Lua)
 
 	Lua.set_function("GetKeyDown", [](int VK)
 	{
-		return InputSystem::Get().GetKeyDown(VK);
+		return FInputRouter::GetKeyDown(VK);
 	});
 
 	Lua.set_function("GetKeyUp", [](int VK)
 	{
-		return InputSystem::Get().GetKeyUp(VK);
+		return FInputRouter::GetKeyUp(VK);
 	});
 
 	Lua.new_usertype<FHitResult>(

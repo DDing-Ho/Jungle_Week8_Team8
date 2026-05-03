@@ -1,4 +1,4 @@
-﻿#include "Editor/UI/EditorViewportOverlayWidget.h"
+#include "Editor/UI/EditorViewportOverlayWidget.h"
 
 #include "Core/ResourceManager.h"
 
@@ -23,7 +23,7 @@
 
 #include "Viewport/ViewportLayout.h"
 
-#include "Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 
 #include "ImGui/imgui.h"
 #include <cstdio>
@@ -288,12 +288,12 @@ void FEditorViewportOverlayWidget::RenderDebugStats(float DeltaTime)
 void FEditorViewportOverlayWidget::RenderSplitterBar()
 {
 	 // 뷰포트를 클릭했거나, 휠 드래그를 하고 있을 때 강조하지 않습니다.
-	if (FSlateApplication::Get().GetCapturedWidget() || InputSystem::Get().GetMiddleDragging())
+	if (FSlateApplication::Get().GetCapturedWidget() || FInputRouter::GetMiddleDragging())
 		 return;
 
 	// 기즈모를 잡고 있을 때 강조하지 않습니다.
 	bool bIsHodingGizmo = EditorEngine->GetGizmo()->IsHolding();
-	if (bIsHodingGizmo || InputSystem::Get().GetRightDragging())
+	if (bIsHodingGizmo || FInputRouter::GetRightDragging())
 	{
 		return;
 	}
@@ -312,7 +312,7 @@ void FEditorViewportOverlayWidget::RenderSplitterBar()
 		const SWidget* Hovered  = FSlateApplication::Get().GetHoveredWidget();
 		const SWidget* Captured = FSlateApplication::Get().GetCapturedWidget();
 
-		const bool bIsDragging = InputSystem::Get().GetRightDragging();
+		const bool bIsDragging = FInputRouter::GetRightDragging();
 
 		SSplitterCross* Cross = ViewportLayout.GetCrossWidget();
 		constexpr ImU32 CrossHoverColor = IM_COL32(140, 180, 255, 255);
@@ -366,7 +366,7 @@ void FEditorViewportOverlayWidget::RenderBoxSelectionOverlay()
 
 	FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
 	ImDrawList* DrawList = ImGui::GetForegroundDrawList();
-	const bool bAdditive = InputSystem::Get().GetKey(VK_SHIFT);
+	const bool bAdditive = FInputRouter::GetKey(VK_SHIFT);
 	const ImU32 RectColor = bAdditive ? IM_COL32(128, 240, 128, 220) : IM_COL32(128, 192, 255, 220);
 	const ImU32 FillColor = bAdditive ? IM_COL32(64, 180, 64, 40) : IM_COL32(64, 128, 220, 40);
 

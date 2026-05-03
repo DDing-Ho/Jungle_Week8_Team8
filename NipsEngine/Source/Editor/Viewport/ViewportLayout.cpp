@@ -7,7 +7,7 @@
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterCross.h"
 #include "Slate/SlateApplication.h"
-#include "Input/InputSystem.h"
+#include "Engine/Input/InputRouter.h"
 #include "Engine/Component/GizmoComponent.h"
 #include "EditorEngine.h"
 
@@ -87,7 +87,7 @@ void FEditorViewportLayout::UpdateHoverStates()
 	if (!Window)
 		return;
 	
-	POINT MousePt = InputSystem::Get().GetMousePos();
+	POINT MousePt = FInputRouter::GetMousePos();
 	MousePt = Window->ScreenToClientPoint(MousePt);
 	const int32 MouseX = static_cast<int32>(MousePt.x);
 	const int32 MouseY = static_cast<int32>(MousePt.y);
@@ -95,7 +95,7 @@ void FEditorViewportLayout::UpdateHoverStates()
 	// 독점 조작 중(회전·팬·궤도)인 뷰포트가 있으면 해당 뷰포트만 hovered 유지합니다.
 	// 조작 중 마우스가 다른 뷰포트로 이동해도 입력이 누수되지 않도록 막습니다.
 
-	const FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	const FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 
 	// Viewport host 밖이면 모든 hover를 해제합니다.
 
@@ -108,48 +108,38 @@ void FEditorViewportLayout::UpdateHoverStates()
 		return;
 	}
 
-	// Find Active Viewport 
-	int32 ActiveOpViewport = -1;
-	for (int32 i = 0; i < MaxViewports; ++i)
+	int32 HoveredViewport = -1;
+	for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
 	{
-		if (GetViewportClient(i)->IsActiveOperation())
+		if (GetSceneViewport(i).GetRect().Contains(MouseX, MouseY))
 		{
-			ActiveOpViewport = i;
+			HoveredViewport = i;
 			break;
 		}
 	}
+
+	const bool bMouseButtonPressed = FInputRouter::GetKeyDown(VK_LBUTTON) || FInputRouter::GetKeyDown(VK_RBUTTON) || FInputRouter::GetKeyDown(VK_MBUTTON);
+	if (HoveredViewport >= 0 && bMouseButtonPressed)
+	{
+		SetLastFocusedViewportIndex(HoveredViewport);
+	}
+
+	const bool bAnyActiveOperation = FInputRouter::GetRightDragging() || FInputRouter::GetMiddleDragging();
+	const int32 ActiveOpViewport = bAnyActiveOperation ? LastFocusedViewportIndex : -1;
 
 	// 독점 조작하는 뷰포트가 있다면 상태값 유지 + 포커스 인덱스 갱신
 	if (ActiveOpViewport >= 0)
 	{
 		for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
 			GetViewportState(i).bHovered = (i == ActiveOpViewport);
-
-		SetLastFocusedViewportIndex(ActiveOpViewport);
 	}
 	else
 	{
 		// Hover 된 뷰포트 찾아서 상태값 변경하기
-		bool bFoundHover = false;
 		for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
 		{
 			FEditorViewportState& ViewportState = GetViewportState(i);
-			FViewportRect ViewportRect = GetSceneViewport(i).GetRect();
-			if (!bFoundHover && ViewportRect.Contains(MouseX, MouseY))
-			{
-				ViewportState.bHovered = true;
-				bFoundHover = true;
-
-				// 좌클릭 시 해당 뷰포트를 마지막 포커스로 등록
-				if (InputSystem::Get().GetKeyDown(VK_LBUTTON))
-				{
-					SetLastFocusedViewportIndex(i);
-				}
-			}
-			else
-			{
-				ViewportState.bHovered = false;
-			}
+			ViewportState.bHovered = (i == HoveredViewport);
 		}
 	}
 }
@@ -285,9 +275,7 @@ void FEditorViewportLayout::BuildViewportLayout(int32 Width, int32 Height)
 	}
 
 	// 초기 크기 → 자식 영역 재귀 계산
-	const FViewportRect LayoutRect = (HostRect.Width > 0 && HostRect.Height > 0)
-		? HostRect
-		: FViewportRect(0, 0, Width, Height);
+	const FViewportRect LayoutRect = (HostRect.Width > 0 && HostRect.Height > 0) ? HostRect : FViewportRect(0, 0, Width, Height);
 	RootSplitterV->SetRect({
 		static_cast<float>(LayoutRect.X),
 		static_cast<float>(LayoutRect.Y),

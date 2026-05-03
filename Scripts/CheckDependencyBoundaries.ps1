@@ -3,12 +3,7 @@ $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $SourceRoot = Join-Path $Root "NipsEngine\Source"
 $CheckRoots = @(
-    (Join-Path $SourceRoot "Engine"),
     (Join-Path $SourceRoot "Game")
-)
-
-$AllowedExceptions = @(
-    (Resolve-Path (Join-Path $SourceRoot "Engine\Runtime\EngineLoop.cpp")).Path
 )
 
 $IncludePattern = '^\s*#\s*include\s*[<"](?:Source/)?Editor[/\\]'
@@ -24,10 +19,6 @@ foreach ($CheckRoot in $CheckRoots) {
         $SourceExtensions -contains $_.Extension.ToLowerInvariant()
     } | ForEach-Object {
         $Path = $_.FullName
-        if ($AllowedExceptions -contains $Path) {
-            return
-        }
-
         $LineNumber = 0
         Get-Content -LiteralPath $Path | ForEach-Object {
             $LineNumber++

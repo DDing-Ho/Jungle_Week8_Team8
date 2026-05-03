@@ -11,8 +11,9 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include "Render/Renderer/Renderer.h"
-#include "Engine/Input/InputSystem.h"
-#include "Engine/UI/GameUISystem.h"
+#include "Engine/Input/InputRouter.h"
+#include "Game/UI/GameUISystem.h"
+
 namespace
 {
 void SetOpaqueBlendStateCallback(const ImDrawList*, const ImDrawCmd* Cmd)
@@ -222,18 +223,10 @@ void FEditorMainPanel::Update()
 	}
 
 	const bool bPropertyModalBlockingInput = PropertyWidget.IsModalInputBlocking();
-	FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 	GuiState.bBlockViewportInput = bPropertyModalBlockingInput;
 	GuiState.bUsingMouse = bPropertyModalBlockingInput || (bViewportOperationActive ? false : IO.WantCaptureMouse);
 	GuiState.bUsingKeyboard = bPropertyModalBlockingInput || IO.WantCaptureKeyboard;
-
-	//	Focus는 MainPanel에서 입력 받음
-	if (EditorEngine && InputSystem::Get().GetKeyUp('F') && !IO.WantTextInput && !bPropertyModalBlockingInput)
-	{
-		FEditorViewportLayout& Layout = EditorEngine->GetViewportLayout();
-		const int32 FocusedIdx = Layout.GetLastFocusedViewportIndex();
-		Layout.GetViewportClient(FocusedIdx)->FocusSelection();
-	}
 
 	// IME는 ImGui가 텍스트 입력을 원할 때만 활성화.
 	// 그 외에는 OS 수준에서 IME 컨텍스트를 NULL로 연결해 한글 조합이
@@ -260,7 +253,7 @@ void FEditorMainPanel::RenderViewportHostWindow()
 	if (!EditorEngine)
 		return;
 	constexpr ImGuiWindowFlags WindowFlags = 0;
-	FGuiInputState& GuiState = InputSystem::Get().GetGuiInputState();
+	FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
 
 	if (!ImGui::Begin("Viewport", nullptr, WindowFlags))
 	{

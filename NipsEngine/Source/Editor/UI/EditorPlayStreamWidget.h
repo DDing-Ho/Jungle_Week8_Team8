@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Editor/UI/EditorWidget.h"
 #include "ImGui/imgui.h"
 
@@ -9,8 +9,8 @@ public:
 
 private:
 	const char* PlayLabel   = "▶ Play";
-    const char* ResumeLabel = "▶ Resume";
-    const char* PauseLabel  = "❚❚ Pause"; 
-    const char* StopLabel   = "■ Stop";
+	const char* ResumeLabel = "▶ Resume";
+	const char* PauseLabel  = "❚❚ Pause"; 
+	const char* StopLabel   = "■ Stop";
 };
 

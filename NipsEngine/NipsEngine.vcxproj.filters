@@ -59,10 +59,7 @@
       <UniqueIdentifier>{a5b9b888-60c7-ef17-a883-5cc31c907635}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Component\Physics">
-      <UniqueIdentifier>{77d72843-56b7-4687-8ae2-07b1d8e6ed59}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Engine\Physics">
-      <UniqueIdentifier>{7d0b2509-2e01-40f1-b6c5-768f35257981}</UniqueIdentifier>
+      <UniqueIdentifier>{b676be89-f9d2-e6c1-9dc0-9a58c806e01c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Core">
       <UniqueIdentifier>{8b69df27-06f7-dea9-00be-7dcc5bcae5a6}</UniqueIdentifier>
@@ -154,23 +151,11 @@
     <Filter Include="Source\Game\Settings">
       <UniqueIdentifier>{01fbe95f-106d-f15c-9519-d37eb877a7df}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Game\UI">
+      <UniqueIdentifier>{24b0520d-f070-bb4e-e2fa-92d953623ce5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Game\Viewport">
       <UniqueIdentifier>{24b40836-3894-0777-eac4-651121dc7f81}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Misc">
-      <UniqueIdentifier>{80bb3fb1-78dd-ab3e-b9d5-e1cee5602ed0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Misc\ObjViewer">
-      <UniqueIdentifier>{00d409af-9f90-b6ea-7791-4069f50caa8d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Misc\ObjViewer\Settings">
-      <UniqueIdentifier>{c00cbebe-d7ae-beca-0474-aebd61a4b52f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Misc\ObjViewer\UI">
-      <UniqueIdentifier>{72266e28-9f63-7b46-8ace-2ce3ef8fcb5c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Misc\ObjViewer\Viewport">
-      <UniqueIdentifier>{a92070af-a018-ee07-ea50-1f65e812c419}</UniqueIdentifier>
     </Filter>
     <Filter Include="ThirdParty">
       <UniqueIdentifier>{1733db68-5028-c18d-f0ab-eeb42860f9f8}</UniqueIdentifier>
@@ -298,9 +283,6 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp">
       <Filter>Source\Editor</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Input\EditorInputRouter.cpp">
-      <Filter>Source\Editor\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Input\EditorWorldController.cpp">
       <Filter>Source\Editor\Input</Filter>
@@ -494,9 +476,6 @@
     <ClCompile Include="Source\Engine\Component\Physics\RigidBodyComponent.cpp">
       <Filter>Source\Engine\Component\Physics</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Physics\JoltPhysicsSystem.cpp">
-      <Filter>Source\Engine\Physics</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Core\CrashDump.cpp">
       <Filter>Source\Engine\Core</Filter>
     </ClCompile>
@@ -553,6 +532,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Geometry\Transform.cpp">
       <Filter>Source\Engine\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputRouter.cpp">
+      <Filter>Source\Engine\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Engine\Input</Filter>
@@ -812,41 +794,32 @@
     <ClCompile Include="Source\Game\GameTypes.cpp">
       <Filter>Source\Game</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Game\Input\GameInputRouter.cpp">
-      <Filter>Source\Game\Input</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Game\Input\GamePlayerController.cpp">
       <Filter>Source\Game\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp">
       <Filter>Source\Game\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Game\UI\DialoguePanel.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\EndingPanel.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\GameUISystem.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\HUDPanel.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\PauseMenuPanel.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\StartMenuPanel.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
       <Filter>Source\Game\Viewport</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\ObjViewerEngine.cpp">
-      <Filter>Source\Misc\ObjViewer</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\ObjViewerRenderPipeline.cpp">
-      <Filter>Source\Misc\ObjViewer</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\Settings\ObjViewerSettings.cpp">
-      <Filter>Source\Misc\ObjViewer\Settings</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\UI\ObjViewerControlWidget.cpp">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\UI\ObjViewerMainPanel.cpp">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\UI\ObjViewerMenuBarWIdget.cpp">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\UI\ObjViewerStatWidget.cpp">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Misc\ObjViewer\Viewport\ObjViewerViewportClient.cpp">
-      <Filter>Source\Misc\ObjViewer\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="ThirdParty\ImGui\imgui.cpp">
       <Filter>ThirdParty\ImGui</Filter>
@@ -870,12 +843,6 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer\GameRenderPipeline.cpp" />
-    <ClCompile Include="Source\Engine\Runtime\GameEngine.cpp" />
-    <ClCompile Include="Source\Engine\UI\GameUISystem.cpp" />
-    <ClCompile Include="Source\Engine\UI\HUDPanel.cpp" />
-    <ClCompile Include="Source\Engine\UI\PauseMenuPanel.cpp" />
-    <ClCompile Include="Source\Engine\UI\DialoguePanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -885,9 +852,6 @@
       <Filter>Source\Editor</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\BaseEditorController.h">
-      <Filter>Source\Editor\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\Input\EditorInputRouter.h">
       <Filter>Source\Editor\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Input\EditorWorldController.h">
@@ -1097,9 +1061,6 @@
     <ClInclude Include="Source\Engine\Component\Physics\RigidBodyComponent.h">
       <Filter>Source\Engine\Component\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Physics\JoltPhysicsSystem.h">
-      <Filter>Source\Engine\Physics</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Core\CollisionTypes.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
@@ -1227,6 +1188,9 @@
       <Filter>Source\Engine\Geometry</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\IInputController.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputRouter.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
@@ -1562,9 +1526,6 @@
     <ClInclude Include="Source\Game\Input\BaseGameController.h">
       <Filter>Source\Game\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Game\Input\GameInputRouter.h">
-      <Filter>Source\Game\Input</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Game\Input\GamePlayerController.h">
       <Filter>Source\Game\Input</Filter>
     </ClInclude>
@@ -1574,35 +1535,26 @@
     <ClInclude Include="Source\Game\Settings\GameSettings.h">
       <Filter>Source\Game\Settings</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Game\UI\DialoguePanel.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\EndingPanel.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\GameUISystem.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\HUDPanel.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\PauseMenuPanel.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\StartMenuPanel.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h">
       <Filter>Source\Game\Viewport</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\ObjViewerEngine.h">
-      <Filter>Source\Misc\ObjViewer</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\ObjViewerRenderPipeline.h">
-      <Filter>Source\Misc\ObjViewer</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\Settings\ObjViewerSettings.h">
-      <Filter>Source\Misc\ObjViewer\Settings</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\UI\ObjViewerControlWidget.h">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\UI\ObjViewerMainPanel.h">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\UI\ObjViewerMenuBarWIdget.h">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\UI\ObjViewerStatWidget.h">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\UI\ObjViewerWidget.h">
-      <Filter>Source\Misc\ObjViewer\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Misc\ObjViewer\Viewport\ObjViewerViewportClient.h">
-      <Filter>Source\Misc\ObjViewer\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\ImGui\imconfig.h">
       <Filter>ThirdParty\ImGui</Filter>
@@ -1631,11 +1583,6 @@
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp">
       <Filter>ThirdParty\SimpleJSON</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Renderer\GameRenderPipeline.h" />
-    <ClInclude Include="Source\Engine\Runtime\GameEngine.h" />
-    <ClInclude Include="Source\Engine\UI\GameUISystem.h" />
-    <ClInclude Include="Source\Engine\UI\HUDPanel.h" />
-    <ClInclude Include="Source\Engine\UI\PauseMenuPanel.h" />
     <ClInclude Include="ThirdParty\sol\as_args.hpp">
       <Filter>ThirdParty\sol</Filter>
     </ClInclude>
@@ -1972,9 +1919,5 @@
     <ClInclude Include="ThirdParty\sol\stack\detail\pairs.hpp">
       <Filter>ThirdParty\sol\stack\detail</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Input\IInputController.h">
-      <Filter>Source\Engine\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\UI\DialoguePanel.h" />
   </ItemGroup>
 </Project>

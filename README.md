@@ -9,7 +9,6 @@ Current vcpkg dependencies:
 
 - `luajit`: LuaJIT runtime for Lua scripting. This is Lua 5.1 compatible, so avoid Lua 5.4-only syntax/API.
 - `miniaudio`: audio playback and spatial audio backend.
-- `joltphysics`: rigid body physics backend used by `RigidBodyComponent` and `PhysicsHandleComponent`.
 
 Do not install dependencies one by one with commands like `vcpkg install lua`.
 Use the project manifest instead:
@@ -18,11 +17,7 @@ Use the project manifest instead:
 InstallLuaWithVcpkg.bat
 ```
 
-The Visual Studio project expects:
-
-- `vcpkg_installed/x64-windows/include/Jolt/Jolt.h`
-- `vcpkg_installed/x64-windows/debug/lib/Jolt.lib`
-- `vcpkg_installed/x64-windows/lib/Jolt.lib`
+The Visual Studio project expects LuaJIT and miniaudio under `vcpkg_installed/x64-windows/`.
 
 Build and test with `x64` configurations. `Debug | x64`, `Release | x64`, and `Game | x64` are the supported paths for the current dependency setup.
 
@@ -56,7 +51,7 @@ Use these physics settings as the baseline:
 - Heavy props that can move but should resist being pushed: blocking shape enabled, `Simulate Physics` enabled, high `Mass`, `Can Be Picked Up` disabled.
 - Small props the player can hold: blocking shape enabled, `Simulate Physics` enabled, lower `Mass`, `Can Be Picked Up` enabled.
 
-`Mass` is applied to Jolt dynamic bodies when `Simulate Physics` is enabled.
+`Mass` is used by impulse-based movement when `Simulate Physics` is enabled.
 Turning `Use Gravity` off only disables gravity; it does not make the object fixed.
 
 ## 실행 준비
@@ -76,7 +71,7 @@ Turning `Use Gravity` off only disables gravity; it does not make the object fix
 - vcpkg가 없으면 확인 후 선택한 폴더 아래 `vcpkg` 폴더를 만들고 clone/bootstrap합니다.
 - `vcpkg install --triplet x64-windows`는 반드시 프로젝트 루트에서 실행되어 `vcpkg_installed` 폴더가 프로젝트 루트 아래에 생성됩니다.
 
-LuaJIT, miniaudio, Jolt Physics 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니다. LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다. `vcpkg install lua`처럼 개별 패키지만 따로 설치하지 말고 프로젝트 루트에서 `vcpkg install --triplet x64-windows`를 실행합니다.
+LuaJIT, miniaudio 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니다. LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다. `vcpkg install lua`처럼 개별 패키지만 따로 설치하지 말고 프로젝트 루트에서 `vcpkg install --triplet x64-windows`를 실행합니다.
 
 ### 3. 빌드 및 실행
 

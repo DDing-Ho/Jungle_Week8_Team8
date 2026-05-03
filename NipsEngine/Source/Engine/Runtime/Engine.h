@@ -57,6 +57,7 @@ public:
 protected:
 	void Render(float DeltaTime);
 	void SetRenderPipeline(std::unique_ptr<IRenderPipeline> InPipeline);
+	void UpdateInputWorldType();
 	virtual void WorldTick(float DeltaTime);
 
 protected:

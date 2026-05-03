@@ -6,8 +6,6 @@
 #include "Component/Physics/RigidBodyComponent.h"
 #include "GameFramework/World.h"
 
-#include "UI/GameUISystem.h"
-
 DEFINE_CLASS(AActor, UObject)
 REGISTER_FACTORY(AActor)
 

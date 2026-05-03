@@ -20,6 +20,7 @@ PROJECT_NAME = "NipsEngine"
 PROJECT_DIR = ROOT / PROJECT_NAME
 PROJECT_GUID = "{55068e81-c0a0-49f9-ab7b-54aea968722b}"
 ROOT_NAMESPACE = "Week2"
+VCPKG_TRIPLET = "x64-windows"
 
 SOLUTION_GUID = "{4EBC5DD2-CECA-4722-9D19-87C7CB5F481B}"
 VS_PROJECT_TYPE = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
@@ -29,7 +30,6 @@ CONFIGURATIONS = [
     ("Release", "Win32"),
     ("Debug", "x64"),
     ("Release", "x64"),
-    ("ObjViewer", "x64"),
     ("Game", "x64"),
 ]
 
@@ -38,8 +38,6 @@ SOLUTION_CONFIGURATIONS = [
     ("Debug", "x86", "Debug", "Win32"),
     ("Game", "x64", "Game", "x64"),
     ("Game", "x86", "Game", "x64"),
-    ("ObjViewer", "x64", "ObjViewer", "x64"),
-    ("ObjViewer", "x86", "ObjViewer", "x64"),
     ("Release", "x64", "Release", "x64"),
     ("Release", "x86", "Release", "Win32"),
 ]
@@ -68,28 +66,23 @@ INCLUDE_PATHS = [
     "ThirdParty\\ImGui",
     "Source\\Editor",
     ".",
-    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\include",
-    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\include\\luajit",
+    f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\include",
+    f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\include\\luajit",
 ]
 
 GAME_EXCLUDED_PREFIXES = (
     "Source\\Editor\\",
-    "Source\\Misc\\ObjViewer\\",
-)
-
-EDITOR_EXCLUDED_PREFIXES = (
-    "Source\\Game\\",
 )
 
 # Library paths (relative to project dir)
 LIBRARY_PATHS = []
 
 VCPKG_DEBUG_LIBRARY_PATHS = [
-    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\debug\\lib",
+    f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\debug\\lib",
 ]
 
 VCPKG_RELEASE_LIBRARY_PATHS = [
-    "$(ProjectDir)..\\vcpkg_installed\\x64-windows\\lib",
+    f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\lib",
 ]
 
 # NuGet packages (id, version) — restored via packages.config
@@ -185,7 +178,7 @@ def should_exclude_from_config(rel_path: str, cfg: str) -> bool:
         if normalized == "Source\\Engine\\Render\\Renderer\\GameRenderPipeline.cpp":
             return True
         return normalized.startswith(GAME_EXCLUDED_PREFIXES)
-    return normalized.startswith(EDITOR_EXCLUDED_PREFIXES)
+    return False
 
 
 def library_paths_for_config(cfg: str, plat: str) -> list[str]:
@@ -260,6 +253,8 @@ def generate_vcxproj(files: dict[str, list[str]]):
     ET.SubElement(pg, "ProjectGuid").text = PROJECT_GUID
     ET.SubElement(pg, "RootNamespace").text = ROOT_NAMESPACE
     ET.SubElement(pg, "WindowsTargetPlatformVersion").text = "10.0"
+    ET.SubElement(pg, "VcpkgEnabled").text = "false"
+    ET.SubElement(pg, "VcpkgTriplet").text = VCPKG_TRIPLET
 
     ET.SubElement(proj, "Import", Project="$(VCTargetsPath)\\Microsoft.Cpp.Default.props")
 
@@ -267,7 +262,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
     for cfg, plat in CONFIGURATIONS:
         cond = f"'$(Configuration)|$(Platform)'=='{cfg}|{plat}'"
         pg = ET.SubElement(proj, "PropertyGroup", Condition=cond, Label="Configuration")
-        is_release = cfg in ("Release", "ObjViewer", "Game")
+        is_release = cfg in ("Release", "Game")
         ET.SubElement(pg, "ConfigurationType").text = "Application"
         ET.SubElement(pg, "UseDebugLibraries").text = "false" if is_release else "true"
         ET.SubElement(pg, "PlatformToolset").text = "v143"
@@ -310,8 +305,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
         cl = ET.SubElement(idg, "ClCompile")
         ET.SubElement(cl, "WarningLevel").text = "Level3"
 
-        is_release = cfg in ("Release", "ObjViewer", "Game")
-        is_viewer = cfg == "ObjViewer"
+        is_release = cfg in ("Release", "Game")
         is_game = cfg == "Game"
         is_win32 = plat == "Win32"
         is_x64 = plat == "x64"
@@ -331,12 +325,9 @@ def generate_vcxproj(files: dict[str, list[str]]):
             defs += "WITH_GAME=1;"
         else:
             defs += "WITH_EDITOR=1;"
-            if is_viewer:
-                defs += "IS_OBJ_VIEWER=1;"
 
         if is_x64:
             defs += "WITH_LUA=1;"
-            defs += "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_OBJECT_STREAM;"
 
         defs += "NOMINMAX;%(PreprocessorDefinitions);"
         ET.SubElement(cl, "PreprocessorDefinitions").text = defs
@@ -353,7 +344,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(link, "SubSystem").text = "Windows" if is_x64 else "Console"
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
         if is_x64:
-            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;Jolt.lib;%(AdditionalDependencies)"
+            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;%(AdditionalDependencies)"
 
         if is_game:
             pre_build = ET.SubElement(idg, "PreBuildEvent")
