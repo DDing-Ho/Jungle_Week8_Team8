@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "None",
   "Name" : "PhysicsTest",
-  "NextUUID" : 5528,
+  "NextUUID" : 6783,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-17.236008, 0.435626, 3.669586],
+    "Location" : [-13.863192, -7.569337, 3.754854],
     "NearClip" : 0.100000,
-    "Rotation" : [-0.834656, 26.202122, 1.889795]
+    "Rotation" : [-1.852325, 5.035415, 20.226995]
   },
   "Primitives" : {
     "1307" : {
@@ -2433,7 +2433,7 @@
       "SimulatePhysics" : false,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 3666,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : false,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
@@ -2456,7 +2456,7 @@
       "SimulatePhysics" : true,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 2655,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
@@ -2611,6 +2611,48 @@
       "Scroll V" : 0.000000,
       "Type" : "UStaticMeshComponent",
       "Visible" : true
+    },
+    "6369" : {
+      "BlockComponent" : true,
+      "BoxExtent" : [0.100000, 0.100000, 1.900000],
+      "DebugBoundsVisibility" : 0,
+      "DrawOnlyIfSelected" : false,
+      "EditorOnly" : false,
+      "EnableCull" : false,
+      "EnableTick" : true,
+      "GenerateOverlapEvents" : false,
+      "HiddenInEditor" : false,
+      "LineThickness" : 1.000000,
+      "Location" : [0.000000, 0.000000, -0.800000],
+      "ParentUUID" : 450,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
+      "Type" : "UBoxComponent",
+      "Visible" : true
+    },
+    "6370" : {
+      "AngularDamping" : 1.500000,
+      "AngularVelocity" : [0.000000, 0.000000, 0.000000],
+      "BodyType" : 1,
+      "CanBePickedUp" : true,
+      "DropSoundPath" : "",
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "GravityScale" : 1.000000,
+      "HiddenInEditor" : false,
+      "LinearDamping" : 1.500000,
+      "Mass" : 1.000000,
+      "MaxAngularSpeed" : 180.000000,
+      "MaxSpeed" : 50.000000,
+      "OwnerRootUUID" : 450,
+      "PickupSoundPath" : "",
+      "SimulatePhysics" : true,
+      "SleepSpeed" : 0.030000,
+      "Type" : "URigidBodyComponent",
+      "UpdatedComponentUUID" : 6369,
+      "UseGravity" : true,
+      "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "844" : {
       "BlockComponent" : false,

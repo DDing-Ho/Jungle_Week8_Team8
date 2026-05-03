@@ -36,6 +36,7 @@ private:
 
 private:
 	URigidBodyComponent* HeldBody = nullptr;
+	UWorld* HeldWorld = nullptr;
 	FVector HoldLocation = FVector::ZeroVector;
 	FVector HoldVelocity = FVector::ZeroVector;
 	FVector LastHoldLocation = FVector::ZeroVector;
