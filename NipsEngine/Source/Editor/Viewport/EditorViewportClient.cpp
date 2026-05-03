@@ -20,6 +20,32 @@
 #include <unordered_set>
 #include "GameFramework/PrimitiveActors.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/CameraComponent.h"
+
+namespace
+{
+	APawnActor* EnsurePlayerPawn(UWorld* World)
+	{
+		if (World == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (APawnActor* ExistingPawn = World->FindPawn())
+		{
+			return ExistingPawn;
+		}
+
+		APawnActor* Pawn = World->SpawnActor<APawnActor>();
+		Pawn->InitDefaultComponents();
+		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())
+		{
+			Pawn->SetActorLocation(PlayerStart->GetActorLocation());
+			Pawn->SetActorRotation(PlayerStart->GetActorRotation());
+		}
+		return Pawn;
+	}
+}
 
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow, UEditorEngine* InEditor)
 {
@@ -45,6 +71,7 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
+	APawnActor* Pawn = EnsurePlayerPawn(InWorld);
 	if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
 	{
 		Camera.SetProjectionType(EViewportProjectionType::Perspective);
@@ -55,6 +82,7 @@ void FEditorViewportClient::StartPIE(UWorld* InWorld)
 
 	GamePlayerController.SetCamera(nullptr);
 	GamePlayerController.SetWorld(InWorld);
+	GamePlayerController.SetPlayer(Pawn);
 	GamePlayerController.SetFreeCamera(&Camera);
 	if (bHasCameraSnapshot)
 	{

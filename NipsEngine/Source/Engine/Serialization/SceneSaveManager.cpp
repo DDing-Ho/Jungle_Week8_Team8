@@ -52,6 +52,7 @@ namespace SceneKeys
 	static constexpr const char* NearClip           = "NearClip";
 	static constexpr const char* FarClip            = "FarClip";
 	static constexpr const char* Type               = "Type";
+	static constexpr const char* ActorClass         = "ActorClass";
 	static constexpr const char* NextUUID           = "NextUUID";
 	static constexpr const char* ParentUUID         = "ParentUUID";
 	static constexpr const char* OwnerRootUUID      = "OwnerRootUUID"; // 비씬 컴포넌트가 속한 Actor의 루트 컴포넌트 UUID
@@ -130,7 +131,7 @@ json::JSON FSceneSaveManager::SerializeWorldToPrimitives(UWorld* World, const FW
             if (USceneComponent* RootComp = Actor->GetRootComponent())
             {
                 CollectComponentsFlat(RootComp, 0, Primitives);
-                //Primitives[std::to_string(RootComp->GetUUID())]["ActorClass"] = Actor->GetTypeInfo()->name;
+                Primitives[std::to_string(RootComp->GetUUID())][SceneKeys::ActorClass] = Actor->GetTypeInfo()->name;
                 CollectNonSceneComponents(Actor, Primitives);
             }
         }
@@ -446,7 +447,14 @@ void FSceneSaveManager::Save(const FString& FilePath, FWorldContext& WorldContex
 			
 			Writer.BeginObject(std::to_string(Comp->GetUUID()));
 			Comp->Serialize(Writer);
-			if (!Comp->IsA<USceneComponent>())
+			if (USceneComponent* SceneComp = Cast<USceneComponent>(Comp))
+			{
+				if (SceneComp == Actor->GetRootComponent())
+				{
+					Writer << SceneKeys::ActorClass << Actor->GetTypeInfo()->name;
+				}
+			}
+			else
 			{
 				if (USceneComponent* RootComp = Actor->GetRootComponent())
 				{
@@ -621,8 +629,11 @@ void FSceneSaveManager::Load(const FString& FilePath, FWorldContext& OutWorldCon
 	for (uint32 RootUUID : RootUUIDs)
 	{
 		FString CompType = PrimitivesNode[std::to_string(RootUUID)][SceneKeys::Type].ToString();
+		string ActorClass = PrimitivesNode[std::to_string(RootUUID)].hasKey(SceneKeys::ActorClass)
+			? PrimitivesNode[std::to_string(RootUUID)][SceneKeys::ActorClass].ToString()
+			: InferActorClass(CompType);
 		
-		AActor* NewActor = Cast<AActor>(FObjectFactory::Get().Create(InferActorClass(CompType)));
+		AActor* NewActor = Cast<AActor>(FObjectFactory::Get().Create(ActorClass));
 		if (NewActor)
         {
             NewActor->SetWorld(World);
@@ -803,13 +814,11 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
         USceneComponent* Comp = nullptr;
         if (!ParentComp)
         {
-            // 루트 컴포넌트: 대응하는 Actor 생성
-            // ActorClass가 저장되어 있으면 그대로, 없으면 컴포넌트 타입으로 추론 (하위 호환)
-            //string ActorClass = PrimJSON.hasKey("ActorClass")
-            //    ? PrimJSON["ActorClass"].ToString()
-            //    : InferActorClass(CompType);
-            //UObject* Obj = FObjectFactory::Get().Create(ActorClass);
-            UObject* Obj = FObjectFactory::Get().Create(InferActorClass(CompType));
+            // 루트 컴포넌트: 저장된 ActorClass가 있으면 그대로, 없으면 컴포넌트 타입으로 추론합니다.
+            const string ActorClass = PrimJSON.hasKey(SceneKeys::ActorClass)
+                ? PrimJSON[SceneKeys::ActorClass].ToString()
+                : InferActorClass(CompType);
+            UObject* Obj = FObjectFactory::Get().Create(ActorClass);
             AActor* NewActor = Cast<AActor>(Obj);
             if (!NewActor) return;
 

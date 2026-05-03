@@ -12,6 +12,7 @@
 #include "Serialization/Archive.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace
 {
@@ -200,6 +201,164 @@ namespace
 
 		return ResolvedDelta;
 	}
+
+	FVector ComputeAABBPushOut(const FAABB& MovingBounds, const FAABB& StaticBounds)
+	{
+		if (!IntersectsAABB(MovingBounds, StaticBounds))
+		{
+			return FVector::ZeroVector;
+		}
+
+		const FVector MovingCenter = MovingBounds.GetCenter();
+		const FVector StaticCenter = StaticBounds.GetCenter();
+		float BestOverlap = std::numeric_limits<float>::max();
+		int32 BestAxis = -1;
+		for (int32 Axis = 0; Axis < 3; ++Axis)
+		{
+			const float Overlap = GetAxisOverlap(MovingBounds, StaticBounds, Axis);
+			if (Overlap > 0.0f && Overlap < BestOverlap)
+			{
+				BestOverlap = Overlap;
+				BestAxis = Axis;
+			}
+		}
+
+		if (BestAxis < 0 || BestOverlap == std::numeric_limits<float>::max())
+		{
+			return FVector::ZeroVector;
+		}
+
+		FVector Push = FVector::ZeroVector;
+		const float Direction = MovingCenter[BestAxis] >= StaticCenter[BestAxis] ? 1.0f : -1.0f;
+		Push[BestAxis] = Direction * (BestOverlap + HoldCollisionSkin);
+		return Push;
+	}
+
+	FVector ResolveHeldBodyPenetration(UWorld* World, URigidBodyComponent* Body)
+	{
+		if (World == nullptr || Body == nullptr || Body->GetOwner() == nullptr)
+		{
+			return FVector::ZeroVector;
+		}
+
+		TArray<UPrimitiveComponent*> HeldShapes;
+		GatherBlockingShapes(Body->GetOwner(), HeldShapes);
+		if (HeldShapes.empty())
+		{
+			return FVector::ZeroVector;
+		}
+
+		FVector TotalPush = FVector::ZeroVector;
+		for (int32 Iteration = 0; Iteration < 4; ++Iteration)
+		{
+			FVector IterationPush = FVector::ZeroVector;
+			for (UPrimitiveComponent* HeldShape : HeldShapes)
+			{
+				if (HeldShape == nullptr)
+				{
+					continue;
+				}
+
+				const FAABB HeldBounds = ShiftAABB(HeldShape->GetWorldAABB(), TotalPush);
+				for (AActor* OtherActor : World->GetActors())
+				{
+					if (OtherActor == nullptr || OtherActor == Body->GetOwner() || !OtherActor->IsActive())
+					{
+						continue;
+					}
+
+					for (UPrimitiveComponent* OtherPrimitive : OtherActor->GetPrimitiveComponents())
+					{
+						if (!IsBlockingShape(OtherPrimitive))
+						{
+							continue;
+						}
+
+						const FVector Push = ComputeAABBPushOut(ShiftAABB(HeldBounds, IterationPush), OtherPrimitive->GetWorldAABB());
+						if (!Push.IsNearlyZero())
+						{
+							IterationPush += Push;
+						}
+					}
+				}
+			}
+
+			if (IterationPush.IsNearlyZero())
+			{
+				break;
+			}
+
+			TotalPush += IterationPush;
+		}
+
+		return TotalPush;
+	}
+
+	bool RaycastPrimitiveForPickup(UPrimitiveComponent* Primitive, const FRay& Ray, FHitResult& OutHit)
+	{
+		if (Primitive == nullptr || Primitive->IsEditorOnly())
+		{
+			return false;
+		}
+
+		const EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+		if (PrimType == EPrimitiveType::EPT_Billboard || PrimType == EPrimitiveType::EPT_Decal)
+		{
+			return false;
+		}
+
+		if (Cast<UShapeComponent>(Primitive))
+		{
+			if (!Primitive->IsBlockComponent())
+			{
+				return false;
+			}
+
+			return Primitive->RaycastMesh(Ray, OutHit) && OutHit.IsValid();
+		}
+
+		return Primitive->Raycast(Ray, OutHit) && OutHit.IsValid();
+	}
+
+	bool LineTracePickup(UWorld* World, const FRay& Ray, float MaxDistance, const AActor* IgnoredActor, FHitResult& OutHit)
+	{
+		if (World == nullptr)
+		{
+			return false;
+		}
+
+		FWorldSpatialIndex::FPrimitiveRayQueryScratch Scratch;
+		TArray<UPrimitiveComponent*> Candidates;
+		TArray<float> BroadHitTs;
+		World->GetSpatialIndex().RayQueryPrimitives(Ray, Candidates, BroadHitTs, Scratch);
+
+		bool bFoundHit = false;
+		float ClosestDistance = MaxDistance;
+		for (UPrimitiveComponent* Candidate : Candidates)
+		{
+			if (Candidate == nullptr || Candidate->GetOwner() == IgnoredActor)
+			{
+				continue;
+			}
+
+			FHitResult CandidateHit;
+			if (!RaycastPrimitiveForPickup(Candidate, Ray, CandidateHit))
+			{
+				continue;
+			}
+
+			if (CandidateHit.Distance < 0.0f || CandidateHit.Distance > ClosestDistance)
+			{
+				continue;
+			}
+
+			ClosestDistance = CandidateHit.Distance;
+			OutHit = CandidateHit;
+			bFoundHit = true;
+		}
+
+		return bFoundHit;
+	}
 }
 
 DEFINE_CLASS(UPhysicsHandleComponent, UActorComponent)
@@ -216,10 +375,12 @@ void UPhysicsHandleComponent::Serialize(FArchive& Ar)
 	Ar << "TraceDistance" << TraceDistance;
 	Ar << "DefaultHoldDistance" << DefaultHoldDistance;
 	Ar << "HoldDistance" << HoldDistance;
+	Ar << "SizeDistanceScale" << SizeDistanceScale;
+	Ar << "MaxSizeDistanceOffset" << MaxSizeDistanceOffset;
 	Ar << "SpringStrength" << SpringStrength;
 	Ar << "Damping" << Damping;
 	Ar << "MaxHoldSpeed" << MaxHoldSpeed;
-
+	  
 	if (Ar.IsLoading())
 	{
 		ClampEditableValues();
@@ -232,6 +393,8 @@ void UPhysicsHandleComponent::GetEditableProperties(TArray<FPropertyDescriptor>&
 	OutProps.push_back({ "Trace Distance", EPropertyType::Float, &TraceDistance, 0.1f, 100.0f, 0.1f });
 	OutProps.push_back({ "Default Hold Distance", EPropertyType::Float, &DefaultHoldDistance, 0.1f, 20.0f, 0.1f });
 	OutProps.push_back({ "Hold Distance", EPropertyType::Float, &HoldDistance, 0.1f, 20.0f, 0.1f });
+	OutProps.push_back({ "Size Distance Scale", EPropertyType::Float, &SizeDistanceScale, 0.0f, 5.0f, 0.05f });
+	OutProps.push_back({ "Max Size Distance Offset", EPropertyType::Float, &MaxSizeDistanceOffset, 0.0f, 20.0f, 0.1f });
 	OutProps.push_back({ "Spring Strength", EPropertyType::Float, &SpringStrength, 0.0f, 1000.0f, 1.0f });
 	OutProps.push_back({ "Damping", EPropertyType::Float, &Damping, 0.0f, 1000.0f, 0.1f });
 	OutProps.push_back({ "Max Hold Speed", EPropertyType::Float, &MaxHoldSpeed, 0.0f, 1000.0f, 0.1f });
@@ -245,7 +408,17 @@ void UPhysicsHandleComponent::PostEditProperty(const char* PropertyName)
 
 bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FViewportCamera* Camera)
 {
-	if (World == nullptr || Camera == nullptr || HeldBody != nullptr)
+	if (Camera == nullptr)
+	{
+		return false;
+	}
+
+	return TryGrab(World, Camera->GetLocation(), Camera->GetForwardVector());
+}
+
+bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocation, const FVector& CameraForward)
+{
+	if (World == nullptr || HeldBody != nullptr)
 	{
 		return false;
 	}
@@ -253,8 +426,14 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FViewportCamera* Came
 	ClampEditableValues();
 
 	FHitResult Hit;
-	const FRay Ray(Camera->GetLocation(), Camera->GetForwardVector().GetSafeNormal());
-	if (!World->LineTraceSingle(Ray, TraceDistance, Hit))
+	const FVector Forward = CameraForward.GetSafeNormal();
+	if (Forward.IsNearlyZero())
+	{
+		return false;
+	}
+
+	const FRay Ray(CameraLocation, Forward);
+	if (!LineTracePickup(World, Ray, TraceDistance, GetOwner(), Hit))
 	{
 		return false;
 	}
@@ -270,6 +449,8 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FViewportCamera* Came
 	HoldLocation = Body->GetPhysicsLocation();
 	LastHoldLocation = HoldLocation;
 	HoldVelocity = FVector::ZeroVector;
+	HoldDistanceOffset = ComputeHoldDistanceOffset(Body, CameraLocation, Forward);
+	CurrentHoldDistance = HoldDistance + HoldDistanceOffset;
 	Body->SetHeldByPhysicsHandle(true);
 	Body->SetVelocity(FVector::ZeroVector);
 	Body->PlayPickupSound();
@@ -288,6 +469,8 @@ void UPhysicsHandleComponent::Release()
 		HeldBody = nullptr;
 		HeldWorld = nullptr;
 		HoldVelocity = FVector::ZeroVector;
+		HoldDistanceOffset = 0.0f;
+		CurrentHoldDistance = 0.0f;
 		return;
 	}
 
@@ -297,11 +480,23 @@ void UPhysicsHandleComponent::Release()
 	HeldBody = nullptr;
 	HeldWorld = nullptr;
 	HoldVelocity = FVector::ZeroVector;
+	HoldDistanceOffset = 0.0f;
+	CurrentHoldDistance = 0.0f;
 }
 
 void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset, const FQuat* TargetRotation, bool bSnapToTarget)
 {
-	if (DeltaTime <= 0.0f || HeldBody == nullptr || Camera == nullptr)
+	if (Camera == nullptr)
+	{
+		return;
+	}
+
+	TickHandle(DeltaTime, Camera->GetLocation(), Camera->GetForwardVector(), TargetOffset, TargetRotation, bSnapToTarget);
+}
+
+void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FVector& CameraLocation, const FVector& CameraForward, const FVector& TargetOffset, const FQuat* TargetRotation, bool bSnapToTarget)
+{
+	if (DeltaTime <= 0.0f || HeldBody == nullptr)
 	{
 		return;
 	}
@@ -311,6 +506,8 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 		HeldBody = nullptr;
 		HeldWorld = nullptr;
 		HoldVelocity = FVector::ZeroVector;
+		HoldDistanceOffset = 0.0f;
+		CurrentHoldDistance = 0.0f;
 		return;
 	}
 
@@ -319,7 +516,7 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	HoldLocation = HeldBody->GetPhysicsLocation();
 	LastHoldLocation = HoldLocation;
 
-	const FVector Target = GetHoldTarget(Camera, TargetOffset);
+	const FVector Target = GetHoldTarget(CameraLocation, CameraForward, TargetOffset);
 	if (bSnapToTarget)
 	{
 		HoldLocation = Target;
@@ -348,12 +545,24 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	HoldLocation += ResolvedDelta;
 	HoldVelocity = DeltaTime > 0.0f ? ResolvedDelta / DeltaTime : FVector::ZeroVector;
 	HeldBody->SetPhysicsLocation(HoldLocation);
-	HeldBody->SetVelocity(HoldVelocity);
+	const FVector PenetrationPush = ResolveHeldBodyPenetration(HeldWorld, HeldBody);
+	if (!PenetrationPush.IsNearlyZero())
+	{
+		const FVector PushNormal = PenetrationPush.GetSafeNormal();
+		const float IntoSurfaceSpeed = FVector::DotProduct(HoldVelocity, PushNormal);
+		if (IntoSurfaceSpeed < 0.0f)
+		{
+			HoldVelocity -= PushNormal * IntoSurfaceSpeed;
+		}
+
+		HoldLocation += PenetrationPush;
+		HeldBody->SetPhysicsLocation(HoldLocation);
+	}
 	if (TargetRotation)
 	{
 		HeldBody->SetPhysicsRotation(*TargetRotation);
 	}
-	HeldBody->SetVelocity(DeltaTime > 0.0f ? (HoldLocation - LastHoldLocation) / DeltaTime : FVector::ZeroVector);
+	HeldBody->SetVelocity(HoldVelocity);
 }
 
 URigidBodyComponent* UPhysicsHandleComponent::FindRigidBodyFromHit(const FHitResult& Hit) const
@@ -379,9 +588,62 @@ URigidBodyComponent* UPhysicsHandleComponent::FindRigidBodyFromHit(const FHitRes
 	return nullptr;
 }
 
-FVector UPhysicsHandleComponent::GetHoldTarget(const FViewportCamera* Camera, const FVector& TargetOffset) const
+FVector UPhysicsHandleComponent::GetHoldTarget(const FVector& CameraLocation, const FVector& CameraForward, const FVector& TargetOffset) const
 {
-	return Camera->GetLocation() + Camera->GetForwardVector().GetSafeNormal() * HoldDistance + TargetOffset;
+	const float TargetDistance = CurrentHoldDistance > 0.0f ? CurrentHoldDistance : (HoldDistance + HoldDistanceOffset);
+	return CameraLocation + CameraForward.GetSafeNormal() * TargetDistance + TargetOffset;
+}
+
+float UPhysicsHandleComponent::ComputeHoldDistanceOffset(URigidBodyComponent* Body, const FVector& CameraLocation, const FVector& CameraForward) const
+{
+	(void)CameraLocation;
+	if (Body == nullptr || Body->GetOwner() == nullptr || SizeDistanceScale <= 0.0f || MaxSizeDistanceOffset <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	TArray<UPrimitiveComponent*> BlockingShapes;
+	GatherBlockingShapes(Body->GetOwner(), BlockingShapes);
+	if (BlockingShapes.empty())
+	{
+		return 0.0f;
+	}
+
+	const FVector BodyLocation = Body->GetPhysicsLocation();
+	const FVector Forward = CameraForward.GetSafeNormal();
+	if (Forward.IsNearlyZero())
+	{
+		return 0.0f;
+	}
+
+	float RadiusTowardCamera = 0.0f;
+	for (UPrimitiveComponent* Shape : BlockingShapes)
+	{
+		if (Shape == nullptr)
+		{
+			continue;
+		}
+
+		const FAABB Bounds = Shape->GetWorldAABB();
+		const FVector Corners[8] = {
+			FVector(Bounds.Min.X, Bounds.Min.Y, Bounds.Min.Z),
+			FVector(Bounds.Min.X, Bounds.Min.Y, Bounds.Max.Z),
+			FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Min.Z),
+			FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Max.Z),
+			FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Min.Z),
+			FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Max.Z),
+			FVector(Bounds.Max.X, Bounds.Max.Y, Bounds.Min.Z),
+			FVector(Bounds.Max.X, Bounds.Max.Y, Bounds.Max.Z),
+		};
+
+		for (const FVector& Corner : Corners)
+		{
+			const float Projection = FVector::DotProduct(Corner - BodyLocation, Forward);
+			RadiusTowardCamera = std::max(RadiusTowardCamera, -Projection);
+		}
+	}
+
+	return std::min(RadiusTowardCamera * SizeDistanceScale, MaxSizeDistanceOffset);
 }
 
 void UPhysicsHandleComponent::ClampEditableValues()
@@ -389,6 +651,8 @@ void UPhysicsHandleComponent::ClampEditableValues()
 	TraceDistance = std::max(0.1f, TraceDistance);
 	DefaultHoldDistance = std::max(0.1f, DefaultHoldDistance);
 	HoldDistance = std::max(0.1f, HoldDistance);
+	SizeDistanceScale = std::max(0.0f, SizeDistanceScale);
+	MaxSizeDistanceOffset = std::max(0.0f, MaxSizeDistanceOffset);
 	SpringStrength = std::max(0.0f, SpringStrength);
 	Damping = std::max(0.0f, Damping);
 	MaxHoldSpeed = std::max(0.0f, MaxHoldSpeed);

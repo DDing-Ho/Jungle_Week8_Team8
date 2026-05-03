@@ -1,6 +1,7 @@
 ﻿#include "GameFramework/PrimitiveActors.h"
 
 #include "Component/DecalComponent.h"
+#include "Component/CameraComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Component/HeightFogComponent.h"
@@ -13,9 +14,13 @@
 #include "Component/HeightFogComponent.h"
 #include "Component/AudioZoneComponent.h"
 #include "Component/BillboardComponent.h"
+#include "Component/Physics/PhysicsHandleComponent.h"
 #include "Component/SubUVComponent.h"
 #include "Core/ResourceManager.h"
 #include <format>
+
+DEFINE_CLASS(APawnActor, AActor)
+REGISTER_FACTORY(APawnActor)
 
 DEFINE_CLASS(ASceneActor, AActor)
 REGISTER_FACTORY(ASceneActor)
@@ -61,6 +66,23 @@ REGISTER_FACTORY(AAudioZoneActor)
 
 DEFINE_CLASS(APlayerStartActor, AActor)
 REGISTER_FACTORY(APlayerStartActor)
+
+void APawnActor::InitDefaultComponents()
+{
+	USceneComponent* SceneRoot = AddComponent<USceneComponent>();
+	SetRootComponent(SceneRoot);
+
+	UCameraComponent* Camera = AddComponent<UCameraComponent>();
+	Camera->AttachToComponent(SceneRoot);
+
+	AddComponent<UPhysicsHandleComponent>();
+
+	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
+	Billboard->AttachToComponent(SceneRoot);
+	Billboard->SetEditorOnly(true);
+	Billboard->SetHiddenInEditor(true);
+	Billboard->SetTexturePath("Asset/Texture/Pawn_64x.png");
+}
 
 void ASceneActor::InitDefaultComponents()
 {

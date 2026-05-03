@@ -16,6 +16,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/World.h"
+#include "GameFramework/PrimitiveActors.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Audio/AudioSystem.h"
 #include "Core/Paths.h"
@@ -551,7 +552,27 @@ void UEditorEngine::StartPlaySession()
 
 	MainPanel.GetPropertyWidget().RestoreSelection(MappedPrimaryActor, MappedSelectedComponent, bPreviousActorSelected);
 
-	PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
+	UCameraComponent* PawnCamera = nullptr;
+	if (APawnActor* Pawn = PIEWorld->FindPawn())
+	{
+		for (UActorComponent* Component : Pawn->GetComponents())
+		{
+			if (UCameraComponent* CameraComponent = Cast<UCameraComponent>(Component))
+			{
+				PawnCamera = CameraComponent;
+				break;
+			}
+		}
+	}
+
+	if (PawnCamera)
+	{
+		PIEWorld->SetActiveCameraComponent(PawnCamera);
+	}
+	else
+	{
+		PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
+	}
 	PIEWorld->BeginPlay();
 }
 

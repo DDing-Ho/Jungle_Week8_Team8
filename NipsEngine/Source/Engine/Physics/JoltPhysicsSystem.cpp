@@ -29,7 +29,6 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
-#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
@@ -153,6 +152,11 @@ namespace
 		return Value > 0.001f ? Value : Fallback;
 	}
 
+	FVector AbsVector(const FVector& Vector)
+	{
+		return FVector(std::fabs(Vector.X), std::fabs(Vector.Y), std::fabs(Vector.Z));
+	}
+
 	void GatherBlockingShapes(AActor* Actor, TArray<UShapeComponent*>& OutShapes)
 	{
 		if (Actor == nullptr)
@@ -198,24 +202,36 @@ namespace
 	{
 		if (UBoxComponent* Box = Cast<UBoxComponent>(Primitive))
 		{
-			const FVector Extent = Box->GetBoxExtent();
+			const FVector Extent = AbsVector(Box->GetBoxExtent());
+			const FVector Scale = AbsVector(Box->GetWorldScale());
+			const FVector ScaledExtent(
+				Extent.X * SafePositive(Scale.X, 1.0f),
+				Extent.Y * SafePositive(Scale.Y, 1.0f),
+				Extent.Z * SafePositive(Scale.Z, 1.0f));
+			const float MinExtent = std::min({ ScaledExtent.X, ScaledExtent.Y, ScaledExtent.Z });
+			const float ConvexRadius = std::min(0.01f, std::max(0.0f, MinExtent * 0.25f));
 			return new JPH::BoxShape(
 				JPH::Vec3(
-					SafePositive(std::fabs(Extent.X), 0.05f),
-					SafePositive(std::fabs(Extent.Y), 0.05f),
-					SafePositive(std::fabs(Extent.Z), 0.05f)),
-				0.01f);
+					SafePositive(ScaledExtent.X, 0.05f),
+					SafePositive(ScaledExtent.Y, 0.05f),
+					SafePositive(ScaledExtent.Z, 0.05f)),
+				ConvexRadius);
 		}
 
 		if (USphereComponent* Sphere = Cast<USphereComponent>(Primitive))
 		{
-			return new JPH::SphereShape(SafePositive(std::fabs(Sphere->GetSphereRadius()), 0.05f));
+			const FVector Scale = AbsVector(Sphere->GetWorldScale());
+			const float MaxScale = std::max({ Scale.X, Scale.Y, Scale.Z });
+			return new JPH::SphereShape(SafePositive(std::fabs(Sphere->GetSphereRadius()) * SafePositive(MaxScale, 1.0f), 0.05f));
 		}
 
 		if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Primitive))
 		{
-			const float Radius = SafePositive(std::fabs(Capsule->GetCapsuleRadius()), 0.05f);
-			const float HalfCylinderHeight = std::max(0.01f, std::fabs(Capsule->GetCapsuleHalfHeight()) - Radius);
+			const FVector Scale = AbsVector(Capsule->GetWorldScale());
+			const float RadiusScale = SafePositive(std::max(Scale.X, Scale.Y), 1.0f);
+			const float HeightScale = SafePositive(Scale.Z, 1.0f);
+			const float Radius = SafePositive(std::fabs(Capsule->GetCapsuleRadius()) * RadiusScale, 0.05f);
+			const float HalfCylinderHeight = std::max(0.01f, std::fabs(Capsule->GetCapsuleHalfHeight()) * HeightScale - Radius);
 			return new JPH::CapsuleShape(HalfCylinderHeight, Radius);
 		}
 
@@ -252,23 +268,6 @@ namespace
 		OutRotation = (BodyTransform.GetRotation().Inverse() * ShapeTransform.GetRotation()).GetNormalized();
 	}
 
-	JPH::ShapeRefC ForceCenterOfMassToBodyOrigin(JPH::ShapeRefC Shape)
-	{
-		if (Shape == nullptr)
-		{
-			return nullptr;
-		}
-
-		const JPH::Vec3 CenterOfMass = Shape->GetCenterOfMass();
-		if (CenterOfMass.LengthSq() <= 0.000001f)
-		{
-			return Shape;
-		}
-
-		JPH::OffsetCenterOfMassShapeSettings OffsetSettings(-CenterOfMass, Shape.GetPtr());
-		return CreateShapeFromSettings(OffsetSettings);
-	}
-
 	JPH::ShapeRefC CreateJoltBodyShape(AActor* Actor, const USceneComponent* BodyComponent)
 	{
 		TArray<UShapeComponent*> BlockingShapes;
@@ -299,7 +298,7 @@ namespace
 				ToJoltLocalPosition(LocalPosition),
 				ToJoltQuat(LocalRotation),
 				LeafShape.GetPtr());
-			return ForceCenterOfMassToBodyOrigin(CreateShapeFromSettings(OffsetSettings));
+			return CreateShapeFromSettings(OffsetSettings);
 		}
 
 		JPH::StaticCompoundShapeSettings CompoundSettings;
@@ -320,7 +319,7 @@ namespace
 				LeafShape.GetPtr());
 		}
 
-		return ForceCenterOfMassToBodyOrigin(CreateShapeFromSettings(CompoundSettings));
+		return CreateShapeFromSettings(CompoundSettings);
 	}
 
 	JPH::BodyID MakeBodyID(uint32 RawBodyID)
@@ -419,6 +418,14 @@ bool FJoltPhysicsSystem::Initialize()
 		Impl->BroadPhaseLayerInterface,
 		Impl->ObjectVsBroadPhaseLayerFilter,
 		Impl->ObjectLayerPairFilter);
+	JPH::PhysicsSettings PhysicsSettings = Impl->PhysicsSystem.GetPhysicsSettings();
+	PhysicsSettings.mPenetrationSlop = 0.003f;
+	PhysicsSettings.mSpeculativeContactDistance = 0.04f;
+	PhysicsSettings.mLinearCastThreshold = 0.35f;
+	PhysicsSettings.mLinearCastMaxPenetration = 0.05f;
+	PhysicsSettings.mNumVelocitySteps = 12;
+	PhysicsSettings.mNumPositionSteps = 8;
+	Impl->PhysicsSystem.SetPhysicsSettings(PhysicsSettings);
 	Impl->PhysicsSystem.SetGravity(JPH::Vec3(0.0f, 0.0f, -9.8f));
 
 	bInitialized = true;
@@ -598,6 +605,10 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 	Settings.mGravityFactor = Body->IsGravityEnabled() ? Body->GetGravityScale() : 0.0f;
 	if (!bStaticBody)
 	{
+		Settings.mMotionQuality = JPH::EMotionQuality::LinearCast;
+		Settings.mUseManifoldReduction = false;
+		Settings.mNumVelocityStepsOverride = 12;
+		Settings.mNumPositionStepsOverride = 8;
 		Settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 		Settings.mMassPropertiesOverride.mMass = Body->GetMass();
 	}

@@ -26,6 +26,7 @@ void UAudioZoneComponent::BeginPlay()
 void UAudioZoneComponent::EndPlay()
 {
 	RemoveMix();
+	USceneComponent::EndPlay();
 }
 
 void UAudioZoneComponent::OnUnregister()

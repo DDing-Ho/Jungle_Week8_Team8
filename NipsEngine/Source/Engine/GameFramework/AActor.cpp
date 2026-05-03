@@ -74,6 +74,7 @@ void AActor::PostDuplicate(UObject* Original)
 	AActor* OrigActor = static_cast<AActor*>(Original);
 	OwningWorld = OrigActor->OwningWorld;
 	OwnedComponents.clear();
+	bHasBegunPlay = false;
 
 	// MovementComponent 등 일반 컴포넌트들의 참조를 복원하기 위한 맵을 선언합니다.
 	TMap<USceneComponent*, USceneComponent*> ComponentMap;
@@ -183,6 +184,10 @@ UActorComponent* AActor::AddComponentByClass(const FTypeInfo* Class)
 	OwnedComponents.push_back(Comp);
 	bPrimitiveCacheDirty = true;
 	Comp->OnRegister();
+	if (bHasBegunPlay && !Comp->HasBegunPlay())
+	{
+		Comp->BeginPlay();
+	}
 	return Comp;
 }
 
@@ -198,6 +203,10 @@ void AActor::RegisterComponent(UActorComponent* Comp)
 		OwnedComponents.push_back(Comp);
 		bPrimitiveCacheDirty = true;
 		Comp->OnRegister();
+		if (bHasBegunPlay && !Comp->HasBegunPlay())
+		{
+			Comp->BeginPlay();
+		}
 	}
 }
 
@@ -216,6 +225,11 @@ void AActor::RemoveComponent(UActorComponent* Component)
 {
 	if (!Component)
 		return;
+
+	if (Component->HasBegunPlay())
+	{
+		Component->EndPlay();
+	}
 
 	Component->OnUnregister();
 
@@ -321,9 +335,15 @@ void AActor::SetActorLocation(const FVector& NewLocation)
 
 void AActor::BeginPlay()
 {
+	if (bHasBegunPlay)
+	{
+		return;
+	}
+
+	bHasBegunPlay = true;
 	for (UActorComponent* Component : OwnedComponents)
 	{
-		if (Component)
+		if (Component && !Component->HasBegunPlay())
 		{
 			Component->BeginPlay();
 		}
@@ -343,6 +363,11 @@ void AActor::Tick(float DeltaTime)
 
 void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (!bHasBegunPlay)
+	{
+		return;
+	}
+
 	const TArray<UActorComponent*>& Components = OwnedComponents;
 
 	/**
@@ -357,6 +382,8 @@ void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			Components[i]->EndPlay();
 		}
 	}
+
+	bHasBegunPlay = false;
 }
 				
 

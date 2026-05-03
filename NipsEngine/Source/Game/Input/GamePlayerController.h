@@ -40,7 +40,7 @@ public:
 	void OnKeyReleased(int VK) override;
 	void OnWheelScrolled(float Notch) override;
 
-	void SetPlayer(AActor* InPlayer) { Player = InPlayer; }
+	void SetPlayer(AActor* InPlayer);
 	AActor* GetPlayer() const { return Player; }
 	void SetWorld(UWorld* InWorld);
 
@@ -68,6 +68,9 @@ private:
 	void TogglePickup();
 	UPhysicsHandleComponent* GetPhysicsHandle();
 	void DestroyPhysicsHandle();
+	void RefreshPawnComponents();
+	bool GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const;
+	bool GetActiveCameraBasis(FVector& OutLocation, FVector& OutForward, FVector& OutRight, FVector& OutUp) const;
 	void CaptureInitialRigidBodyRotations();
 	void ResetHeldBodyRotationToInitial();
 	bool IsRuntimeWorld() const;

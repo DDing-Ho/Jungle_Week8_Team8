@@ -1,5 +1,6 @@
 ﻿#include "GameFramework/World.h"
 #include "Collision/CollisionSystem.h"
+#include "Component/CameraComponent.h"
 #include "Component/Light/LightComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Audio/AudioSystem.h"
@@ -9,6 +10,14 @@
 
 DEFINE_CLASS(UWorld, UObject)
 REGISTER_FACTORY(UWorld)
+
+namespace
+{
+	bool ShouldRunBeginPlay(EWorldType WorldType)
+	{
+		return WorldType == EWorldType::PIE || WorldType == EWorldType::Game;
+	}
+}
 
 // FName, UUID 발급, 메모리 추적 등을 위해 UObjectManager를 통해 생성, 삭제한다.
 UWorld::UWorld()
@@ -42,7 +51,8 @@ void UWorld::PostDuplicate(UObject* Original)
 
 	// 프로퍼티 시스템에 노출되지 않은 필드를 직접 복사합니다.
 	WorldType      = OrigWorld->WorldType;
-	ActiveCamera   = OrigWorld->ActiveCamera;
+	ActiveCamera   = nullptr;
+	ActiveCameraComponent = nullptr;
 	bHasBegunPlay  = false; // 항상 미시작 상태로 시작
 
 	// PersistentLevel 을 깊은 복사한 뒤, 복제된 액터들의 소속을 새 월드로 재설정합니다.
@@ -92,19 +102,55 @@ APlayerStartActor* UWorld::FindPlayerStart() const
 	return nullptr;
 }
 
+APawnActor* UWorld::FindPawn() const
+{
+	if (PersistentLevel == nullptr)
+	{
+		return nullptr;
+	}
+
+	for (AActor* Actor : PersistentLevel->GetActors())
+	{
+		if (APawnActor* Pawn = Cast<APawnActor>(Actor))
+		{
+			if (Pawn->IsActive())
+			{
+				return Pawn;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 void UWorld::BeginPlay()
 {
-	bHasBegunPlay = true;
-	if (ActiveCamera && WorldType != EWorldType::Editor)
+	if (bHasBegunPlay || !ShouldRunBeginPlay(WorldType))
 	{
-		FAudioSystem::Get().SetListenerTransform(
-			ActiveCamera->GetLocation(),
-			ActiveCamera->GetForwardVector(),
-			ActiveCamera->GetUpVector());
+		return;
+	}
+
+	bHasBegunPlay = true;
+	if (WorldType != EWorldType::Editor)
+	{
+		if (ActiveCameraComponent)
+		{
+			FAudioSystem::Get().SetListenerTransform(
+				ActiveCameraComponent->GetWorldLocation(),
+				ActiveCameraComponent->GetForwardVector(),
+				ActiveCameraComponent->GetUpVector());
+		}
+		else if (ActiveCamera)
+		{
+			FAudioSystem::Get().SetListenerTransform(
+				ActiveCamera->GetLocation(),
+				ActiveCamera->GetForwardVector(),
+				ActiveCamera->GetUpVector());
+		}
 	}
 	PersistentLevel->BeginPlay();
 	RebuildSpatialIndex();
-	if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+	if (ShouldRunBeginPlay(WorldType))
 	{
 		FJoltPhysicsSystem::Get().RebuildWorld(this);
 	}
@@ -115,17 +161,27 @@ void UWorld::Tick(float DeltaTime)
 	if (!PersistentLevel)
 		return;
 
-	if (ActiveCamera && WorldType != EWorldType::Editor)
+	if (WorldType != EWorldType::Editor)
 	{
-		FAudioSystem::Get().SetListenerTransform(
-			ActiveCamera->GetLocation(),
-			ActiveCamera->GetForwardVector(),
-			ActiveCamera->GetUpVector());
+		if (ActiveCameraComponent)
+		{
+			FAudioSystem::Get().SetListenerTransform(
+				ActiveCameraComponent->GetWorldLocation(),
+				ActiveCameraComponent->GetForwardVector(),
+				ActiveCameraComponent->GetUpVector());
+		}
+		else if (ActiveCamera)
+		{
+			FAudioSystem::Get().SetListenerTransform(
+				ActiveCamera->GetLocation(),
+				ActiveCamera->GetForwardVector(),
+				ActiveCamera->GetUpVector());
+		}
 	}
 
 	if (WorldType == EWorldType::Editor)
 		PersistentLevel->TickEditor(DeltaTime);
-	else if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+	else if (ShouldRunBeginPlay(WorldType))
 	{
 		PersistentLevel->TickGame(DeltaTime);
 		FJoltPhysicsSystem::Get().Step(this, DeltaTime);
@@ -140,7 +196,7 @@ void UWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 	{
 		bHasBegunPlay = false;
 		PersistentLevel->EndPlay(EndPlayReason);
-		if (WorldType == EWorldType::PIE || WorldType == EWorldType::Game)
+		if (ShouldRunBeginPlay(WorldType))
 		{
 			FJoltPhysicsSystem::Get().Shutdown();
 		}
@@ -177,6 +233,14 @@ bool UWorld::LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& Out
 	for (UPrimitiveComponent* Candidate : Candidates)
 	{
 		if (Candidate == nullptr || Candidate->GetOwner() == IgnoredActor)
+		{
+			continue;
+		}
+		if (WorldType != EWorldType::Editor && Candidate->GetPrimitiveType() == EPrimitiveType::EPT_Billboard)
+		{
+			continue;
+		}
+		if (WorldType != EWorldType::Editor && Candidate->IsEditorOnly())
 		{
 			continue;
 		}

@@ -9,6 +9,7 @@ class UCameraComponent;
 class ULineBatchComponent;
 class FViewportCamera;
 class ULightComponentBase;
+class APawnActor;
 class APlayerStartActor;
 
 /**
@@ -54,11 +55,11 @@ public:
         // create and register an actor
         T* Actor = UObjectManager::Get().CreateObject<T>();
         Actor->SetWorld(this);
-        if (bHasBegunPlay)
+		PersistentLevel->AddActor(Actor);
+        if (bHasBegunPlay && !Actor->HasBegunPlay())
         {
             Actor->BeginPlay();
         }
-		PersistentLevel->AddActor(Actor);
         SpatialIndex.FlushDirtyBounds();
         return Actor;
     }
@@ -87,6 +88,7 @@ public:
     }
 
 	TArray<AActor*> GetActors() const { return PersistentLevel->GetActors(); }
+	APawnActor* FindPawn() const;
 	APlayerStartActor* FindPlayerStart() const;
 
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
@@ -104,7 +106,8 @@ public:
     bool HasBegunPlay() const { return bHasBegunPlay; }
 
     // Active Camera — EditorViewportClient 또는 PlayerController가 세팅
-    void SetActiveCamera(FViewportCamera* InCamera) { ActiveCamera = InCamera; }
+    void SetActiveCamera(FViewportCamera* InCamera) { ActiveCamera = InCamera; ActiveCameraComponent = nullptr; }
+	void SetActiveCameraComponent(UCameraComponent* InCamera) { ActiveCameraComponent = InCamera; ActiveCamera = nullptr; }
 	FViewportCamera* GetActiveCamera() const { return ActiveCamera; }
 
     /** @brief Access the world-level primitive AABB/BVH manager. */
@@ -126,6 +129,7 @@ private:
 	EWorldType WorldType = EWorldType::Editor;
 	ULevel* PersistentLevel = nullptr;
 	FViewportCamera* ActiveCamera = nullptr;
+	UCameraComponent* ActiveCameraComponent = nullptr;
     FWorldSpatialIndex SpatialIndex;
     bool bHasBegunPlay = false;
 

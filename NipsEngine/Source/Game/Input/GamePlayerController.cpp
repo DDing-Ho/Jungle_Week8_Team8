@@ -89,6 +89,13 @@ namespace
 		return FVector(-std::sin(YawRad), std::cos(YawRad), 0.0f).GetSafeNormal();
 	}
 
+	FVector ToWorldOffset(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& CameraLocalOffset)
+	{
+		return CameraForward.GetSafeNormal() * CameraLocalOffset.X
+			+ CameraRight.GetSafeNormal() * CameraLocalOffset.Y
+			+ CameraUp.GetSafeNormal() * CameraLocalOffset.Z;
+	}
+
 	FVector ToWorldOffset(const FViewportCamera* Camera, const FVector& CameraLocalOffset)
 	{
 		if (!Camera)
@@ -96,29 +103,22 @@ namespace
 			return FVector::ZeroVector;
 		}
 
-		return Camera->GetForwardVector().GetSafeNormal() * CameraLocalOffset.X
-			+ Camera->GetRightVector().GetSafeNormal() * CameraLocalOffset.Y
-			+ Camera->GetUpVector().GetSafeNormal() * CameraLocalOffset.Z;
+		return ToWorldOffset(Camera->GetForwardVector(), Camera->GetRightVector(), Camera->GetUpVector(), CameraLocalOffset);
 	}
 
-	FQuat BuildCameraLocalHandleRotation(const FViewportCamera* Camera, const FVector& HandleCameraLocalDirection)
+	FQuat BuildCameraLocalHandleRotation(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& HandleCameraLocalDirection)
 	{
-		if (!Camera)
+		const FVector Forward = CameraForward.GetSafeNormal();
+		const FVector HandleWorldDirection = ToWorldOffset(Forward, CameraRight, CameraUp, HandleCameraLocalDirection).GetSafeNormal();
+		if (HandleWorldDirection.IsNearlyZero() || Forward.IsNearlyZero())
 		{
 			return FQuat::Identity;
 		}
 
-		const FVector HandleWorldDirection = ToWorldOffset(Camera, HandleCameraLocalDirection).GetSafeNormal();
-		const FVector CameraForward = Camera->GetForwardVector().GetSafeNormal();
-		if (HandleWorldDirection.IsNearlyZero() || CameraForward.IsNearlyZero())
-		{
-			return FQuat::Identity;
-		}
-
-		FVector YAxis = FVector::CrossProduct(CameraForward, HandleWorldDirection).GetSafeNormal();
+		FVector YAxis = FVector::CrossProduct(Forward, HandleWorldDirection).GetSafeNormal();
 		if (YAxis.IsNearlyZero())
 		{
-			YAxis = Camera->GetRightVector().GetSafeNormal();
+			YAxis = CameraRight.GetSafeNormal();
 		}
 
 		const FVector ZAxis = FVector::CrossProduct(HandleWorldDirection, YAxis).GetSafeNormal();
@@ -128,6 +128,16 @@ namespace
 		FQuat Rotation(RotationMatrix);
 		Rotation.Normalize();
 		return Rotation;
+	}
+
+	FQuat BuildCameraLocalHandleRotation(const FViewportCamera* Camera, const FVector& HandleCameraLocalDirection)
+	{
+		if (!Camera)
+		{
+			return FQuat::Identity;
+		}
+
+		return BuildCameraLocalHandleRotation(Camera->GetForwardVector(), Camera->GetRightVector(), Camera->GetUpVector(), HandleCameraLocalDirection);
 	}
 
 	FString NormalizeToolMatchKey(FString Value)
@@ -188,21 +198,30 @@ void FGamePlayerController::Tick(float DeltaTime)
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
 	FCleaningToolAnimator::Get().Tick(DeltaTime);
-	if (PhysicsHandle)
+	if (UPhysicsHandleComponent* Handle = GetPhysicsHandle())
 	{
+		FVector CameraLocation;
+		FVector CameraForward;
+		FVector CameraRight;
+		FVector CameraUp;
+		if (!GetActiveCameraBasis(CameraLocation, CameraForward, CameraRight, CameraUp))
+		{
+			return;
+		}
+
 		const FString& CurrentToolId = GGameContext::Get().GetCurrentToolId();
 		const FCleaningToolData* ToolData = CurrentToolId.empty() ? nullptr : FCleaningToolSystem::Get().FindToolData(CurrentToolId);
 		const FVector ToolCameraLocalOffset = FCleaningToolAnimator::Get().GetHoldCameraLocalOffset()
 			+ FCleaningToolAnimator::Get().GetCameraLocalOffset();
-		const FVector ToolOffset = ToWorldOffset(FreeCamera, ToolCameraLocalOffset);
+		const FVector ToolOffset = ToWorldOffset(CameraForward, CameraRight, CameraUp, ToolCameraLocalOffset);
 		FQuat ToolRotation = FQuat::Identity;
 		const FQuat* ToolRotationPtr = nullptr;
 		if (ToolData && !ToolData->HandleCameraLocalDirection.IsNearlyZero())
 		{
-			ToolRotation = BuildCameraLocalHandleRotation(FreeCamera, ToolData->HandleCameraLocalDirection);
+			ToolRotation = BuildCameraLocalHandleRotation(CameraForward, CameraRight, CameraUp, ToolData->HandleCameraLocalDirection);
 			ToolRotationPtr = &ToolRotation;
 		}
-		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset, ToolRotationPtr, ToolData != nullptr);
+		Handle->TickHandle(DeltaTime, CameraLocation, CameraForward, ToolOffset, ToolRotationPtr, ToolData != nullptr);
 	}
 }
 
@@ -228,6 +247,7 @@ void FGamePlayerController::OnLeftMouseDrag(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	TryBeginCleaningUse();
 }
 
 void FGamePlayerController::OnLeftMouseDragEnd(float X, float Y)
@@ -303,9 +323,23 @@ void FGamePlayerController::SetWorld(UWorld* InWorld)
 	}
 
 	World = InWorld;
+	Player = nullptr;
+	Camera = nullptr;
 	InitialRigidBodyRotations.clear();
 	bInitialRigidBodyRotationsCaptured = false;
 	DestroyPhysicsHandle();
+}
+
+void FGamePlayerController::SetPlayer(AActor* InPlayer)
+{
+	if (Player == InPlayer)
+	{
+		return;
+	}
+
+	DestroyPhysicsHandle();
+	Player = InPlayer;
+	RefreshPawnComponents();
 }
 
 void FGamePlayerController::SetCamera(UCameraComponent* InCamera)
@@ -498,7 +532,7 @@ void FGamePlayerController::EndCleaningUse()
 
 void FGamePlayerController::TogglePickup()
 {
-	if (!World || !FreeCamera || !IsInputEnabled())
+	if (!World || !IsInputEnabled())
 	{
 		return;
 	}
@@ -520,7 +554,14 @@ void FGamePlayerController::TogglePickup()
 		return;
 	}
 
-	if (Handle->TryGrab(World, FreeCamera))
+	FVector CameraLocation;
+	FVector CameraForward;
+	if (!GetActiveCameraFrame(CameraLocation, CameraForward))
+	{
+		return;
+	}
+
+	if (Handle->TryGrab(World, CameraLocation, CameraForward))
 	{
 		ResetHeldBodyRotationToInitial();
 		bool bSelectedHeldTool = false;
@@ -557,11 +598,7 @@ void FGamePlayerController::TogglePickup()
 
 UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
 {
-	if (!PhysicsHandle)
-	{
-		PhysicsHandle = UObjectManager::Get().CreateObject<UPhysicsHandleComponent>();
-		PhysicsHandle->SetTransient(true);
-	}
+	RefreshPawnComponents();
 	return PhysicsHandle;
 }
 
@@ -570,9 +607,70 @@ void FGamePlayerController::DestroyPhysicsHandle()
 	if (PhysicsHandle)
 	{
 		PhysicsHandle->Release();
-		UObjectManager::Get().DestroyObject(PhysicsHandle);
 		PhysicsHandle = nullptr;
 	}
+}
+
+void FGamePlayerController::RefreshPawnComponents()
+{
+	Camera = nullptr;
+	PhysicsHandle = nullptr;
+	if (Player == nullptr)
+	{
+		return;
+	}
+
+	for (UActorComponent* Component : Player->GetComponents())
+	{
+		if (Camera == nullptr)
+		{
+			Camera = Cast<UCameraComponent>(Component);
+			if (Camera != nullptr)
+			{
+				Camera->OnResize(static_cast<int32>(ViewportWidth), static_cast<int32>(ViewportHeight));
+			}
+		}
+
+		if (PhysicsHandle == nullptr)
+		{
+			PhysicsHandle = Cast<UPhysicsHandleComponent>(Component);
+		}
+
+		if (Camera != nullptr && PhysicsHandle != nullptr)
+		{
+			break;
+		}
+	}
+}
+
+bool FGamePlayerController::GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const
+{
+	FVector Right;
+	FVector Up;
+	return GetActiveCameraBasis(OutLocation, OutForward, Right, Up);
+}
+
+bool FGamePlayerController::GetActiveCameraBasis(FVector& OutLocation, FVector& OutForward, FVector& OutRight, FVector& OutUp) const
+{
+	if (Camera != nullptr)
+	{
+		OutLocation = Camera->GetWorldLocation();
+		OutForward = Camera->GetForwardVector();
+		OutRight = Camera->GetRightVector();
+		OutUp = Camera->GetUpVector();
+		return !OutForward.IsNearlyZero();
+	}
+
+	if (FreeCamera != nullptr)
+	{
+		OutLocation = FreeCamera->GetLocation();
+		OutForward = FreeCamera->GetForwardVector();
+		OutRight = FreeCamera->GetRightVector();
+		OutUp = FreeCamera->GetUpVector();
+		return !OutForward.IsNearlyZero();
+	}
+
+	return false;
 }
 
 void FGamePlayerController::CaptureInitialRigidBodyRotations()
