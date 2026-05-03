@@ -9,6 +9,16 @@
 DEFINE_CLASS(UBillboardComponent, UPrimitiveComponent)
 REGISTER_FACTORY(UBillboardComponent)
 
+namespace
+{
+    constexpr float BillboardPickMaxSize = 0.75f;
+
+    float GetBillboardPickHalfSize(float Size)
+    {
+        return std::min(std::max(Size, 0.0f), BillboardPickMaxSize) * 0.5f;
+    }
+}
+
 void UBillboardComponent::PostDuplicate(UObject* Original)
 {
     UPrimitiveComponent::PostDuplicate(Original);
@@ -194,8 +204,8 @@ bool UBillboardComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
     }
 
     const FVector HitLocal = LocalRay.Origin + LocalRay.Direction * T;
-    const float HalfW = Width * 0.5f;
-    const float HalfH = Height * 0.5f;
+    const float HalfW = GetBillboardPickHalfSize(Width);
+    const float HalfH = GetBillboardPickHalfSize(Height);
 
     if (HitLocal.Y < -HalfW || HitLocal.Y > HalfW || HitLocal.Z < -HalfH || HitLocal.Z > HalfH)
     {

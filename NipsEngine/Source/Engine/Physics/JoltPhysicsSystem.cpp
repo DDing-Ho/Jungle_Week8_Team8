@@ -760,10 +760,12 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 				const float SafetyFraction = RequestedDistance > 0.001f ? SafetyDistance / RequestedDistance : 1.0f;
 				if (Collector.mHit.mFraction <= 0.001f)
 				{
-					const FVector PenetrationAxis = ToEngineVector(Collector.mHit.mPenetrationAxis);
-					if (FVector::DotProduct(RequestedDelta, PenetrationAxis) > 0.0f)
+					const FVector PenetrationAxis = ToEngineVector(Collector.mHit.mPenetrationAxis).GetSafeNormal();
+					const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, PenetrationAxis);
+					if (!PenetrationAxis.IsNearlyZero() && IntoSurfaceDistance > 0.0f)
 					{
-						InOutTargetLocation = CurrentLocation;
+						const FVector SlideDelta = RequestedDelta - PenetrationAxis * IntoSurfaceDistance;
+						InOutTargetLocation = CurrentLocation + SlideDelta;
 					}
 				}
 				else

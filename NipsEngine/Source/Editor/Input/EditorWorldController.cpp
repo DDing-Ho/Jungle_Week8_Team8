@@ -16,6 +16,19 @@
 #include <unordered_set>
 #include <windows.h>
 
+namespace
+{
+	bool IsEditorActorSelectionTarget(const UPrimitiveComponent* Primitive)
+	{
+		if (Primitive == nullptr)
+		{
+			return false;
+		}
+
+		return Primitive->GetPrimitiveType() != EPrimitiveType::EPT_Decal;
+	}
+}
+
 void FEditorWorldController::SetCamera(FViewportCamera* InCamera)
 {
 	if (!InCamera)
@@ -110,7 +123,7 @@ void FEditorWorldController::OnLeftMouseClick(float X, float Y)
 
 		UPrimitiveComponent* PrimitiveComp = CandidatePrimitives[CandidateIndex];
 		AActor*              Actor = (PrimitiveComp != nullptr) ? PrimitiveComp->GetOwner() : nullptr;
-		if (Actor == nullptr || Actor->GetRootComponent() == nullptr)
+		if (Actor == nullptr || Actor->GetRootComponent() == nullptr || !IsEditorActorSelectionTarget(PrimitiveComp))
 		{
 			continue;
 		}

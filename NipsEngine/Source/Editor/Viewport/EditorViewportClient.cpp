@@ -24,6 +24,20 @@
 
 namespace
 {
+	bool IsActorPlacementRaycastTarget(const UPrimitiveComponent* Primitive)
+	{
+		if (Primitive == nullptr)
+		{
+			return false;
+		}
+
+		const EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+		return PrimType != EPrimitiveType::EPT_Decal &&
+			PrimType != EPrimitiveType::EPT_Billboard &&
+			PrimType != EPrimitiveType::EPT_Text &&
+			PrimType != EPrimitiveType::EPT_SubUV;
+	}
+
 	APawnActor* EnsurePlayerPawn(UWorld* World)
 	{
 		if (World == nullptr)
@@ -356,7 +370,7 @@ bool FEditorViewportClient::RequestActorPlacement(float X, float Y, float PopupX
 			break;
 
 		UPrimitiveComponent* PrimitiveComp = CandidatePrimitives[CandidateIndex];
-		if (!PrimitiveComp)
+		if (!IsActorPlacementRaycastTarget(PrimitiveComp))
 			continue;
 
 		FHitResult HitResult{};

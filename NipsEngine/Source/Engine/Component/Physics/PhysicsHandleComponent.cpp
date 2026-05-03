@@ -113,7 +113,7 @@ namespace
 		}
 
 		const EPrimitiveType PrimType = Primitive->GetPrimitiveType();
-		if (PrimType == EPrimitiveType::EPT_Billboard || PrimType == EPrimitiveType::EPT_Decal)
+		if (PrimType != EPrimitiveType::EPT_StaticMesh && Cast<UShapeComponent>(Primitive) == nullptr)
 		{
 			return false;
 		}
