@@ -1,6 +1,7 @@
 ﻿#include "Game/Render/GameRenderPipeline.h"
 
 #include "Game/GameEngine.h"
+#include "Game/UI/GameUISystem.h"
 #include "Game/Viewport/GameViewportClient.h"
 #include "Render/Renderer/Renderer.h"
 #include "GameFramework/World.h"
@@ -63,6 +64,8 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);
 	Renderer.PresentToBackBuffer(Renderer.GetCurrentSceneSRV());
+
+	GameUISystem::Get().Render(EUIRenderMode::Play);
 }
 
 bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSceneView, FGameViewportClient*& OutViewportClient)

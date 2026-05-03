@@ -12,6 +12,56 @@
 
 namespace
 {
+	// 새 Action을 추가하려면:
+	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: ActionInteract() -> "Interact"
+	// 2. SetupDefaultInputMappings()에서 원하는 키를 AddActionMapping으로 연결합니다.
+	// 3. OnKeyPressed/OnKeyReleased에서 IsActionKey로 처리합니다.
+	const FName& ActionToggleInputCapture()
+	{
+		static const FName Name("ToggleInputCapture");
+		return Name;
+	}
+
+	const FName& ActionTogglePause()
+	{
+		static const FName Name("TogglePause");
+		return Name;
+	}
+
+	// 새 Axis를 추가하려면:
+	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: AxisMoveForward() -> "MoveForward"
+	// 2. SetupDefaultInputMappings()에서 키와 Scale을 AddAxisMapping으로 연결합니다.
+	// 3. ApplyInputAxes()에서 GetAxisValue로 값을 읽어 사용합니다.
+	const FName& AxisMoveForward()
+	{
+		static const FName Name("MoveForward");
+		return Name;
+	}
+
+	const FName& AxisMoveRight()
+	{
+		static const FName Name("MoveRight");
+		return Name;
+	}
+
+	const FName& AxisMoveUp()
+	{
+		static const FName Name("MoveUp");
+		return Name;
+	}
+
+	const FName& AxisLookYaw()
+	{
+		static const FName Name("LookYaw");
+		return Name;
+	}
+
+	const FName& AxisLookPitch()
+	{
+		static const FName Name("LookPitch");
+		return Name;
+	}
+
 	FVector ToForward(float PitchDegrees, float YawDegrees)
 	{
 		const float PitchRad = MathUtil::DegreesToRadians(PitchDegrees);
@@ -27,10 +77,16 @@ namespace
 	}
 }
 
+FGamePlayerController::FGamePlayerController()
+{
+	SetupDefaultInputMappings();
+}
+
 void FGamePlayerController::Tick(float DeltaTime)
 {
 	IBaseGameController::Tick(DeltaTime);
 	SyncFreeCameraAngles();
+	ApplyInputAxes();
 }
 
 void FGamePlayerController::OnMouseMove(float DeltaX, float DeltaY)
@@ -87,7 +143,7 @@ void FGamePlayerController::OnMiddleMouseDrag(float DeltaX, float DeltaY)
 
 void FGamePlayerController::OnKeyPressed(int VK)
 {
-	if (VK == VK_F4 && !Camera && OnRequestToggleInputCapture)
+	if (InputMapping.IsActionKey(ActionToggleInputCapture(), VK) && !Camera && OnRequestToggleInputCapture)
 	{
 		OnRequestToggleInputCapture();
 	}
@@ -95,47 +151,17 @@ void FGamePlayerController::OnKeyPressed(int VK)
 
 void FGamePlayerController::OnKeyDown(int VK)
 {
-	FVector Direction = FVector::ZeroVector;
-
-	const float Yaw = Camera ? Camera->GetYawDegrees() : FreeCameraYaw;
-	const float Pitch = Camera ? Camera->GetPitchDegrees() : FreeCameraPitch;
-	const FVector Forward = ToForward(Pitch, Yaw);
-	const FVector Right = ToRight(Yaw);
-	const FVector Up = FVector::UpVector;
-
-	switch (VK)
-	{
-	case 'W': Direction += Forward; break;
-	case 'S': Direction -= Forward; break;
-	case 'D': Direction += Right; break;
-	case 'A': Direction -= Right; break;
-	case 'E': Direction += Up; break;
-	case 'Q': Direction -= Up; break;
-	case VK_LEFT:
-		RotateActiveCamera(-60.0f * DeltaTime / RotateSensitivity, 0.0f);
-		return;
-	case VK_RIGHT:
-		RotateActiveCamera(60.0f * DeltaTime / RotateSensitivity, 0.0f);
-		return;
-	case VK_UP:
-		RotateActiveCamera(0.0f, -60.0f * DeltaTime / RotateSensitivity);
-		return;
-	case VK_DOWN:
-		RotateActiveCamera(0.0f, 60.0f * DeltaTime / RotateSensitivity);
-		return;
-	default:
-		return;
-	}
-
-	if (!Direction.IsNearlyZero())
-	{
-		MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
-	}
+	// 이동/회전처럼 누르고 있는 동안 계속 적용되는 입력은 Axis에서 처리합니다.
+	// 그래서 개별 키 반복 이벤트인 OnKeyDown에서는 직접 움직이지 않습니다.
+	(void)VK;
 }
 
 void FGamePlayerController::OnKeyReleased(int VK)
 {
-	(void)VK;
+	if (InputMapping.IsActionKey(ActionTogglePause(), VK) && OnRequestTogglePause)
+	{
+		OnRequestTogglePause();
+	}
 }
 
 void FGamePlayerController::OnWheelScrolled(float Notch)
@@ -220,6 +246,71 @@ void FGamePlayerController::BuildSceneView(FSceneView& OutView, const FViewportR
 
 	OutView.ViewRect = ViewRect;
 	OutView.ViewMode = ViewMode;
+}
+
+void FGamePlayerController::SetupDefaultInputMappings()
+{
+	InputMapping.Clear();
+
+	// Action Mapping: 키 입력을 "한 번 발생하는 명령" 이름에 연결합니다.
+	// 예: InputMapping.AddActionMapping(ActionInteract(), 'E');
+	InputMapping.AddActionMapping(ActionToggleInputCapture(), VK_F4);
+	InputMapping.AddActionMapping(ActionTogglePause(), 'P');
+
+	// Axis Mapping: 여러 키를 하나의 연속 값으로 합칩니다.
+	// 예를 들어 W는 MoveForward에 +1, S는 -1을 더합니다.
+	// 키를 바꾸려면 문자 키나 VK_* 값을 바꾸고, 방향을 바꾸려면 Scale의 부호를 바꾸면 됩니다.
+	// 예: 위쪽 화살표도 전진에 쓰려면 AddAxisMapping(AxisMoveForward(), VK_UP, 1.0f)를 추가합니다.
+	InputMapping.AddAxisMapping(AxisMoveForward(), 'W', 1.0f);
+	InputMapping.AddAxisMapping(AxisMoveForward(), 'S', -1.0f);
+	InputMapping.AddAxisMapping(AxisMoveRight(), 'D', 1.0f);
+	InputMapping.AddAxisMapping(AxisMoveRight(), 'A', -1.0f);
+	InputMapping.AddAxisMapping(AxisMoveUp(), 'E', 1.0f);
+	InputMapping.AddAxisMapping(AxisMoveUp(), 'Q', -1.0f);
+
+	InputMapping.AddAxisMapping(AxisLookYaw(), VK_RIGHT, 1.0f);
+	InputMapping.AddAxisMapping(AxisLookYaw(), VK_LEFT, -1.0f);
+	InputMapping.AddAxisMapping(AxisLookPitch(), VK_DOWN, 1.0f);
+	InputMapping.AddAxisMapping(AxisLookPitch(), VK_UP, -1.0f);
+}
+
+void FGamePlayerController::ApplyInputAxes()
+{
+	if (!IsInputEnabled())
+	{
+		return;
+	}
+
+	const float MoveForwardValue = InputMapping.GetAxisValue(AxisMoveForward());
+	const float MoveRightValue = InputMapping.GetAxisValue(AxisMoveRight());
+	const float MoveUpValue = InputMapping.GetAxisValue(AxisMoveUp());
+
+	// GetAxisValue가 매핑된 키들을 보고 MoveForwardValue 같은 의미 값만 돌려줍니다.
+	// Axis 값은 -1~+1 범위의 값으로 사용합니다.
+	// 실제 월드 방향은 현재 카메라의 forward/right/up 벡터로 변환합니다.
+	const float Yaw = Camera ? Camera->GetYawDegrees() : FreeCameraYaw;
+	const float Pitch = Camera ? Camera->GetPitchDegrees() : FreeCameraPitch;
+	const FVector Forward = ToForward(Pitch, Yaw);
+	const FVector Right = ToRight(Yaw);
+	const FVector Up = FVector::UpVector;
+
+	const FVector Direction = Forward * MoveForwardValue + Right * MoveRightValue + Up * MoveUpValue;
+	if (!Direction.IsNearlyZero())
+	{
+		MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
+	}
+
+	if (!MathUtil::IsNearlyZero(RotateSensitivity))
+	{
+		// 화살표 키도 Axis로 읽어서 매 프레임 일정한 속도로 회전시킵니다.
+		const float LookYawValue = InputMapping.GetAxisValue(AxisLookYaw());
+		const float LookPitchValue = InputMapping.GetAxisValue(AxisLookPitch());
+		const float RotateScale = 60.0f * DeltaTime / RotateSensitivity;
+		if (!MathUtil::IsNearlyZero(LookYawValue) || !MathUtil::IsNearlyZero(LookPitchValue))
+		{
+			RotateActiveCamera(LookYawValue * RotateScale, LookPitchValue * RotateScale);
+		}
+	}
 }
 
 void FGamePlayerController::RotateActiveCamera(float DeltaX, float DeltaY)

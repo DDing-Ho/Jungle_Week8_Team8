@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Engine/Input/InputMapping.h"
 #include "Game/Input/BaseGameController.h"
 #include "Math/Vector.h"
 #include "Render/Common/ViewTypes.h"
@@ -16,7 +17,7 @@ class UCameraComponent;
 class FGamePlayerController : public IBaseGameController
 {
 public:
-	FGamePlayerController() = default;
+	FGamePlayerController();
 	~FGamePlayerController() override = default;
 
 	void Tick(float DeltaTime) override;
@@ -49,10 +50,14 @@ public:
 	void SetRotateSensitivity(float InSensitivity) { RotateSensitivity = InSensitivity; }
 	void SetToggleInputCaptureCallback(std::function<void()> Callback) { OnRequestToggleInputCapture = std::move(Callback); }
 	void ClearToggleInputCaptureCallback() { OnRequestToggleInputCapture = nullptr; }
+	void SetTogglePauseCallback(std::function<void()> Callback) { OnRequestTogglePause = std::move(Callback); }
+	void ClearTogglePauseCallback() { OnRequestTogglePause = nullptr; }
 
 	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 
 private:
+	void SetupDefaultInputMappings();
+	void ApplyInputAxes();
 	void RotateActiveCamera(float DeltaX, float DeltaY);
 	void MoveActiveCamera(const FVector& Direction, float Scale);
 	void SyncFreeCameraAngles();
@@ -62,6 +67,7 @@ private:
 	AActor* Player = nullptr;
 	UCameraComponent* Camera = nullptr;
 	FViewportCamera* FreeCamera = nullptr;
+	FInputMappingContext InputMapping;
 
 	float MoveSpeed = 10.0f;
 	float RotateSensitivity = 0.15f;
@@ -69,4 +75,5 @@ private:
 	float FreeCameraPitch = 0.0f;
 	bool bFreeCameraInitialized = false;
 	std::function<void()> OnRequestToggleInputCapture;
+	std::function<void()> OnRequestTogglePause;
 };

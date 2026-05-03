@@ -1,7 +1,9 @@
 ﻿#pragma once
 #include "Editor/Input/BaseEditorController.h"
 #include "Engine/Viewport/ViewportCamera.h"
+#include "Spatial/WorldSpatialIndex.h"
 #include <functional>
+#include <windows.h>
 
 class FSelectionManager;
 class UGizmoComponent;
@@ -66,8 +68,16 @@ class FEditorWorldController : public IBaseEditorController
 	void SetFocusSelectionCallback(std::function<void()> Callback) { OnRequestFocusSelection = std::move(Callback); }
 	void ClearFocusSelectionCallback() { OnRequestFocusSelection = nullptr; }
 
+	bool  IsActiveOperation() const;
+	bool  IsBoxSelecting() const { return bBoxSelecting; }
+	POINT GetBoxSelectStart() const { return BoxSelectStart; }
+	POINT GetBoxSelectEnd() const { return BoxSelectEnd; }
+
   private:
 	void UpdateCameraRotation();
+	void UpdateGizmoScreenScaling();
+	void HandleBoxSelection();
+	bool TryProjectWorldToViewport(const FVector& WorldPos, float& OutViewportX, float& OutViewportY, float& OutDepth) const;
 
   private:
 	FSelectionManager* SelectionManager = nullptr;
@@ -85,4 +95,9 @@ class FEditorWorldController : public IBaseEditorController
 	bool    bTargetLocationInitialized = false;
 	std::function<void()> OnRequestStartPIE;
 	std::function<void()> OnRequestFocusSelection;
+
+	bool  bBoxSelecting = false;
+	POINT BoxSelectStart = { 0, 0 };
+	POINT BoxSelectEnd = { 0, 0 };
+	FWorldSpatialIndex::FPrimitiveFrustumQueryScratch FrustumQueryScratch;
 };

@@ -3,7 +3,8 @@
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Engine/Slate/SlateApplication.h"
-#include "EditorEngine.h"
+#include "Editor/EditorEngine.h"
+#include "Game/UI/GameUISystem.h"
 
 #include "GameFramework/World.h"
 #include "Component/GizmoComponent.h"
@@ -12,7 +13,7 @@
 #include "Object/ActorIterator.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Runtime/SceneView.h"
-#include "Utility/EditorUIUtils.h"
+#include "Editor/Utility/EditorUIUtils.h"
 #include "Math/Vector4.h"
 #include "Slate/SWidget.h"
 #include <algorithm>
@@ -24,14 +25,10 @@ void FEditorViewportClient::Initialize(FWindowsWindow* InWindow, UEditorEngine* 
 {
 	FViewportClient::Initialize(InWindow);
 	Editor = InEditor;
-	EditorWorldController.SetStartPIECallback([this]()
-											  {
-		if (Editor)
-			Editor->StartPlaySession(); });
-	EditorWorldController.SetFocusSelectionCallback([this]()
-												   { FocusPrimarySelection(); });
-	PIEController.SetToggleInputCaptureCallback([this]()
-												{ TogglePIEInputCapture(); });
+	EditorWorldController.SetStartPIECallback([this]() { if (Editor) Editor->StartPlaySession(); });
+	EditorWorldController.SetFocusSelectionCallback([this]() { FocusPrimarySelection(); });
+	PIEController.SetToggleInputCaptureCallback([this]() { TogglePIEInputCapture(); });
+	GamePlayerController.SetTogglePauseCallback(&GameUISystem::TogglePauseMenuIfInGame);
 	InputRouter.SetEditorWorldController(&EditorWorldController);
 	InputRouter.SetPIEController(&PIEController);
 	InputRouter.SetGamePlayerController(&GamePlayerController);
@@ -152,8 +149,6 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	RouteContext.bHovered = State ? State->bHovered : true;
 	RouteContext.bControlLocked = bControlLocked;
 	InputRouter.Tick(DeltaTime, RouteContext);
-
-	TickInteraction(DeltaTime);
 }
 
 void FEditorViewportClient::BuildSceneView(FSceneView& OutView) const
@@ -256,11 +251,6 @@ void FEditorViewportClient::ApplyCameraMode()
 	EditorWorldController.ResetTargetLocation();
 }
 
-bool FEditorViewportClient::IsActiveOperation() const
-{
-	return FInputRouter::GetRightDragging() || FInputRouter::GetMiddleDragging();
-}
-
 // ── Input tick sub-steps ──────────────────────────────────────────────────────
 
 void FEditorViewportClient::TogglePIEInputCapture()
@@ -276,144 +266,6 @@ void FEditorViewportClient::TogglePIEInputCapture()
 	{
 		bControlLocked = false;
 		FInputRouter::ResetMouseDelta(2);
-	}
-}
-
-// ── Interaction (gizmo scaling + box selection) ───────────────────────────────
-
-void FEditorViewportClient::TickInteraction(float DeltaTime)
-{
-	(void)DeltaTime;
-
-	if (!bHasCamera || !Gizmo)
-		return;
-
-	if (World && World->GetWorldType() == EWorldType::PIE)
-		return;
-
-	// Gizmo screen-space scaling must happen every frame.
-	if (Camera.IsOrthographic())
-		Gizmo->ApplyScreenSpaceScalingOrtho(Camera.GetOrthoHeight());
-	else
-		Gizmo->ApplyScreenSpaceScaling(Camera.GetLocation());
-
-	if (!World || !SelectionManager)
-		return;
-
-	// ── Box selection (Ctrl+Alt+LMB drag) ────────────────────────────────────
-	POINT MousePoint = FInputRouter::GetMousePos();
-
-	if (bBoxSelecting)
-	{
-		const FGuiInputState& GuiState = FInputRouter::GetGuiInputState();
-		if (!GuiState.IsInViewportHost(MousePoint.x, MousePoint.y))
-		{
-			bBoxSelecting = false;
-			return;
-		}
-	}
-
-	if (Window)
-		MousePoint = Window->ScreenToClientPoint(MousePoint);
-	const float VX = State ? static_cast<float>(Viewport->GetRect().X) : 0.f;
-	const float VY = State ? static_cast<float>(Viewport->GetRect().Y) : 0.f;
-	const float LocalX = static_cast<float>(MousePoint.x) - VX;
-	const float LocalY = static_cast<float>(MousePoint.y) - VY;
-
-	if (bBoxSelecting && (LocalX < 0.f || LocalY < 0.f || LocalX > WindowWidth || LocalY > WindowHeight))
-	{
-		bBoxSelecting = false;
-		return;
-	}
-
-	const bool bCtrlDown = FInputRouter::GetKey(VK_CONTROL);
-	const bool bAltDown = FInputRouter::GetKey(VK_MENU);
-
-	if (FInputRouter::GetKeyDown(VK_LBUTTON) && bCtrlDown && bAltDown)
-	{
-		bBoxSelecting = true;
-		BoxSelectStart = POINT{ static_cast<LONG>(LocalX), static_cast<LONG>(LocalY) };
-		BoxSelectEnd = BoxSelectStart;
-		return;
-	}
-
-	if (bBoxSelecting)
-	{
-		if (FInputRouter::GetLeftDragging())
-			BoxSelectEnd = POINT{ static_cast<LONG>(LocalX), static_cast<LONG>(LocalY) };
-		else if (FInputRouter::GetLeftDragEnd())
-		{
-			HandleBoxSelection();
-			bBoxSelecting = false;
-		}
-		else if (FInputRouter::GetKeyUp(VK_LBUTTON))
-			bBoxSelecting = false;
-	}
-}
-
-bool FEditorViewportClient::TryProjectWorldToViewport(const FVector& WorldPos, float& OutViewportX, float& OutViewportY, float& OutDepth) const
-{
-	const FVector4 Clip = FMatrix::Identity.TransformVector4(FVector4(WorldPos, 1.0f), Camera.GetViewProjectionMatrix());
-	if (MathUtil::IsNearlyZero(Clip.W))
-		return false;
-
-	const float InvW = 1.0f / Clip.W;
-	const float NdcX = Clip.X * InvW;
-	const float NdcY = Clip.Y * InvW;
-	const float NdcZ = Clip.Z * InvW;
-	if (NdcX < -1.0f || NdcX > 1.0f || NdcY < -1.0f || NdcY > 1.0f)
-		return false;
-
-	OutViewportX = (NdcX * 0.5f + 0.5f) * WindowWidth;
-	OutViewportY = (1.0f - (NdcY * 0.5f + 0.5f)) * WindowHeight;
-	OutDepth = NdcZ;
-	return true;
-}
-
-void FEditorViewportClient::HandleBoxSelection()
-{
-	if (!SelectionManager || !World)
-		return;
-
-	const int32 MinX = std::min(BoxSelectStart.x, BoxSelectEnd.x);
-	const int32 MinY = std::min(BoxSelectStart.y, BoxSelectEnd.y);
-	const int32 MaxX = std::max(BoxSelectStart.x, BoxSelectEnd.x);
-	const int32 MaxY = std::max(BoxSelectStart.y, BoxSelectEnd.y);
-	const int32 Width = MaxX - MinX;
-	const int32 Height = MaxY - MinY;
-
-	if (Width < 2 || Height < 2)
-		return;
-
-	if (!FInputRouter::GetKey(VK_SHIFT))
-		SelectionManager->ClearSelection();
-
-	TArray<UPrimitiveComponent*> CandidatePrimitives;
-	World->GetSpatialIndex().FrustumQueryPrimitives(Camera.GetFrustum(), CandidatePrimitives, FrustumQueryScratch);
-
-	std::unordered_set<AActor*> SeenActors;
-	SeenActors.reserve(CandidatePrimitives.size());
-
-	for (UPrimitiveComponent* Primitive : CandidatePrimitives)
-	{
-		AActor* Actor = (Primitive != nullptr) ? Primitive->GetOwner() : nullptr;
-		if (!Actor || !Actor->GetRootComponent())
-			continue;
-
-		if (!SeenActors.insert(Actor).second)
-			continue;
-
-		float ViewportX = 0.f, ViewportY = 0.f, Depth = 0.f;
-		if (!TryProjectWorldToViewport(Actor->GetActorLocation(), ViewportX, ViewportY, Depth))
-			continue;
-
-		if (Depth < 0.f || Depth > 1.f)
-			continue;
-
-		const int32 Px = static_cast<int32>(ViewportX);
-		const int32 Py = static_cast<int32>(ViewportY);
-		if (Px >= MinX && Px <= MaxX && Py >= MinY && Py <= MaxY)
-			SelectionManager->AddSelect(Actor);
 	}
 }
 
@@ -487,36 +339,6 @@ void FEditorViewportClient::FocusPrimarySelection()
 	}
 
 	EditorWorldController.ResetTargetLocation();
-}
-
-void FEditorViewportClient::DeleteSelectedActors()
-{
-	if (!SelectionManager)
-		return;
-
-	const TArray<AActor*> SelectedActors = SelectionManager->GetSelectedActors();
-	for (AActor* Actor : SelectedActors)
-	{
-		if (!Actor)
-			continue;
-		if (UWorld* ActorWorld = Actor->GetFocusedWorld())
-			ActorWorld->DestroyActor(Actor);
-	}
-	SelectionManager->ClearSelection();
-	Editor->GetMainPanel().GetPropertyWidget().ResetSelection();
-}
-
-void FEditorViewportClient::SelectAllActors()
-{
-	if (!SelectionManager || !World)
-		return;
-
-	SelectionManager->ClearSelection();
-	for (TActorIterator<AActor> Iter(World); Iter; ++Iter)
-	{
-		if (AActor* Actor = *Iter)
-			SelectionManager->AddSelect(Actor);
-	}
 }
 
 void FEditorViewportClient::SaveCameraSnapshot()

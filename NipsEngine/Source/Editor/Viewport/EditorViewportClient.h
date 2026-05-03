@@ -112,10 +112,10 @@ public:
 	 * Returns true while a drag operation (RMB or MMB) is in progress for this viewport.
 	 * Used by the renderer to determine gizmo axis highlight behaviour.
 	 */
-	bool  IsActiveOperation() const;
-	bool  IsBoxSelecting()    const { return bBoxSelecting; }
-	POINT GetBoxSelectStart() const { return BoxSelectStart; }
-	POINT GetBoxSelectEnd()   const { return BoxSelectEnd; }
+	bool  IsActiveOperation() const { return EditorWorldController.IsActiveOperation(); }
+	bool  IsBoxSelecting()    const { return EditorWorldController.IsBoxSelecting(); }
+	POINT GetBoxSelectStart() const { return EditorWorldController.GetBoxSelectStart(); }
+	POINT GetBoxSelectEnd()   const { return EditorWorldController.GetBoxSelectEnd(); }
 	bool  HasPendingActorPlacement() const { return bPendingActorPlacement; }
 	const FVector& GetPendingActorPlacementLocation() const { return PendingActorPlacementLocation; }
 	POINT GetPendingActorPlacementPopupPos() const { return PendingActorPlacementPopupPos; }
@@ -127,15 +127,10 @@ public:
 private:
 	// ── Tick sub-steps ───────────────────────────────────────────────────────
 	void TogglePIEInputCapture();
-	void TickInteraction(float DeltaTime);    // box selection + gizmo screen-scaling
 
 	// ── Selection helpers ────────────────────────────────────────────────────
-	void HandleBoxSelection();
 	bool RequestActorPlacement(float X, float Y, float PopupX, float PopupY);
-	bool TryProjectWorldToViewport(const FVector& WorldPos, float& OutViewportX, float& OutViewportY, float& OutDepth) const;
 	void FocusPrimarySelection();
-	void DeleteSelectedActors();
-	void SelectAllActors();
 
 private:
 	// Window / Viewport — Window is inherited from FViewportClient
@@ -161,15 +156,8 @@ private:
 	FCameraSnapshot        SavedCamera;
 	bool                   bHasCameraSnapshot = false;
 
-	bool  bBoxSelecting  = false;
-	POINT BoxSelectStart = { 0, 0 };
-	POINT BoxSelectEnd   = { 0, 0 };
-
 	bool  bControlLocked = false;
 	bool  bPendingActorPlacement = false;
 	FVector PendingActorPlacementLocation = FVector::ZeroVector;
 	POINT PendingActorPlacementPopupPos = { 0, 0 };
-
-	// Caller-owned scratch buffer for frustum queries in HandleBoxSelection
-	FWorldSpatialIndex::FPrimitiveFrustumQueryScratch FrustumQueryScratch;
 };

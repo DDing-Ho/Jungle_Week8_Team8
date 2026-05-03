@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <functional>
 #include <string>
@@ -61,8 +61,10 @@ public:
     void SetCurrentItem(const char* Name, const char* Desc);
 
     // 일시정지 메뉴
+    static void TogglePauseMenuIfInGame();
     void SetPauseMenuOpen(bool bOpen);
     bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
+    bool WantsMouseCursor() const;
 
     // 게임 데이터 초기화 (Retry 시 호출)
     void ResetGameData();
@@ -99,12 +101,9 @@ private:
 
     void RenderCurrentPanel(EUIRenderMode Mode);
     // 상태에 따라 커서/마우스 잠금을 자동으로 맞춤
-    void ApplyCursorForState(EGameUIState State);
 
     EGameUIState CurrentState        = EGameUIState::StartMenu;
     bool         bPauseMenuOpen     = false;
-    bool         bFirstRender       = true;   // 첫 렌더 시 초기 상태 커서 적용
-    bool         bPrevDialogueActive = false;  // 대화 중 마우스 잠금 관리용
 
     // ImGui 소유권 (게임 빌드에서만 true)
     bool bOwnsImGui = false;

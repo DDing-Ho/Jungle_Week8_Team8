@@ -9,12 +9,20 @@
 
 namespace
 {
-	static constexpr int InputKeys[] = {
-		'W', 'A', 'S', 'D', 'Q', 'E',
-		VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN,
-		VK_SPACE, VK_ESCAPE, VK_F4,
-		VK_DELETE, 'X', 'F', 'G',
-	};
+	bool IsRoutableKeyboardKey(int VK)
+	{
+		switch (VK)
+		{
+		case VK_LBUTTON:
+		case VK_RBUTTON:
+		case VK_MBUTTON:
+		case VK_XBUTTON1:
+		case VK_XBUTTON2:
+			return false;
+		default:
+			return true;
+		}
+	}
 }
 
 EWorldType FInputRouter::WorldType = EWorldType::Editor;
@@ -56,6 +64,10 @@ void FInputRouter::Tick(float DeltaTime, const FInputRouteContext& Context)
 	SetViewportDim(static_cast<float>(Context.ViewportRect.X), static_cast<float>(Context.ViewportRect.Y), static_cast<float>(Context.ViewportRect.Width), static_cast<float>(Context.ViewportRect.Height));
 
 	UpdateControllerModifiers();
+	if (IInputController* Controller = GetActiveController())
+	{
+		Controller->SetInputEnabled(Context.bInputActive && !Context.bControlLocked);
+	}
 	TickCursorCapture(Context);
 	Tick(DeltaTime);
 	TickKeyboardInput(Context);
@@ -323,10 +335,11 @@ void FInputRouter::TickCursorCapture(const FInputRouteContext& Context)
 
 	if (WorldType == EWorldType::Game)
 	{
-		if (!Context.bInputActive || !Context.Window || !Context.Window->GetHWND())
+		if (Context.bControlLocked || !Context.bInputActive || !Context.Window || !Context.Window->GetHWND())
 		{
 			IS.SetCursorVisibility(true);
 			IS.LockMouse(false);
+			IS.ResetMouseDelta();
 			return;
 		}
 
@@ -346,7 +359,45 @@ void FInputRouter::TickCursorCapture(const FInputRouteContext& Context)
 void FInputRouter::TickKeyboardInput(const FInputRouteContext& Context)
 {
 	const InputSystem& IS = InputSystem::Get();
-	if (IS.GetGuiInputState().bBlockViewportInput || IS.GetGuiInputState().bUsingKeyboard)
+	const FGuiInputState& GuiState = IS.GetGuiInputState();
+	if (GuiState.bBlockViewportInput)
+	{
+		return;
+	}
+
+	if (WorldType == EWorldType::Editor && IS.GetKeyDown(VK_F4))
+	{
+		RouteKeyboardInput(EKeyInputType::KeyPressed, VK_F4);
+		return;
+	}
+
+	if (WorldType == EWorldType::PIE)
+	{
+		if (IS.GetKeyDown(VK_ESCAPE))
+		{
+			RouteKeyboardInput(EKeyInputType::KeyPressed, VK_ESCAPE);
+			return;
+		}
+		if (IS.GetKeyDown(VK_F4))
+		{
+			RouteKeyboardInput(EKeyInputType::KeyPressed, VK_F4);
+			return;
+		}
+	}
+
+	if (WorldType == EWorldType::Game && Context.bControlLocked)
+	{
+		for (int VK = 0; VK < 256; ++VK)
+		{
+			if (IsRoutableKeyboardKey(VK) && IS.GetKeyUp(VK))
+			{
+				RouteKeyboardInput(EKeyInputType::KeyReleased, VK);
+			}
+		}
+		return;
+	}
+
+	if (GuiState.bUsingKeyboard)
 	{
 		return;
 	}
@@ -367,8 +418,13 @@ void FInputRouter::TickKeyboardInput(const FInputRouteContext& Context)
 		return;
 	}
 
-	for (int VK : InputKeys)
+	for (int VK = 0; VK < 256; ++VK)
 	{
+		if (!IsRoutableKeyboardKey(VK))
+		{
+			continue;
+		}
+
 		if (WorldType == EWorldType::PIE && VK == VK_ESCAPE)
 		{
 			if (IS.GetKeyDown(VK))

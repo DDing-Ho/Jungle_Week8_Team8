@@ -5,7 +5,6 @@
 #include "Game/UI/DialoguePanel.h"
 #include "Game/UI/PauseMenuPanel.h"
 #include "Game/UI/EndingPanel.h"
-#include "Engine/Input/InputRouter.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -86,31 +85,16 @@ void GameUISystem::SetState(EGameUIState NewState)
 		EndingPanel::Reset();
 
 	CurrentState = NewState;
-	SetPauseMenuOpen(false);      // 일시정지 해제 (내부에서 커서 복원)
-	ApplyCursorForState(NewState); // 새 상태에 맞는 커서 적용
+	SetPauseMenuOpen(false);
 }
 
-void GameUISystem::ApplyCursorForState(EGameUIState State)
+bool GameUISystem::WantsMouseCursor() const
 {
-	switch (State)
-	{
-	case EGameUIState::StartMenu:
-	case EGameUIState::Prologue:
-	case EGameUIState::Ending:
-		// 메뉴/컷씬 구간 - 커서 표시, 마우스 잠금 해제
-		FInputRouter::LockMouse(false);
-		FInputRouter::SetCursorVisibility(true);
-		break;
-
-	case EGameUIState::InGame:
-	{
-		// 게임 플레이 구간 - 커서 숨김, PIE면 뷰포트 재잠금
-		FInputRouter::SetCursorVisibility(false);
-		const FViewportRect& VR = FInputRouter::GetGuiInputState().ViewportHostRect;
-		if (VR.Width > 0) FInputRouter::LockMouse(true, static_cast<float>(VR.X), static_cast<float>(VR.Y), static_cast<float>(VR.Width), static_cast<float>(VR.Height));
-		break;
-	}
-	}
+	return CurrentState == EGameUIState::StartMenu ||
+		   CurrentState == EGameUIState::Prologue ||
+		   CurrentState == EGameUIState::Ending ||
+		   bPauseMenuOpen ||
+		   DialoguePanel::IsActive();
 }
 
 // -------------------------------------------------------
@@ -120,25 +104,14 @@ void GameUISystem::SetPauseMenuOpen(bool bOpen)
 {
 	if (bPauseMenuOpen == bOpen) return;
 	bPauseMenuOpen = bOpen;
+}
 
-	if (bOpen)
+void GameUISystem::TogglePauseMenuIfInGame()
+{
+	GameUISystem& UI = GameUISystem::Get();
+	if (UI.GetState() == EGameUIState::InGame)
 	{
-		// 메뉴 진입 - 마우스 언락 + 커서 표시
-		FInputRouter::LockMouse(false);
-		FInputRouter::SetCursorVisibility(true);
-	}
-	else
-	{
-		// 메뉴 종료 - 커서 숨김 + PIE/게임 모드면 뷰포트 재잠금
-		FInputRouter::SetCursorVisibility(false);
-		const FViewportRect& VR = FInputRouter::GetGuiInputState().ViewportHostRect;
-		if (VR.Width > 0)
-		{
-			FInputRouter::LockMouse(
-				true,
-				static_cast<float>(VR.X), static_cast<float>(VR.Y),
-				static_cast<float>(VR.Width), static_cast<float>(VR.Height));
-		}
+		UI.SetPauseMenuOpen(!UI.IsPauseMenuOpen());
 	}
 }
 
@@ -222,20 +195,6 @@ void GameUISystem::RequestExitPlay()
 // -------------------------------------------------------
 void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 {
-	// 첫 렌더: 초기 상태에 맞는 커서 적용 (PIE 진입 시 커서가 숨겨진 상태를 보정)
-	if (bFirstRender && Mode == EUIRenderMode::Play)
-	{
-		bFirstRender = false;
-		ApplyCursorForState(CurrentState);
-	}
-
-	// InGame 일 때 P 키로 일시정지 토글 (Play 모드에서만)
-	if (Mode == EUIRenderMode::Play && CurrentState == EGameUIState::InGame)
-	{
-		if (FInputRouter::GetKeyUp(0x50))  // P
-			SetPauseMenuOpen(!bPauseMenuOpen);
-	}
-
 	switch (CurrentState)
 	{
 	case EGameUIState::StartMenu:
@@ -261,24 +220,5 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 			DialoguePanel::Render(Mode);
 		}
 		break;
-	}
-
-	// InGame 중 대화 활성 여부가 바뀔 때만 마우스 잠금 상태를 갱신
-	if (Mode == EUIRenderMode::Play && CurrentState == EGameUIState::InGame && !bPauseMenuOpen)
-	{
-		const bool bDialogueNow = DialoguePanel::IsActive();
-		if (bDialogueNow != bPrevDialogueActive)
-		{
-			bPrevDialogueActive = bDialogueNow;
-			if (bDialogueNow)
-			{
-				FInputRouter::LockMouse(false);
-				FInputRouter::SetCursorVisibility(true);
-			}
-			else
-			{
-				ApplyCursorForState(EGameUIState::InGame);
-			}
-		}
 	}
 }

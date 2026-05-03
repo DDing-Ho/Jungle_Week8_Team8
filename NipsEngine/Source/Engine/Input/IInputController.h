@@ -20,6 +20,8 @@ public:
 	virtual void OnKeyReleased(int VK) = 0;
 	virtual void OnWheelScrolled(float Notch) = 0;
 	virtual void Tick(float InDeltaTime) { DeltaTime = InDeltaTime; }
+	void SetInputEnabled(bool bEnabled) { bInputEnabled = bEnabled; }
+	bool IsInputEnabled() const { return bInputEnabled; }
 
 	void SetInputModifiers(bool bInCtrlDown, bool bInAltDown, bool bInShiftDown)
 	{
@@ -47,4 +49,5 @@ protected:
 	bool  bCtrlDown      = false;
 	bool  bAltDown       = false;
 	bool  bShiftDown     = false;
+	bool  bInputEnabled  = true;
 };

@@ -31,18 +31,3 @@ struct FPoint
 	FPoint(float InX, float InY) : X(InX), Y(InY) {}
 };
 
-struct FViewportMouseEvent
-{
-	int32 WindowX = 0;
-	int32 WindowY = 0;
-
-	int32 LocalX = 0;
-	int32 LocalY = 0;
-
-	int32 DeltaX = 0;
-	int32 DeltaY = 0;
-
-	bool bLeftDown = false;
-	bool bRightDown = false;
-	bool bMiddleDown = false;
-};

@@ -1,0 +1,9 @@
+{
+        "Name" : "Asset/Mesh/Dice/Dice_Inst_6.matinst",
+        "OverridedParams" : [{
+            "Name" : "DiffuseMap",
+            "Type" : "Texture",
+            "Value" : "Asset/Texture/wood_planks.png"
+          }],
+        "Parent" : "DicePaper"
+      }
