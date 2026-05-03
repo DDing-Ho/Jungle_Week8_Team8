@@ -2,7 +2,7 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
-#include "Game/GameTypes.h"
+//#include "Game/GameTypes.h"
 #include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/GameContext.h"
 #include "Game/Systems/GameItemDataLoader.h"
@@ -33,7 +33,7 @@ namespace
 {
 	void InitializePlayGameData()
 	{
-		Game::RegisterGameTypes();
+		//Game::RegisterGameTypes();
 
 		FItemSystem& Items = FItemSystem::Get();
 		Items.ClearItemData();
