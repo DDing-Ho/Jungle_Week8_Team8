@@ -15,11 +15,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "Game/UI/GameUISystem.h"
-#include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Renderer/Renderer.h"
-
-#include <Windows.h>
-#include <commdlg.h>
 
 DEFINE_CLASS(UGameEngine, UEngine)
 REGISTER_FACTORY(UGameEngine)
@@ -54,29 +50,6 @@ namespace
 		}
 	}
 
-	// 디버그용 임시 함수: 추후 GameSettings에 저장된 Scene 파일을 불러오도록 변경
-	FString OpenScene(HWND OwnerWindow)
-	{
-		WCHAR FileBuffer[MAX_PATH] = {};
-		const std::wstring InitialDir = FPaths::SceneDir();
-
-		OPENFILENAMEW Ofn{};
-		Ofn.lStructSize = sizeof(Ofn);
-		Ofn.hwndOwner = OwnerWindow;
-		Ofn.lpstrFilter = L"Nips Scene (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0";
-		Ofn.lpstrFile = FileBuffer;
-		Ofn.nMaxFile = MAX_PATH;
-		Ofn.lpstrInitialDir = InitialDir.c_str();
-		Ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-		Ofn.lpstrDefExt = L"Scene";
-
-		if (!GetOpenFileNameW(&Ofn))
-		{
-			return "";
-		}
-
-		return FPaths::ToUtf8(FileBuffer);
-	}
 }
 
 void UGameEngine::Init(FWindowsWindow* InWindow)
@@ -96,6 +69,9 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	Game::RegisterGameTypes();
 	GGameContext::Get().Reset();
 	FItemSystem::Get().ResetRuntimeState();
+	GameUISystem::Get().ResetGameData();
+	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	GameUISystem::Get().SetStartGameCallback([this]() { StartMainGame(); });
 
 	LoadStartupScene();
 
@@ -106,26 +82,55 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 
 void UGameEngine::LoadStartupScene()
 {
-	FString ScenePath = OpenScene(Window ? Window->GetHWND() : nullptr);
-	if (ScenePath.empty())
+	const FString ScenePath = FPaths::ToString(FPaths::Combine(FPaths::SceneDir(), GameSettings::StartupSceneName));
+
+	if (LoadGameScene(ScenePath))
 	{
-		ScenePath = FPaths::ToString(FPaths::Combine(FPaths::SceneDir(), GameSettings::StartupSceneName));
+		return;
 	}
 
+	FWorldContext& DefaultCtx = CreateWorldContext(EWorldType::Game, GameWorldHandle, GameWorldName);
+	ApplyDefaultContext(DefaultCtx);
+	SetActiveWorld(DefaultCtx.ContextHandle);
+}
+
+bool UGameEngine::LoadGameScene(const FString& ScenePath)
+{
 	FWorldContext Ctx;
 	FSceneSaveManager::Load(ScenePath, Ctx, nullptr);
 
 	if (!Ctx.World)
 	{
-		FWorldContext& DefaultCtx = CreateWorldContext(EWorldType::Game, GameWorldHandle, GameWorldName);
-		ApplyDefaultContext(DefaultCtx);
-		SetActiveWorld(DefaultCtx.ContextHandle);
-		return;
+		return false;
+	}
+
+	if (GetWorldContextFromHandle(GameWorldHandle))
+	{
+		DestroyWorldContext(GameWorldHandle);
 	}
 
 	ApplyDefaultContext(Ctx);
 	WorldList.push_back(Ctx);
 	SetActiveWorld(Ctx.ContextHandle);
+	return true;
+}
+
+void UGameEngine::StartMainGame()
+{
+	const FString ScenePath = FPaths::ToString(FPaths::Combine(FPaths::SceneDir(), GameSettings::MainSceneName));
+	if (!LoadGameScene(ScenePath))
+	{
+		return;
+	}
+
+	if (GameViewport)
+	{
+		GameViewport->SetWorld(GetWorld());
+	}
+
+	GameUISystem::Get().ResetGameData();
+	GameUISystem::Get().SetState(EGameUIState::InGame);
+	BeginPlay();
 }
 
 void UGameEngine::Tick(float DeltaTime)
@@ -142,6 +147,7 @@ void UGameEngine::Shutdown()
 {
 	FItemSystem::Get().ResetRuntimeState();
 	GGameContext::Get().Reset();
+	GameUISystem::Get().SetStartGameCallback(nullptr);
 	GameUISystem::Get().Shutdown();
 	GameViewport.reset();
 	UEngine::Shutdown();

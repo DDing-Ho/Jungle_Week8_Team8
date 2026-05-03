@@ -464,7 +464,3 @@ vcpkg_installed/
 NipsEngine/Asset/Mesh/I_*/
 
 NipsEngine/Asset/Mesh/Bin/**
-NipsEngine/Asset/Scene/**
-
-# 발제용 Scene
-!NipsEngine/Asset/Scene/Scene_*

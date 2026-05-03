@@ -190,6 +190,19 @@ void GameUISystem::RequestExitPlay()
 		SetState(EGameUIState::StartMenu);  // 게임 빌드: 시작화면으로 복귀
 }
 
+void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
+{
+	StartGameCallback = std::move(Callback);
+}
+
+void GameUISystem::RequestStartGame()
+{
+	if (StartGameCallback)
+		StartGameCallback();
+	else
+		SetState(EGameUIState::InGame);
+}
+
 // -------------------------------------------------------
 // 현재 상태에 맞는 패널 디스패치
 // -------------------------------------------------------
@@ -197,6 +210,9 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 {
 	switch (CurrentState)
 	{
+	case EGameUIState::None:
+		break;
+
 	case EGameUIState::StartMenu:
 		if (Mode == EUIRenderMode::Play)
 			StartMenuPanel::Render(Mode);

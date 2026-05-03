@@ -23,6 +23,8 @@ public:
 
 private:
 	void LoadStartupScene();
+	bool LoadGameScene(const FString& ScenePath);
+	void StartMainGame();
 
 private:
 	std::unique_ptr<FGameViewportClient> GameViewport;

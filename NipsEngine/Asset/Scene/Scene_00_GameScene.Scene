@@ -1,6 +1,7 @@
 {
   "ClassName" : "UWorld",
   "Name" : "Scene_00_GameScene",
+  "GameUIBootMode" : "InGame",
   "NextUUID" : 3883,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,

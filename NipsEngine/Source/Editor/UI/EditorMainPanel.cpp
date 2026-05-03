@@ -182,13 +182,10 @@ void FEditorMainPanel::Render(float DeltaTime)
 		StatWidget.Render(DeltaTime);
 	ViewportOverlayWidget.Render(DeltaTime);
 
-	// 게임 UI - 에디터에서는 항상 표시, PIE 중이면 Play 모드로 동작
+	// 게임 UI는 PIE 중에만 표시합니다. 편집 중에는 씬 작업을 방해하지 않습니다.
+	if (EditorEngine && EditorEngine->GetEditorState() == EViewportPlayState::Playing)
 	{
-		const EUIRenderMode UIMode =
-			(EditorEngine && EditorEngine->GetEditorState() == EViewportPlayState::Playing)
-			? EUIRenderMode::Play
-			: EUIRenderMode::Preview;
-		GameUISystem::Get().RenderPanelsOnly(UIMode);
+		GameUISystem::Get().RenderPanelsOnly(EUIRenderMode::Play);
 	}
 
 	ImGui::Render();
