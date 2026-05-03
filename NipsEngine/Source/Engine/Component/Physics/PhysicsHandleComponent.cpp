@@ -293,6 +293,72 @@ namespace
 
 		return TotalPush;
 	}
+
+	bool RaycastPrimitiveForPickup(UPrimitiveComponent* Primitive, const FRay& Ray, FHitResult& OutHit)
+	{
+		if (Primitive == nullptr || Primitive->IsEditorOnly())
+		{
+			return false;
+		}
+
+		const EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+		if (PrimType == EPrimitiveType::EPT_Billboard || PrimType == EPrimitiveType::EPT_Decal)
+		{
+			return false;
+		}
+
+		if (Cast<UShapeComponent>(Primitive))
+		{
+			if (!Primitive->IsBlockComponent())
+			{
+				return false;
+			}
+
+			return Primitive->RaycastMesh(Ray, OutHit) && OutHit.IsValid();
+		}
+
+		return Primitive->Raycast(Ray, OutHit) && OutHit.IsValid();
+	}
+
+	bool LineTracePickup(UWorld* World, const FRay& Ray, float MaxDistance, const AActor* IgnoredActor, FHitResult& OutHit)
+	{
+		if (World == nullptr)
+		{
+			return false;
+		}
+
+		FWorldSpatialIndex::FPrimitiveRayQueryScratch Scratch;
+		TArray<UPrimitiveComponent*> Candidates;
+		TArray<float> BroadHitTs;
+		World->GetSpatialIndex().RayQueryPrimitives(Ray, Candidates, BroadHitTs, Scratch);
+
+		bool bFoundHit = false;
+		float ClosestDistance = MaxDistance;
+		for (UPrimitiveComponent* Candidate : Candidates)
+		{
+			if (Candidate == nullptr || Candidate->GetOwner() == IgnoredActor)
+			{
+				continue;
+			}
+
+			FHitResult CandidateHit;
+			if (!RaycastPrimitiveForPickup(Candidate, Ray, CandidateHit))
+			{
+				continue;
+			}
+
+			if (CandidateHit.Distance < 0.0f || CandidateHit.Distance > ClosestDistance)
+			{
+				continue;
+			}
+
+			ClosestDistance = CandidateHit.Distance;
+			OutHit = CandidateHit;
+			bFoundHit = true;
+		}
+
+		return bFoundHit;
+	}
 }
 
 DEFINE_CLASS(UPhysicsHandleComponent, UActorComponent)
@@ -367,7 +433,7 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocati
 	}
 
 	const FRay Ray(CameraLocation, Forward);
-	if (!World->LineTraceSingle(Ray, TraceDistance, Hit))
+	if (!LineTracePickup(World, Ray, TraceDistance, GetOwner(), Hit))
 	{
 		return false;
 	}

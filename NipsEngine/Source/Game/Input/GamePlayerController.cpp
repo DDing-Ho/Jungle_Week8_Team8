@@ -247,6 +247,7 @@ void FGamePlayerController::OnLeftMouseDrag(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	TryBeginCleaningUse();
 }
 
 void FGamePlayerController::OnLeftMouseDragEnd(float X, float Y)

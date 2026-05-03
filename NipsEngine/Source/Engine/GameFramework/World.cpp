@@ -236,6 +236,14 @@ bool UWorld::LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& Out
 		{
 			continue;
 		}
+		if (WorldType != EWorldType::Editor && Candidate->GetPrimitiveType() == EPrimitiveType::EPT_Billboard)
+		{
+			continue;
+		}
+		if (WorldType != EWorldType::Editor && Candidate->IsEditorOnly())
+		{
+			continue;
+		}
 
 		FHitResult CandidateHit;
 		if (!Candidate->Raycast(Ray, CandidateHit) || !CandidateHit.IsValid())

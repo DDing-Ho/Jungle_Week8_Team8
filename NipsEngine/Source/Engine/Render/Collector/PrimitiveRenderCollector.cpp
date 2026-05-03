@@ -116,6 +116,10 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 	if (Primitive->IsEditorOnly() && WorldType != EWorldType::Editor) return;
 
 	EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+	if (PrimType == EPrimitiveType::EPT_Billboard && WorldType != EWorldType::Editor)
+	{
+		return;
+	}
 
 	static const FMaterial EngineDefaultMaterial{};
 
