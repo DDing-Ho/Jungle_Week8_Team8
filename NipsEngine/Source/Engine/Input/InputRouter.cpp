@@ -17,6 +17,18 @@ namespace
 	};
 }
 
+EWorldType FInputRouter::WorldType = EWorldType::Editor;
+
+void FInputRouter::SetWorldType(EWorldType InWorldType)
+{
+	WorldType = InWorldType;
+}
+
+EWorldType FInputRouter::GetWorldType()
+{
+	return WorldType;
+}
+
 void FInputRouter::Tick(float DeltaTime)
 {
 	if (WorldType == EWorldType::PIE)
@@ -230,6 +242,11 @@ void FInputRouter::SetCursorVisibility(bool bVisible)
 void FInputRouter::LockMouse(bool bLock, float X, float Y, float Width, float Height)
 {
 	InputSystem::Get().LockMouse(bLock, X, Y, Width, Height);
+}
+
+void FInputRouter::ResetMouseDelta(int SuppressTicks)
+{
+	InputSystem::Get().ResetMouseDelta(SuppressTicks);
 }
 
 void FInputRouter::TickInputSystem()

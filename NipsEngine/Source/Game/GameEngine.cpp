@@ -127,11 +127,7 @@ void UGameEngine::LoadStartupScene()
 void UGameEngine::Tick(float DeltaTime)
 {
 	FInputRouter::TickInputSystem();
-	if (GameViewport)
-	{
-		const FWorldContext* Context = GetWorldContextFromHandle(ActiveWorldHandle);
-		GameViewport->SetInputWorldType(Context ? Context->WorldType : EWorldType::Game);
-	}
+	UpdateInputWorldType();
 	GameViewport->Tick(DeltaTime);
 	WorldTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);

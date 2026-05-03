@@ -334,21 +334,7 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 void UEditorEngine::Tick(float DeltaTime)
 {
 	FInputRouter::TickInputSystem();
-	for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
-	{
-		FEditorViewportClient* ViewportClient = ViewportLayout.GetViewportClient(i);
-		if (!ViewportClient)
-		{
-			continue;
-		}
-
-		FWorldContext* Context = GetWorldContextFromWorld(ViewportClient->GetFocusedWorld());
-		if (!Context)
-		{
-			Context = GetWorldContextFromHandle(ActiveWorldHandle);
-		}
-		ViewportClient->SetInputWorldType(Context ? Context->WorldType : EWorldType::Editor);
-	}
+	UpdateInputWorldType();
 	ViewportLayout.Tick(DeltaTime);
 	MainPanel.Update();
 	WorldTick(DeltaTime);
@@ -450,6 +436,7 @@ void UEditorEngine::StartPlaySession()
 	}
 
 	FInputRouter::SetCursorVisibility(false);
+	FInputRouter::ResetMouseDelta(2);
 
 	// PIE 진입마다 시작화면부터 (커서/마우스 상태는 SetState 내부에서 처리)
 	GameUISystem::Get().ResetGameData();

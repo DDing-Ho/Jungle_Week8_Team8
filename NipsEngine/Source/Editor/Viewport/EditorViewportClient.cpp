@@ -60,6 +60,7 @@ void FEditorViewportClient::StartPIE(UWorld* InWorld)
 	{
 		GamePlayerController.InitializeFreeCameraFromSnapshot(SavedCamera);
 	}
+	FInputRouter::ResetMouseDelta(2);
 }
 
 void FEditorViewportClient::EndPIE(UWorld* InWorld)
@@ -269,10 +270,12 @@ void FEditorViewportClient::TogglePIEInputCapture()
 		bControlLocked = true;
 		FInputRouter::SetCursorVisibility(true);
 		FInputRouter::LockMouse(false);
+		FInputRouter::ResetMouseDelta(1);
 	}
 	else
 	{
 		bControlLocked = false;
+		FInputRouter::ResetMouseDelta(2);
 	}
 }
 

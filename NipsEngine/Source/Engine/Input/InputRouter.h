@@ -22,8 +22,8 @@ struct FInputRouteContext
 class FInputRouter
 {
 public:
-	void SetWorldType(EWorldType InWorldType) { WorldType = InWorldType; }
-	EWorldType GetWorldType() const { return WorldType; }
+	static void SetWorldType(EWorldType InWorldType);
+	static EWorldType GetWorldType();
 
 	void SetEditorWorldController(IInputController* InController) { EditorWorldController = InController; }
 	void SetPIEController(IInputController* InController) { PIEController = InController; }
@@ -50,6 +50,7 @@ public:
 	static FGuiInputState& GetGuiInputState();
 	static void SetCursorVisibility(bool bVisible);
 	static void LockMouse(bool bLock, float X = 0, float Y = 0, float Width = 0, float Height = 0);
+	static void ResetMouseDelta(int SuppressTicks = 1);
 	static void TickInputSystem();
 	static void SetOwnerWindow(HWND HWnd);
 	static void AddScrollDelta(int Delta);
@@ -64,8 +65,9 @@ private:
 	bool IsPIESpecialKey(int VK) const;
 
 private:
-	EWorldType WorldType = EWorldType::Editor;
 	IInputController* EditorWorldController = nullptr;
 	IInputController* PIEController = nullptr;
 	IInputController* GamePlayerController = nullptr;
+
+	static EWorldType WorldType;
 };

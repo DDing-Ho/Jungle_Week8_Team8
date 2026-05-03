@@ -30,7 +30,6 @@ public:
 
 	FInputRouter& GetInputRouter() { return InputRouter; }
 	const FInputRouter& GetInputRouter() const { return InputRouter; }
-	void SetInputWorldType(EWorldType WorldType) { InputRouter.SetWorldType(WorldType); }
 	FGamePlayerController& GetPlayerController() { return PlayerController; }
 	const FGamePlayerController& GetPlayerController() const { return PlayerController; }
 

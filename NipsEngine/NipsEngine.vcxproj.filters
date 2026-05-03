@@ -85,9 +85,6 @@
     <Filter Include="Source\Engine\Object">
       <UniqueIdentifier>{bde1343c-f2f0-832e-756d-af7b4ac2f6e7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Engine\Physics">
-      <UniqueIdentifier>{1d8d5da8-3f7f-5cc7-8217-7dcfbfe147d0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Engine\Render">
       <UniqueIdentifier>{c2b26f68-96a9-037f-9122-8cc548e081ff}</UniqueIdentifier>
     </Filter>
@@ -571,9 +568,6 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Object\Object.cpp">
       <Filter>Source\Engine\Object</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Physics\JoltPhysicsSystem.cpp">
-      <Filter>Source\Engine\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\FontBatcher.cpp">
       <Filter>Source\Engine\Render</Filter>
@@ -1246,9 +1240,6 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Object\ObjectIterator.h">
       <Filter>Source\Engine\Object</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Physics\JoltPhysicsSystem.h">
-      <Filter>Source\Engine\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\FontBatcher.h">
       <Filter>Source\Engine\Render</Filter>

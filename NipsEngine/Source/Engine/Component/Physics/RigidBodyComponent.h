@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/ActorComponent.h"
 #include "Math/Vector.h"
@@ -22,7 +22,6 @@ public:
 
 	void SetSimulatePhysics(bool bInSimulate) { bSimulatePhysics = bInSimulate; }
 	bool IsSimulatingPhysics() const { return bSimulatePhysics; }
-	bool IsUsingJoltPhysics() const { return JoltBodyHandle != InvalidJoltBodyHandle; }
 
 	void SetHeldByPhysicsHandle(bool bHeld);
 	bool IsHeldByPhysicsHandle() const { return bHeldByPhysicsHandle; }
@@ -51,10 +50,6 @@ public:
 	float GetMaxAngularSpeed() const { return MaxAngularSpeed; }
 	bool IsGravityEnabled() const { return bUseGravity; }
 
-	uint32 GetJoltBodyHandle() const { return JoltBodyHandle; }
-	void SetJoltBodyHandle(uint32 InBodyHandle) { JoltBodyHandle = InBodyHandle; }
-	void ClearJoltBodyHandle() { JoltBodyHandle = InvalidJoltBodyHandle; }
-
 protected:
 	void TickComponent(float DeltaTime) override;
 
@@ -62,13 +57,9 @@ private:
 	void ClampEditableValues();
 	void ApplyBlockingResponse();
 
-private:
-	static constexpr uint32 InvalidJoltBodyHandle = 0xffffffffu;
-
 	USceneComponent* UpdatedComponent = nullptr;
 	FVector Velocity = FVector::ZeroVector;
 	FVector AngularVelocity = FVector::ZeroVector;
-	uint32 JoltBodyHandle = InvalidJoltBodyHandle;
 
 	bool bSimulatePhysics = true;
 	bool bUseGravity = true;

@@ -57,6 +57,7 @@ void UEngine::BeginPlay()
 void UEngine::Tick(float DeltaTime)
 {
 	FInputRouter::TickInputSystem();
+	UpdateInputWorldType();
 	WorldTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);
 	Render(DeltaTime);
@@ -94,6 +95,12 @@ void UEngine::WorldTick(float DeltaTime)
 	{
 		World->Tick(DeltaTime);
 	}
+}
+
+void UEngine::UpdateInputWorldType()
+{
+	const FWorldContext* Context = GetWorldContextFromHandle(ActiveWorldHandle);
+	FInputRouter::SetWorldType(Context ? Context->WorldType : EWorldType::Editor);
 }
 
 UWorld* UEngine::GetWorld() const
