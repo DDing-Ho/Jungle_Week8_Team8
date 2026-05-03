@@ -299,7 +299,7 @@ void UPhysicsHandleComponent::Release()
 	HoldVelocity = FVector::ZeroVector;
 }
 
-void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset, const FQuat* TargetRotation)
+void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset, const FQuat* TargetRotation, bool bSnapToTarget)
 {
 	if (DeltaTime <= 0.0f || HeldBody == nullptr || Camera == nullptr)
 	{
@@ -320,6 +320,19 @@ void UPhysicsHandleComponent::TickHandle(float DeltaTime, const FViewportCamera*
 	LastHoldLocation = HoldLocation;
 
 	const FVector Target = GetHoldTarget(Camera, TargetOffset);
+	if (bSnapToTarget)
+	{
+		HoldLocation = Target;
+		HoldVelocity = DeltaTime > 0.0f ? (HoldLocation - LastHoldLocation) / DeltaTime : FVector::ZeroVector;
+		HeldBody->SetPhysicsLocation(HoldLocation);
+		if (TargetRotation)
+		{
+			HeldBody->SetPhysicsRotation(*TargetRotation);
+		}
+		HeldBody->SetVelocity(HoldVelocity);
+		return;
+	}
+
 	const FVector ToTarget = Target - HoldLocation;
 	const FVector Acceleration = ToTarget * SpringStrength - HoldVelocity * Damping;
 	HoldVelocity += Acceleration * DeltaTime;

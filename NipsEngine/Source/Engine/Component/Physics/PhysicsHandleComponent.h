@@ -22,7 +22,7 @@ public:
 
 	bool TryGrab(UWorld* World, const FViewportCamera* Camera);
 	void Release();
-	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector, const FQuat* TargetRotation = nullptr);
+	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector, const FQuat* TargetRotation = nullptr, bool bSnapToTarget = false);
 
 	bool IsHolding() const { return HeldBody != nullptr; }
 	URigidBodyComponent* GetHeldBody() const { return HeldBody; }

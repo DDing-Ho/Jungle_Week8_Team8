@@ -99,7 +99,7 @@
       "holdDistance": 1.4,
       "holdCameraLocalOffset": [0.0, 0.0, 0.0],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],
-      "handleCameraLocalDirection": [0.0, 1.0, -1.0],
+      "handleCameraLocalDirection": [0.0, 1.0, 1.0],
       "useBobAmplitude": 0.18,
       "useBobSpeed": 9.0,
       "useReturnSpeed": 14.0

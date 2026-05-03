@@ -230,7 +230,7 @@ void FGamePlayerController::Tick(float DeltaTime)
 			ToolRotation = BuildCameraLocalHandleRotation(FreeCamera, ToolData->HandleCameraLocalDirection);
 			ToolRotationPtr = &ToolRotation;
 		}
-		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset, ToolRotationPtr);
+		PhysicsHandle->TickHandle(DeltaTime, FreeCamera, ToolOffset, ToolRotationPtr, ToolData != nullptr);
 	}
 }
 

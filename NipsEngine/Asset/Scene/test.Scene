@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "None",
   "Name" : "test",
-  "NextUUID" : 12482,
+  "NextUUID" : 12939,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-13.775341, -5.934014, 9.830905],
+    "Location" : [-14.019268, -8.325788, 5.420555],
     "NearClip" : 0.100000,
-    "Rotation" : [7.733659, 48.860771, -10.221893]
+    "Rotation" : [0.848612, 30.253637, -1.683960]
   },
   "Primitives" : {
     "11356" : {
@@ -2635,9 +2635,9 @@
       "GenerateOverlapEvents" : false,
       "HiddenInEditor" : false,
       "LineThickness" : 1.000000,
-      "Location" : [0.000000, 0.000000, -0.900000],
+      "Location" : [0.000000, -1.800000, -0.100000],
       "ParentUUID" : 450,
-      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Rotation" : [90.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
       "Type" : "UBoxComponent",
