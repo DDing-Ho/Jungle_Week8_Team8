@@ -100,6 +100,7 @@ namespace
 
 	// 꼭 모든 Actor Types가 저장될 필요는 없습니다. 우클릭으로 생성할 수 있는 액터만 관리합니다.
 	static const FPlacementActorEntry PlacementActorTypes[] = {
+		{ "Pawn", SpawnActorAt<APawnActor> },
 		{ "Scene", SpawnActorAt<ASceneActor> },
 		{ "StaticMesh", SpawnActorAt<AStaticMeshActor> },
 		{ "TextRender", SpawnActorAt<ATextRenderActor> },

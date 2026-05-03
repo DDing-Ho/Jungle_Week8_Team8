@@ -57,6 +57,7 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 	UWorld* World = VC->GetFocusedWorld();
 	const FEditorSettings& Settings = Editor->GetSettings();
 	const FShowFlags& ShowFlags = Settings.ShowFlags;
+	const bool bEditingViewport = VC->GetPlayState() == EViewportPlayState::Editing;
 	const EViewMode ViewMode = SceneView.ViewMode;
 	const FFrustum& ViewFrustum = SceneView.CameraFrustum;
 
@@ -73,11 +74,12 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 		DebugShowFlags.bAudioRange = false;
 	}
 	Collector.CollectDebugBounds(World, DebugShowFlags, ViewMode, Bus);
-	Collector.CollectGrid(Settings.GridSpacing, Settings.GridHalfLineCount, Bus, SceneView.bOrthographic);
 
-	// 뷰포트가 편집 모드일 때만 기즈모·선택 오버레이를 그립니다.
-	if (VC->GetPlayState() == EViewportPlayState::Editing)
+	// 뷰포트가 편집 모드일 때만 그리드·축선·기즈모·선택 오버레이를 그립니다.
+	if (bEditingViewport)
 	{
+		Collector.CollectGrid(Settings.GridSpacing, Settings.GridHalfLineCount, Bus, SceneView.bOrthographic);
+
 		if (UGizmoComponent* Gizmo = Editor->GetGizmo())
 		{
 			if (SceneView.bOrthographic)

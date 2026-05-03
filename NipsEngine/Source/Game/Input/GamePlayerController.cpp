@@ -99,9 +99,14 @@ void FGamePlayerController::Tick(float DeltaTime)
 	CaptureInitialRigidBodyRotations();
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
-	if (PhysicsHandle)
+	if (UPhysicsHandleComponent* Handle = GetPhysicsHandle())
 	{
-		PhysicsHandle->TickHandle(DeltaTime, FreeCamera);
+		FVector CameraLocation;
+		FVector CameraForward;
+		if (GetActiveCameraFrame(CameraLocation, CameraForward))
+		{
+			Handle->TickHandle(DeltaTime, CameraLocation, CameraForward);
+		}
 	}
 }
 
@@ -198,9 +203,23 @@ void FGamePlayerController::SetWorld(UWorld* InWorld)
 	}
 
 	World = InWorld;
+	Player = nullptr;
+	Camera = nullptr;
 	InitialRigidBodyRotations.clear();
 	bInitialRigidBodyRotationsCaptured = false;
 	DestroyPhysicsHandle();
+}
+
+void FGamePlayerController::SetPlayer(AActor* InPlayer)
+{
+	if (Player == InPlayer)
+	{
+		return;
+	}
+
+	DestroyPhysicsHandle();
+	Player = InPlayer;
+	RefreshPawnComponents();
 }
 
 void FGamePlayerController::SetCamera(UCameraComponent* InCamera)
@@ -345,7 +364,7 @@ void FGamePlayerController::ApplyInputAxes()
 
 void FGamePlayerController::TogglePickup()
 {
-	if (!World || !FreeCamera || !IsInputEnabled())
+	if (!World || !IsInputEnabled())
 	{
 		return;
 	}
@@ -362,7 +381,14 @@ void FGamePlayerController::TogglePickup()
 		return;
 	}
 
-	if (Handle->TryGrab(World, FreeCamera))
+	FVector CameraLocation;
+	FVector CameraForward;
+	if (!GetActiveCameraFrame(CameraLocation, CameraForward))
+	{
+		return;
+	}
+
+	if (Handle->TryGrab(World, CameraLocation, CameraForward))
 	{
 		ResetHeldBodyRotationToInitial();
 	}
@@ -370,11 +396,7 @@ void FGamePlayerController::TogglePickup()
 
 UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
 {
-	if (!PhysicsHandle)
-	{
-		PhysicsHandle = UObjectManager::Get().CreateObject<UPhysicsHandleComponent>();
-		PhysicsHandle->SetTransient(true);
-	}
+	RefreshPawnComponents();
 	return PhysicsHandle;
 }
 
@@ -383,9 +405,59 @@ void FGamePlayerController::DestroyPhysicsHandle()
 	if (PhysicsHandle)
 	{
 		PhysicsHandle->Release();
-		UObjectManager::Get().DestroyObject(PhysicsHandle);
 		PhysicsHandle = nullptr;
 	}
+}
+
+void FGamePlayerController::RefreshPawnComponents()
+{
+	Camera = nullptr;
+	PhysicsHandle = nullptr;
+	if (Player == nullptr)
+	{
+		return;
+	}
+
+	for (UActorComponent* Component : Player->GetComponents())
+	{
+		if (Camera == nullptr)
+		{
+			Camera = Cast<UCameraComponent>(Component);
+			if (Camera != nullptr)
+			{
+				Camera->OnResize(static_cast<int32>(ViewportWidth), static_cast<int32>(ViewportHeight));
+			}
+		}
+
+		if (PhysicsHandle == nullptr)
+		{
+			PhysicsHandle = Cast<UPhysicsHandleComponent>(Component);
+		}
+
+		if (Camera != nullptr && PhysicsHandle != nullptr)
+		{
+			break;
+		}
+	}
+}
+
+bool FGamePlayerController::GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const
+{
+	if (Camera != nullptr)
+	{
+		OutLocation = Camera->GetWorldLocation();
+		OutForward = Camera->GetForwardVector();
+		return !OutForward.IsNearlyZero();
+	}
+
+	if (FreeCamera != nullptr)
+	{
+		OutLocation = FreeCamera->GetLocation();
+		OutForward = FreeCamera->GetForwardVector();
+		return !OutForward.IsNearlyZero();
+	}
+
+	return false;
 }
 
 void FGamePlayerController::CaptureInitialRigidBodyRotations()

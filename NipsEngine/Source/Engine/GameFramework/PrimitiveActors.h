@@ -5,6 +5,15 @@
 class UTextRenderComponent;
 class UDecalComponent;
 
+class APawnActor : public AActor
+{
+public:
+	DECLARE_CLASS(APawnActor, AActor)
+	APawnActor() = default;
+
+	void InitDefaultComponents();
+};
+
 class ASceneActor : public AActor
 {
 public:

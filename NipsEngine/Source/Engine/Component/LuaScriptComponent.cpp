@@ -96,6 +96,7 @@ void ULuaScriptComponent::EndPlay()
 
 	FLuaScriptSystem::Get().UnloadScript(this);
 	bLoaded = false;
+	UActorComponent::EndPlay();
 }
 
 void ULuaScriptComponent::OnRegister()

@@ -36,7 +36,8 @@ void ULevel::PostDuplicate(UObject* Original)
 
 void ULevel::BeginPlay()
 {
-	for (AActor* Actor : Actors)
+	const TArray<AActor*> ActorsSnapshot = Actors;
+	for (AActor* Actor : ActorsSnapshot)
 	{
 		if (Actor)
 		{
