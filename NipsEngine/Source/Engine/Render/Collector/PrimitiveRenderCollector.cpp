@@ -335,7 +335,7 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 			}
 		}
 
-		if (WorldType == EWorldType::Editor && LineBatcher != nullptr)
+		if (WorldType == EWorldType::Editor && LineBatcher != nullptr && DecalComp->ShouldDrawDebugBounds(ShowFlags.bBoundingVolume))
 		{
 			LineBatcher->AddOBB(DecalOBB, FColor::Green());
 		}

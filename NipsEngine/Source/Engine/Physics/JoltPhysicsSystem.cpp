@@ -261,6 +261,7 @@ struct FJoltPhysicsSystem::FImpl
 	JPH::JobSystemThreadPool* JobSystem = nullptr;
 
 	std::vector<JPH::BodyID> BodyIDs;
+	std::unordered_map<URigidBodyComponent*, JPH::BodyID> RigidBodies;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> DynamicBodies;
 };
 
@@ -350,7 +351,7 @@ bool FJoltPhysicsSystem::IsBodyManaged(const URigidBodyComponent* Body) const
 		return false;
 	}
 
-	return Impl->DynamicBodies.find(const_cast<URigidBodyComponent*>(Body)) != Impl->DynamicBodies.end();
+	return Impl->RigidBodies.find(const_cast<URigidBodyComponent*>(Body)) != Impl->RigidBodies.end();
 }
 
 void FJoltPhysicsSystem::ClearWorld()
@@ -370,7 +371,7 @@ void FJoltPhysicsSystem::ClearWorld()
 		}
 	}
 
-	for (auto& Pair : Impl->DynamicBodies)
+	for (auto& Pair : Impl->RigidBodies)
 	{
 		if (Pair.first != nullptr)
 		{
@@ -379,6 +380,7 @@ void FJoltPhysicsSystem::ClearWorld()
 	}
 
 	Impl->BodyIDs.clear();
+	Impl->RigidBodies.clear();
 	Impl->DynamicBodies.clear();
 }
 
@@ -467,13 +469,18 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 		return;
 	}
 
-	const JPH::EMotionType MotionType = Body->IsHeldByPhysicsHandle() ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic;
+	const bool bStaticBody = Body->IsStaticBody();
+	const bool bKinematicBody = Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle();
+	const JPH::EMotionType MotionType = bStaticBody ? JPH::EMotionType::Static : (bKinematicBody ? JPH::EMotionType::Kinematic : JPH::EMotionType::Dynamic);
+	const JPH::ObjectLayer ObjectLayer = bStaticBody ? ObjectLayers::NonMoving : ObjectLayers::Moving;
+	const JPH::EActivation Activation = bStaticBody ? JPH::EActivation::DontActivate : JPH::EActivation::Activate;
+
 	JPH::BodyCreationSettings Settings(
 		Shape,
 		ToJoltPosition(UpdatedComponent->GetWorldLocation()),
 		ToJoltQuat(GetWorldQuat(UpdatedComponent)),
 		MotionType,
-		ObjectLayers::Moving);
+		ObjectLayer);
 	Settings.mFriction = 0.85f;
 	Settings.mRestitution = 0.05f;
 	Settings.mLinearDamping = Body->GetLinearDamping();
@@ -481,10 +488,13 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 	Settings.mMaxLinearVelocity = Body->GetMaxSpeed() > 0.0f ? Body->GetMaxSpeed() : 500.0f;
 	Settings.mMaxAngularVelocity = Body->GetMaxAngularSpeed() > 0.0f ? Body->GetMaxAngularSpeed() * (3.1415926535f / 180.0f) : 60.0f;
 	Settings.mGravityFactor = Body->IsGravityEnabled() ? Body->GetGravityScale() : 0.0f;
-	Settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-	Settings.mMassPropertiesOverride.mMass = Body->GetMass();
+	if (!bStaticBody)
+	{
+		Settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+		Settings.mMassPropertiesOverride.mMass = Body->GetMass();
+	}
 
-	JPH::BodyID BodyID = Impl->PhysicsSystem.GetBodyInterface().CreateAndAddBody(Settings, JPH::EActivation::Activate);
+	JPH::BodyID BodyID = Impl->PhysicsSystem.GetBodyInterface().CreateAndAddBody(Settings, Activation);
 	if (BodyID.IsInvalid())
 	{
 		return;
@@ -492,7 +502,11 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 
 	Body->SetJoltBodyHandle(BodyID.GetIndexAndSequenceNumber());
 	Impl->BodyIDs.push_back(BodyID);
-	Impl->DynamicBodies[Body] = BodyID;
+	Impl->RigidBodies[Body] = BodyID;
+	if (!bStaticBody)
+	{
+		Impl->DynamicBodies[Body] = BodyID;
+	}
 }
 
 void FJoltPhysicsSystem::Step(UWorld* World, float DeltaTime)
@@ -537,7 +551,7 @@ void FJoltPhysicsSystem::Step(UWorld* World, float DeltaTime)
 
 void FJoltPhysicsSystem::SetBodyKinematic(URigidBodyComponent* Body)
 {
-	if (!IsBodyManaged(Body))
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end())
 	{
 		return;
 	}
@@ -549,7 +563,7 @@ void FJoltPhysicsSystem::SetBodyKinematic(URigidBodyComponent* Body)
 
 void FJoltPhysicsSystem::SetBodyDynamic(URigidBodyComponent* Body)
 {
-	if (!IsBodyManaged(Body))
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
 	{
 		return;
 	}
@@ -560,7 +574,7 @@ void FJoltPhysicsSystem::SetBodyDynamic(URigidBodyComponent* Body)
 
 void FJoltPhysicsSystem::SetBodyTransformFromComponent(URigidBodyComponent* Body)
 {
-	if (!IsBodyManaged(Body))
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end())
 	{
 		return;
 	}
@@ -580,7 +594,7 @@ void FJoltPhysicsSystem::SetBodyTransformFromComponent(URigidBodyComponent* Body
 
 void FJoltPhysicsSystem::SetBodyLinearVelocity(URigidBodyComponent* Body, const FVector& Velocity)
 {
-	if (!IsBodyManaged(Body) || Body->IsHeldByPhysicsHandle())
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || Body->IsHeldByPhysicsHandle() || !Body->IsDynamicBody())
 	{
 		return;
 	}
@@ -590,7 +604,7 @@ void FJoltPhysicsSystem::SetBodyLinearVelocity(URigidBodyComponent* Body, const 
 
 void FJoltPhysicsSystem::AddBodyImpulse(URigidBodyComponent* Body, const FVector& Impulse)
 {
-	if (!IsBodyManaged(Body))
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
 	{
 		return;
 	}

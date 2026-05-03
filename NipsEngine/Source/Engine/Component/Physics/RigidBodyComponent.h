@@ -5,6 +5,13 @@
 
 class USceneComponent;
 
+enum class EPhysicsBodyType : int32
+{
+	Static = 0,
+	Dynamic = 1,
+	Kinematic = 2
+};
+
 class URigidBodyComponent : public UActorComponent
 {
 public:
@@ -20,6 +27,11 @@ public:
 	void SetUpdatedComponent(USceneComponent* InComponent) { UpdatedComponent = InComponent; }
 	USceneComponent* GetUpdatedComponent() const;
 
+	EPhysicsBodyType GetBodyType() const { return static_cast<EPhysicsBodyType>(BodyType); }
+	bool IsStaticBody() const { return GetBodyType() == EPhysicsBodyType::Static; }
+	bool IsDynamicBody() const { return GetBodyType() == EPhysicsBodyType::Dynamic; }
+	bool IsKinematicBody() const { return GetBodyType() == EPhysicsBodyType::Kinematic; }
+
 	void SetSimulatePhysics(bool bInSimulate) { bSimulatePhysics = bInSimulate; }
 	bool IsSimulatingPhysics() const { return bSimulatePhysics; }
 	bool IsUsingJoltPhysics() const { return JoltBodyHandle != InvalidJoltBodyHandle; }
@@ -27,7 +39,7 @@ public:
 	void SetHeldByPhysicsHandle(bool bHeld);
 	bool IsHeldByPhysicsHandle() const { return bHeldByPhysicsHandle; }
 
-	bool CanBePickedUp() const { return bCanBePickedUp; }
+	bool CanBePickedUp() const { return IsDynamicBody() && bCanBePickedUp; }
 	void SetCanBePickedUp(bool bInCanBePickedUp) { bCanBePickedUp = bInCanBePickedUp; }
 
 	const FVector& GetVelocity() const { return Velocity; }
@@ -49,7 +61,7 @@ public:
 	float GetAngularDamping() const { return AngularDamping; }
 	float GetMaxSpeed() const { return MaxSpeed; }
 	float GetMaxAngularSpeed() const { return MaxAngularSpeed; }
-	bool IsGravityEnabled() const { return bUseGravity; }
+	bool IsGravityEnabled() const { return IsDynamicBody() && bUseGravity; }
 
 	uint32 GetJoltBodyHandle() const { return JoltBodyHandle; }
 	void SetJoltBodyHandle(uint32 InBodyHandle) { JoltBodyHandle = InBodyHandle; }
@@ -69,6 +81,7 @@ private:
 	FVector AngularVelocity = FVector::ZeroVector;
 	uint32 JoltBodyHandle = InvalidJoltBodyHandle;
 
+	int32 BodyType = static_cast<int32>(EPhysicsBodyType::Dynamic);
 	bool bSimulatePhysics = true;
 	bool bUseGravity = true;
 	bool bCanBePickedUp = true;

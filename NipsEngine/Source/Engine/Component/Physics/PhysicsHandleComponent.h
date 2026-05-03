@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/ActorComponent.h"
 #include "Core/CollisionTypes.h"
@@ -41,7 +41,7 @@ private:
 	FVector LastHoldLocation = FVector::ZeroVector;
 
 	float TraceDistance = 5.0f;
-	float HoldDistance = 1.5f;
+	float HoldDistance = 4.0f;
 	float SpringStrength = 70.0f;
 	float Damping = 12.0f;
 	float MaxHoldSpeed = 30.0f;

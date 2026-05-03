@@ -62,6 +62,7 @@ void URigidBodyComponent::Serialize(FArchive& Ar)
 	uint32 UpdatedComponentUUID = UpdatedComponent ? UpdatedComponent->GetUUID() : 0;
 	Ar << "UpdatedComponentUUID" << UpdatedComponentUUID;
 	Ar << "Velocity" << Velocity;
+	Ar << "BodyType" << BodyType;
 	Ar << "SimulatePhysics" << bSimulatePhysics;
 	Ar << "UseGravity" << bUseGravity;
 	Ar << "CanBePickedUp" << bCanBePickedUp;
@@ -84,9 +85,12 @@ void URigidBodyComponent::Serialize(FArchive& Ar)
 
 void URigidBodyComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
+	static const char* BodyTypeNames[] = { "Static", "Dynamic", "Kinematic" };
+
 	UActorComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Updated Component", EPropertyType::SceneComponentRef, &UpdatedComponent });
 	OutProps.push_back({ "Velocity", EPropertyType::Vec3, &Velocity });
+	OutProps.push_back({ "Body Type", EPropertyType::Enum, &BodyType, 0.0f, 0.0f, 0.0f, BodyTypeNames, 3 });
 	OutProps.push_back({ "Simulate Physics", EPropertyType::Bool, &bSimulatePhysics });
 	OutProps.push_back({ "Use Gravity", EPropertyType::Bool, &bUseGravity });
 	OutProps.push_back({ "Can Be Picked Up", EPropertyType::Bool, &bCanBePickedUp });
@@ -125,6 +129,11 @@ USceneComponent* URigidBodyComponent::GetUpdatedComponent() const
 
 void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 {
+	if (!IsDynamicBody())
+	{
+		return;
+	}
+
 	if (bHeldByPhysicsHandle == bHeld)
 	{
 		return;
@@ -151,6 +160,13 @@ void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 
 void URigidBodyComponent::SetVelocity(const FVector& InVelocity)
 {
+	if (!IsDynamicBody())
+	{
+		Velocity = FVector::ZeroVector;
+		AngularVelocity = FVector::ZeroVector;
+		return;
+	}
+
 	Velocity = InVelocity;
 	if (Velocity.Z > 0.0f)
 	{
@@ -163,6 +179,11 @@ void URigidBodyComponent::SetVelocity(const FVector& InVelocity)
 void URigidBodyComponent::AddImpulse(const FVector& Impulse)
 {
 	ClampEditableValues();
+	if (!IsDynamicBody())
+	{
+		return;
+	}
+
 	if (FJoltPhysicsSystem::Get().IsBodyManaged(this))
 	{
 		FJoltPhysicsSystem::Get().AddBodyImpulse(this, Impulse);
@@ -248,7 +269,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 		return;
 	}
 
-	if (DeltaTime <= 0.0f || !bSimulatePhysics || bHeldByPhysicsHandle)
+	if (DeltaTime <= 0.0f || !bSimulatePhysics || bHeldByPhysicsHandle || !IsDynamicBody())
 	{
 		return;
 	}
@@ -299,6 +320,7 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
 
 void URigidBodyComponent::ClampEditableValues()
 {
+	BodyType = std::clamp(BodyType, static_cast<int32>(EPhysicsBodyType::Static), static_cast<int32>(EPhysicsBodyType::Kinematic));
 	Mass = std::max(0.01f, Mass);
 	GravityScale = std::max(0.0f, GravityScale);
 	LinearDamping = std::max(0.0f, LinearDamping);
@@ -306,6 +328,14 @@ void URigidBodyComponent::ClampEditableValues()
 	SleepSpeed = std::max(0.0f, SleepSpeed);
 	AngularDamping = std::max(0.0f, AngularDamping);
 	MaxAngularSpeed = std::max(0.0f, MaxAngularSpeed);
+
+	if (!IsDynamicBody())
+	{
+		Velocity = FVector::ZeroVector;
+		AngularVelocity = FVector::ZeroVector;
+		bGrounded = false;
+		bGroundPushOutSinceLastTick = false;
+	}
 }
 
 void URigidBodyComponent::ApplyBlockingResponse()
