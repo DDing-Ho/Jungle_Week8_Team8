@@ -61,6 +61,7 @@ public:
     void SetCurrentItem(const char* Name, const char* Desc);
 
     // 일시정지 메뉴
+    static void TogglePauseMenuIfInGame();
     void SetPauseMenuOpen(bool bOpen);
     bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
     bool WantsMouseCursor() const;

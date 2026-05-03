@@ -106,6 +106,15 @@ void GameUISystem::SetPauseMenuOpen(bool bOpen)
 	bPauseMenuOpen = bOpen;
 }
 
+void GameUISystem::TogglePauseMenuIfInGame()
+{
+	GameUISystem& UI = GameUISystem::Get();
+	if (UI.GetState() == EGameUIState::InGame)
+	{
+		UI.SetPauseMenuOpen(!UI.IsPauseMenuOpen());
+	}
+}
+
 // -------------------------------------------------------
 // 게임 데이터 초기화 (Retry)
 // -------------------------------------------------------

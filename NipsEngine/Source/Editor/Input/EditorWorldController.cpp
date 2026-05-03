@@ -7,9 +7,13 @@
 #include "GameFramework/Level.h"
 #include "GameFramework/PrimitiveActors.h"
 #include "Engine/Collision/RayCollision/RayCollision.h"
+#include "Engine/Input/InputRouter.h"
 #include "Math/Utils.h"
+#include "Math/Vector4.h"
 
+#include <algorithm>
 #include <cmath>
+#include <unordered_set>
 #include <windows.h>
 
 void FEditorWorldController::SetCamera(FViewportCamera* InCamera)
@@ -33,6 +37,7 @@ void FEditorWorldController::Tick(float InDeltaTime)
 	DeltaTime = InDeltaTime;
 	if (!Camera)
 		return;
+	UpdateGizmoScreenScaling();
 	if (!bTargetLocationInitialized)
 	{
 		TargetLocation = Camera->GetLocation();
@@ -59,9 +64,16 @@ void FEditorWorldController::OnMouseMoveAbsolute(float X, float Y)
 
 void FEditorWorldController::OnLeftMouseClick(float X, float Y)
 {
-	// Try gizmo handle first, then actor selection
 	if (!Camera)
 		return;
+
+	if (bCtrlDown && bAltDown)
+	{
+		bBoxSelecting = true;
+		BoxSelectStart = POINT{ static_cast<LONG>(X), static_cast<LONG>(Y) };
+		BoxSelectEnd = BoxSelectStart;
+		return;
+	}
 
 	FRay       Ray = Camera->DeprojectScreenToWorld(X, Y, ViewportWidth, ViewportHeight);
 	FHitResult HitResult{};
@@ -73,7 +85,8 @@ void FEditorWorldController::OnLeftMouseClick(float X, float Y)
 	}
 	else
 	{
-		Gizmo->SetPressedOnHandle(false);
+		if (Gizmo)
+			Gizmo->SetPressedOnHandle(false);
 	}
 
 	// Actor selection
@@ -126,6 +139,18 @@ void FEditorWorldController::OnLeftMouseClick(float X, float Y)
 
 void FEditorWorldController::OnLeftMouseDrag(float X, float Y)
 {
+	if (bBoxSelecting)
+	{
+		if (X < 0.f || Y < 0.f || X > ViewportWidth || Y > ViewportHeight)
+		{
+			bBoxSelecting = false;
+			return;
+		}
+
+		BoxSelectEnd = POINT{ static_cast<LONG>(X), static_cast<LONG>(Y) };
+		return;
+	}
+
 	if (!Gizmo || !Camera)
 		return;
 
@@ -141,8 +166,14 @@ void FEditorWorldController::OnLeftMouseDrag(float X, float Y)
 
 void FEditorWorldController::OnLeftMouseDragEnd(float X, float Y)
 {
-	(void)X;
-	(void)Y;
+	if (bBoxSelecting)
+	{
+		BoxSelectEnd = POINT{ static_cast<LONG>(X), static_cast<LONG>(Y) };
+		HandleBoxSelection();
+		bBoxSelecting = false;
+		return;
+	}
+
 	if (Gizmo)
 		Gizmo->DragEnd();
 }
@@ -151,6 +182,12 @@ void FEditorWorldController::OnLeftMouseButtonUp(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	if (bBoxSelecting)
+	{
+		bBoxSelecting = false;
+		return;
+	}
+
 	// LMB released without reaching drag threshold — disarm gizmo
 	if (Gizmo)
 		Gizmo->SetPressedOnHandle(false);
@@ -444,10 +481,7 @@ void FEditorWorldController::UpdateCameraRotation()
 	const float PitchRad = MathUtil::DegreesToRadians(Pitch);
 	const float YawRad   = MathUtil::DegreesToRadians(Yaw);
 
-	FVector Forward(
-		std::cos(PitchRad) * std::cos(YawRad),
-		std::cos(PitchRad) * std::sin(YawRad),
-		std::sin(PitchRad));
+	FVector Forward(std::cos(PitchRad) * std::cos(YawRad), std::cos(PitchRad) * std::sin(YawRad), std::sin(PitchRad));
 	Forward = Forward.GetSafeNormal();
 
 	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
@@ -462,4 +496,91 @@ void FEditorWorldController::UpdateCameraRotation()
 	FQuat NewRotation(RotMat);
 	NewRotation.Normalize();
 	Camera->SetRotation(NewRotation);
+}
+
+bool FEditorWorldController::IsActiveOperation() const
+{
+	return FInputRouter::GetRightDragging() || FInputRouter::GetMiddleDragging();
+}
+
+void FEditorWorldController::UpdateGizmoScreenScaling()
+{
+	if (!Camera || !Gizmo)
+		return;
+
+	if (Camera->IsOrthographic())
+		Gizmo->ApplyScreenSpaceScalingOrtho(Camera->GetOrthoHeight());
+	else
+		Gizmo->ApplyScreenSpaceScaling(Camera->GetLocation());
+}
+
+bool FEditorWorldController::TryProjectWorldToViewport(const FVector& WorldPos, float& OutViewportX, float& OutViewportY, float& OutDepth) const
+{
+	if (!Camera)
+		return false;
+
+	const FVector4 Clip = FMatrix::Identity.TransformVector4(FVector4(WorldPos, 1.0f), Camera->GetViewProjectionMatrix());
+	if (MathUtil::IsNearlyZero(Clip.W))
+		return false;
+
+	const float InvW = 1.0f / Clip.W;
+	const float NdcX = Clip.X * InvW;
+	const float NdcY = Clip.Y * InvW;
+	const float NdcZ = Clip.Z * InvW;
+	if (NdcX < -1.0f || NdcX > 1.0f || NdcY < -1.0f || NdcY > 1.0f)
+		return false;
+
+	OutViewportX = (NdcX * 0.5f + 0.5f) * ViewportWidth;
+	OutViewportY = (1.0f - (NdcY * 0.5f + 0.5f)) * ViewportHeight;
+	OutDepth = NdcZ;
+	return true;
+}
+
+void FEditorWorldController::HandleBoxSelection()
+{
+	if (!SelectionManager || !World || !Camera)
+		return;
+
+	const int32 MinX = std::min(BoxSelectStart.x, BoxSelectEnd.x);
+	const int32 MinY = std::min(BoxSelectStart.y, BoxSelectEnd.y);
+	const int32 MaxX = std::max(BoxSelectStart.x, BoxSelectEnd.x);
+	const int32 MaxY = std::max(BoxSelectStart.y, BoxSelectEnd.y);
+	const int32 Width = MaxX - MinX;
+	const int32 Height = MaxY - MinY;
+
+	if (Width < 2 || Height < 2)
+		return;
+
+	if (!bShiftDown)
+		SelectionManager->ClearSelection();
+
+	TArray<UPrimitiveComponent*> CandidatePrimitives;
+	World->GetSpatialIndex().FrustumQueryPrimitives(Camera->GetFrustum(), CandidatePrimitives, FrustumQueryScratch);
+
+	std::unordered_set<AActor*> SeenActors;
+	SeenActors.reserve(CandidatePrimitives.size());
+
+	for (UPrimitiveComponent* Primitive : CandidatePrimitives)
+	{
+		AActor* Actor = (Primitive != nullptr) ? Primitive->GetOwner() : nullptr;
+		if (!Actor || !Actor->GetRootComponent())
+			continue;
+
+		if (!SeenActors.insert(Actor).second)
+			continue;
+
+		float ViewportX = 0.f;
+		float ViewportY = 0.f;
+		float Depth = 0.f;
+		if (!TryProjectWorldToViewport(Actor->GetActorLocation(), ViewportX, ViewportY, Depth))
+			continue;
+
+		if (Depth < 0.f || Depth > 1.f)
+			continue;
+
+		const int32 Px = static_cast<int32>(ViewportX);
+		const int32 Py = static_cast<int32>(ViewportY);
+		if (Px >= MinX && Px <= MaxX && Py >= MinY && Py <= MaxY)
+			SelectionManager->AddSelect(Actor);
+	}
 }
