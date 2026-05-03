@@ -428,6 +428,10 @@
     <ClCompile Include="Source\Game\GameTypes.cpp" />
     <ClCompile Include="Source\Game\Input\GamePlayerController.cpp" />
     <ClCompile Include="Source\Game\Render\GameRenderPipeline.cpp" />
+    <ClCompile Include="Source\Game\Systems\CleaningToolSystem.cpp" />
+    <ClCompile Include="Source\Game\Systems\EndingSystem.cpp" />
+    <ClCompile Include="Source\Game\Systems\GameContext.cpp" />
+    <ClCompile Include="Source\Game\Systems\ItemSystem.cpp" />
     <ClCompile Include="Source\Game\UI\DialoguePanel.cpp" />
     <ClCompile Include="Source\Game\UI\EndingPanel.cpp" />
     <ClCompile Include="Source\Game\UI\GameUISystem.cpp" />
@@ -676,6 +680,11 @@
     <ClInclude Include="Source\Game\Input\GamePlayerController.h" />
     <ClInclude Include="Source\Game\Render\GameRenderPipeline.h" />
     <ClInclude Include="Source\Game\Settings\GameSettings.h" />
+    <ClInclude Include="Source\Game\Systems\CleaningGameTypes.h" />
+    <ClInclude Include="Source\Game\Systems\CleaningToolSystem.h" />
+    <ClInclude Include="Source\Game\Systems\EndingSystem.h" />
+    <ClInclude Include="Source\Game\Systems\GameContext.h" />
+    <ClInclude Include="Source\Game\Systems\ItemSystem.h" />
     <ClInclude Include="Source\Game\UI\DialoguePanel.h" />
     <ClInclude Include="Source\Game\UI\EndingPanel.h" />
     <ClInclude Include="Source\Game\UI\GameUISystem.h" />
