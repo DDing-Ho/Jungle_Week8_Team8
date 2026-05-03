@@ -1,11 +1,14 @@
 ﻿#include "Game/Input/GamePlayerController.h"
 
 #include "Component/CameraComponent.h"
+#include "Component/Physics/PhysicsHandleComponent.h"
 #include "Engine/Runtime/SceneView.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
 #include "Math/Matrix.h"
 #include "Math/Utils.h"
+#include "Object/Object.h"
 
 #include <cmath>
 #include <windows.h>
@@ -28,6 +31,12 @@ namespace
 		return Name;
 	}
 
+	const FName& ActionPickup()
+	{
+		static const FName Name("Pickup");
+		return Name;
+	}
+
 	// 새 Axis를 추가하려면:
 	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: AxisMoveForward() -> "MoveForward"
 	// 2. SetupDefaultInputMappings()에서 키와 Scale을 AddAxisMapping으로 연결합니다.
@@ -41,12 +50,6 @@ namespace
 	const FName& AxisMoveRight()
 	{
 		static const FName Name("MoveRight");
-		return Name;
-	}
-
-	const FName& AxisMoveUp()
-	{
-		static const FName Name("MoveUp");
 		return Name;
 	}
 
@@ -82,11 +85,20 @@ FGamePlayerController::FGamePlayerController()
 	SetupDefaultInputMappings();
 }
 
+FGamePlayerController::~FGamePlayerController()
+{
+	DestroyPhysicsHandle();
+}
+
 void FGamePlayerController::Tick(float DeltaTime)
 {
 	IBaseGameController::Tick(DeltaTime);
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
+	if (PhysicsHandle)
+	{
+		PhysicsHandle->TickHandle(DeltaTime, FreeCamera);
+	}
 }
 
 void FGamePlayerController::OnMouseMove(float DeltaX, float DeltaY)
@@ -104,6 +116,10 @@ void FGamePlayerController::OnLeftMouseClick(float X, float Y)
 {
 	(void)X;
 	(void)Y;
+	if (InputMapping.IsActionKey(ActionPickup(), VK_LBUTTON))
+	{
+		TogglePickup();
+	}
 }
 
 void FGamePlayerController::OnLeftMouseDrag(float X, float Y)
@@ -256,6 +272,7 @@ void FGamePlayerController::SetupDefaultInputMappings()
 	// 예: InputMapping.AddActionMapping(ActionInteract(), 'E');
 	InputMapping.AddActionMapping(ActionToggleInputCapture(), VK_F4);
 	InputMapping.AddActionMapping(ActionTogglePause(), 'P');
+	InputMapping.AddActionMapping(ActionPickup(), VK_LBUTTON);
 
 	// Axis Mapping: 여러 키를 하나의 연속 값으로 합칩니다.
 	// 예를 들어 W는 MoveForward에 +1, S는 -1을 더합니다.
@@ -265,8 +282,6 @@ void FGamePlayerController::SetupDefaultInputMappings()
 	InputMapping.AddAxisMapping(AxisMoveForward(), 'S', -1.0f);
 	InputMapping.AddAxisMapping(AxisMoveRight(), 'D', 1.0f);
 	InputMapping.AddAxisMapping(AxisMoveRight(), 'A', -1.0f);
-	InputMapping.AddAxisMapping(AxisMoveUp(), 'E', 1.0f);
-	InputMapping.AddAxisMapping(AxisMoveUp(), 'Q', -1.0f);
 
 	InputMapping.AddAxisMapping(AxisLookYaw(), VK_RIGHT, 1.0f);
 	InputMapping.AddAxisMapping(AxisLookYaw(), VK_LEFT, -1.0f);
@@ -283,7 +298,6 @@ void FGamePlayerController::ApplyInputAxes()
 
 	const float MoveForwardValue = InputMapping.GetAxisValue(AxisMoveForward());
 	const float MoveRightValue = InputMapping.GetAxisValue(AxisMoveRight());
-	const float MoveUpValue = InputMapping.GetAxisValue(AxisMoveUp());
 
 	// GetAxisValue가 매핑된 키들을 보고 MoveForwardValue 같은 의미 값만 돌려줍니다.
 	// Axis 값은 -1~+1 범위의 값으로 사용합니다.
@@ -292,9 +306,8 @@ void FGamePlayerController::ApplyInputAxes()
 	const float Pitch = Camera ? Camera->GetPitchDegrees() : FreeCameraPitch;
 	const FVector Forward = ToForward(Pitch, Yaw);
 	const FVector Right = ToRight(Yaw);
-	const FVector Up = FVector::UpVector;
 
-	const FVector Direction = Forward * MoveForwardValue + Right * MoveRightValue + Up * MoveUpValue;
+	const FVector Direction = Forward * MoveForwardValue + Right * MoveRightValue;
 	if (!Direction.IsNearlyZero())
 	{
 		MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
@@ -310,6 +323,48 @@ void FGamePlayerController::ApplyInputAxes()
 		{
 			RotateActiveCamera(LookYawValue * RotateScale, LookPitchValue * RotateScale);
 		}
+	}
+}
+
+void FGamePlayerController::TogglePickup()
+{
+	if (!World || !FreeCamera || !IsInputEnabled())
+	{
+		return;
+	}
+
+	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+	if (!Handle)
+	{
+		return;
+	}
+
+	if (Handle->IsHolding())
+	{
+		Handle->Release();
+		return;
+	}
+
+	Handle->TryGrab(World, FreeCamera);
+}
+
+UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
+{
+	if (!PhysicsHandle)
+	{
+		PhysicsHandle = UObjectManager::Get().CreateObject<UPhysicsHandleComponent>();
+		PhysicsHandle->SetTransient(true);
+	}
+	return PhysicsHandle;
+}
+
+void FGamePlayerController::DestroyPhysicsHandle()
+{
+	if (PhysicsHandle)
+	{
+		PhysicsHandle->Release();
+		UObjectManager::Get().DestroyObject(PhysicsHandle);
+		PhysicsHandle = nullptr;
 	}
 }
 

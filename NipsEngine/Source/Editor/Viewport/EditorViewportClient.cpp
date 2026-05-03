@@ -38,6 +38,7 @@ void FEditorViewportClient::SetWorld(UWorld* InWorld)
 {
 	World = InWorld;
 	EditorWorldController.SetWorld(InWorld);
+	GamePlayerController.SetWorld(InWorld);
 }
 
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
@@ -52,6 +53,7 @@ void FEditorViewportClient::StartPIE(UWorld* InWorld)
 	}
 
 	GamePlayerController.SetCamera(nullptr);
+	GamePlayerController.SetWorld(InWorld);
 	GamePlayerController.SetFreeCamera(&Camera);
 	if (bHasCameraSnapshot)
 	{
@@ -68,6 +70,7 @@ void FEditorViewportClient::EndPIE(UWorld* InWorld)
 	EditorWorldController.ResetTargetLocation();
 	GamePlayerController.SetCamera(nullptr);
 	GamePlayerController.SetFreeCamera(nullptr);
+	GamePlayerController.SetWorld(nullptr);
 	ClearEndPIECallback();
 	FInputRouter::LockMouse(false);
 	bControlLocked = false;

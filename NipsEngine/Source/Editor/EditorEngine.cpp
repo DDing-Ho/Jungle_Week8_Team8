@@ -13,6 +13,7 @@
 #include "GameFramework/World.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Audio/AudioSystem.h"
+#include "Core/Paths.h"
 #include "Core/Logging/Stats.h"
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
@@ -153,6 +154,23 @@ namespace
 		}
 
 		return BuildSceneComponentPathRecursive(Actor->GetRootComponent(), SceneComponent, OutPath);
+	}
+
+	EGameUIState GameUIStateFromBootMode(const FString& BootMode)
+	{
+		if (BootMode == "StartMenu")
+		{
+			return EGameUIState::StartMenu;
+		}
+		if (BootMode == "InGame")
+		{
+			return EGameUIState::InGame;
+		}
+		if (BootMode == "Ending")
+		{
+			return EGameUIState::Ending;
+		}
+		return EGameUIState::None;
 	}
 
 	USceneComponent* ResolveSceneComponentPath(AActor* Actor, const TArray<int32>& Path)
@@ -438,9 +456,13 @@ void UEditorEngine::StartPlaySession()
 	FInputRouter::SetCursorVisibility(false);
 	FInputRouter::ResetMouseDelta(2);
 
-	// PIE 진입마다 시작화면부터 (커서/마우스 상태는 SetState 내부에서 처리)
+	const FString CurrentSceneName = MainPanel.GetSceneWidget().GetCurrentSceneName();
+	const FString CurrentScenePath = FPaths::ToString(FPaths::Combine(
+		FSceneSaveManager::GetSceneDirectory(),
+		FPaths::ToWide(CurrentSceneName + ".Scene")));
+
 	GameUISystem::Get().ResetGameData();
-	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	GameUISystem::Get().SetState(GameUIStateFromBootMode(FSceneSaveManager::GetGameUIBootMode(CurrentScenePath)));
 	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
 
 	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
@@ -680,7 +702,7 @@ void UEditorEngine::StopPlaySession()
 	FocusedClient->RestoreCameraSnapshot();
 
 	// PIE 종료 시 게임 UI 상태 초기화 (Ending 화면 등이 에디터에 남지 않도록)
-	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	GameUISystem::Get().SetState(EGameUIState::None);
 	GameUISystem::Get().SetExitPlayCallback(nullptr);
 
 	if (ViewportPIEHandles.empty())

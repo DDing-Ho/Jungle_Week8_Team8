@@ -37,6 +37,8 @@ public:
 private:
 	void RenderViewportHostWindow();
 	void RenderViewportMenuBarForIndex(int32 ViewportIndex);
+	void EnsureDefaultDockLayout(ImGuiID DockspaceId);
+	bool ShouldResetDefaultDockLayout(ImGuiID DockspaceId) const;
 private:
 	FWindowsWindow* Window = nullptr;
 	UEditorEngine* EditorEngine = nullptr;
@@ -59,4 +61,5 @@ private:
 	bool bShowMaterialEditor = true;
 	bool bShowStatProfiler = true;
 	bool bShowPlayStream = true;
+	bool bDefaultDockLayoutChecked = false;
 };

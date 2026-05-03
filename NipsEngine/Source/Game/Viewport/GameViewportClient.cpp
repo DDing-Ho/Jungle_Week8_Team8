@@ -24,6 +24,7 @@ void FGameViewportClient::Initialize(FWindowsWindow* InWindow)
 	FreeCamera.SetLocation(FVector(-5.0f, -5.0f, 3.0f));
 	FreeCamera.SetLookAt(FVector::ZeroVector);
 	PlayerController.SetFreeCamera(&FreeCamera);
+	PlayerController.SetWorld(World);
 	PlayerController.SetToggleInputCaptureCallback([this]() { ToggleInteractionMode(); });
 	PlayerController.SetTogglePauseCallback(&GameUISystem::TogglePauseMenuIfInGame);
 	InputRouter.SetGamePlayerController(&PlayerController);
@@ -65,6 +66,7 @@ void FGameViewportClient::BuildSceneView(FSceneView& OutView) const
 void FGameViewportClient::SetWorld(UWorld* InWorld)
 {
 	World = InWorld;
+	PlayerController.SetWorld(InWorld);
 	if (World)
 	{
 		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())

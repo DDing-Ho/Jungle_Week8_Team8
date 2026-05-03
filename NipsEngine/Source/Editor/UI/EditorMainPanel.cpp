@@ -7,6 +7,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "ImGui/imgui.h"
+#include "ImGui/imgui_internal.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 
@@ -96,6 +97,7 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	IO.IniFilename = "imgui_editor.ini";
 
 	Window = InWindow;
 	EditorEngine = InEditorEngine;
@@ -162,7 +164,9 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+	const ImGuiID DockspaceId = ImGui::GetID("EditorDockSpace");
+	ImGui::DockSpaceOverViewport(DockspaceId, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+	EnsureDefaultDockLayout(DockspaceId);
 
 	ToolbarWidget.Render(DeltaTime);
 
@@ -182,13 +186,10 @@ void FEditorMainPanel::Render(float DeltaTime)
 		StatWidget.Render(DeltaTime);
 	ViewportOverlayWidget.Render(DeltaTime);
 
-	// 게임 UI - 에디터에서는 항상 표시, PIE 중이면 Play 모드로 동작
+	// 게임 UI는 PIE 중에만 표시합니다. 편집 중에는 씬 작업을 방해하지 않습니다.
+	if (EditorEngine && EditorEngine->GetEditorState() == EViewportPlayState::Playing)
 	{
-		const EUIRenderMode UIMode =
-			(EditorEngine && EditorEngine->GetEditorState() == EViewportPlayState::Playing)
-			? EUIRenderMode::Play
-			: EUIRenderMode::Preview;
-		GameUISystem::Get().RenderPanelsOnly(UIMode);
+		GameUISystem::Get().RenderPanelsOnly(EUIRenderMode::Play);
 	}
 
 	ImGui::Render();
@@ -245,6 +246,61 @@ void FEditorMainPanel::Update()
 			ImmAssociateContext(hWnd, NULL);
 		}
 	}
+}
+
+bool FEditorMainPanel::ShouldResetDefaultDockLayout(ImGuiID DockspaceId) const
+{
+	ImGuiDockNode* RootNode = ImGui::DockBuilderGetNode(DockspaceId);
+	if (!RootNode)
+		return true;
+
+	// A leaf dockspace means ImGui could not restore a useful editor split layout.
+	// This happens with a fresh or corrupted imgui_editor.ini.
+	return RootNode->IsLeafNode();
+}
+
+void FEditorMainPanel::EnsureDefaultDockLayout(ImGuiID DockspaceId)
+{
+	if (bDefaultDockLayoutChecked)
+		return;
+
+	bDefaultDockLayoutChecked = true;
+	if (!ShouldResetDefaultDockLayout(DockspaceId))
+		return;
+
+	const ImGuiViewport* Viewport = ImGui::GetMainViewport();
+	ImGui::DockBuilderRemoveNode(DockspaceId);
+	ImGui::DockBuilderAddNode(DockspaceId, ImGuiDockNodeFlags_DockSpace);
+	ImGui::DockBuilderSetNodePos(DockspaceId, Viewport->WorkPos);
+	ImGui::DockBuilderSetNodeSize(DockspaceId, Viewport->WorkSize);
+
+	ImGuiID MainNode = DockspaceId;
+	ImGuiID RightNode = 0;
+	ImGuiID BottomNode = 0;
+	ImGuiID LeftNode = 0;
+	ImGuiID CenterAndControlNode = 0;
+	ImGuiID CenterNode = 0;
+	ImGuiID ControlNode = 0;
+	ImGuiID RightTopNode = 0;
+	ImGuiID RightBottomNode = 0;
+
+	ImGui::DockBuilderSplitNode(MainNode, ImGuiDir_Right, 0.185f, &RightNode, &MainNode);
+	ImGui::DockBuilderSplitNode(MainNode, ImGuiDir_Down, 0.22f, &BottomNode, &MainNode);
+	ImGui::DockBuilderSplitNode(MainNode, ImGuiDir_Left, 0.17f, &LeftNode, &CenterAndControlNode);
+	ImGui::DockBuilderSplitNode(CenterAndControlNode, ImGuiDir_Right, 0.20f, &ControlNode, &CenterNode);
+	ImGui::DockBuilderSplitNode(RightNode, ImGuiDir_Up, 0.22f, &RightTopNode, &RightBottomNode);
+
+	ImGui::DockBuilderDockWindow("Viewport Settings", LeftNode);
+	ImGui::DockBuilderDockWindow("Viewport", CenterNode);
+	ImGui::DockBuilderDockWindow("Jungle Control Panel", ControlNode);
+	ImGui::DockBuilderDockWindow("Console", BottomNode);
+	ImGui::DockBuilderDockWindow("Scene Manager", RightTopNode);
+	ImGui::DockBuilderDockWindow("Stat Profiler", RightTopNode);
+	ImGui::DockBuilderDockWindow("Jungle Property Window", RightBottomNode);
+	ImGui::DockBuilderDockWindow("Material Editor", RightBottomNode);
+	ImGui::DockBuilderDockWindow("ObjViewer Panel", RightBottomNode);
+
+	ImGui::DockBuilderFinish(DockspaceId);
 }
 
 // ImGui로 Viewport 가 차지할 영역을 계산하고 만든다.

@@ -1,0 +1,15 @@
+{
+  "ClassName" : "UWorld",
+  "Name" : "Title",
+  "GameUIBootMode" : "StartMenu",
+  "NextUUID" : 1,
+  "PerspectiveCamera" : {
+    "FOV" : 90.000000,
+    "FarClip" : 2000.000000,
+    "Location" : [0.000000, -6.000000, 3.000000],
+    "NearClip" : 0.100000,
+    "Rotation" : [0.000000, 0.000000, 0.000000]
+  },
+  "Primitives" : {
+  }
+}

@@ -29,6 +29,7 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	IO.IniFilename = nullptr;
 
 	ImGui_ImplWin32_Init(static_cast<void*>(Hwnd));
 	ImGui_ImplDX11_Init(Device, Context);
@@ -190,6 +191,19 @@ void GameUISystem::RequestExitPlay()
 		SetState(EGameUIState::StartMenu);  // 게임 빌드: 시작화면으로 복귀
 }
 
+void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
+{
+	StartGameCallback = std::move(Callback);
+}
+
+void GameUISystem::RequestStartGame()
+{
+	if (StartGameCallback)
+		StartGameCallback();
+	else
+		SetState(EGameUIState::InGame);
+}
+
 // -------------------------------------------------------
 // 현재 상태에 맞는 패널 디스패치
 // -------------------------------------------------------
@@ -197,6 +211,9 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 {
 	switch (CurrentState)
 	{
+	case EGameUIState::None:
+		break;
+
 	case EGameUIState::StartMenu:
 		if (Mode == EUIRenderMode::Play)
 			StartMenuPanel::Render(Mode);
