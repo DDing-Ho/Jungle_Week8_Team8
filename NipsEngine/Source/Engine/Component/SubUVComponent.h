@@ -3,6 +3,7 @@
 #include "PrimitiveComponent.h"
 #include "Core/ResourceTypes.h"
 #include "Object/FName.h"
+#include "Math/Vector4.h"
 
 class FViewportCamera;
 
@@ -40,6 +41,10 @@ public:
 	float GetWidth()  const { return Width; }
 	float GetHeight() const { return Height; }
 
+	// --- Tint Color (오염도 시각화용) ---
+	void SetTintColor(const FVector4& InColor) { TintColor = InColor; }
+	const FVector4& GetTintColor() const { return TintColor; }
+
     static FMatrix MakeBillboardWorldMatrix(const FVector& WorldLocation, const FVector& WorldScale, const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp);
 
     // --- Property / Serialization ---
@@ -72,4 +77,6 @@ private:
 	bool bIsBillboard = true;
 	bool bLoop = true;
 	bool bIsExecute = false;
+
+	FVector4 TintColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 };

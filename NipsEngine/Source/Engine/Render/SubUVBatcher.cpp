@@ -52,7 +52,7 @@ void FSubUVBatcher::Release()
 	Device.Reset();
 }
 
-void FSubUVBatcher::AddSprite(UTexture* Texture, 
+void FSubUVBatcher::AddSprite(UTexture* Texture,
 							  const FVector& WorldPos,
                               const FVector& CamRight,
                               const FVector& CamUp,
@@ -61,15 +61,21 @@ void FSubUVBatcher::AddSprite(UTexture* Texture,
                               uint32 Columns,
                               uint32 Rows,
                               float Width,
-                              float Height)
+                              float Height,
+                              const FVector4& TintColor)
 {
-	if (Batches.empty() || Batches.back().Texture != Texture)
+	auto TintEquals = [](const FVector4& A, const FVector4& B) {
+		return A.X == B.X && A.Y == B.Y && A.Z == B.Z && A.W == B.W;
+	};
+
+	if (Batches.empty() || Batches.back().Texture != Texture || !TintEquals(Batches.back().TintColor, TintColor))
 	{
 		FSRVBatch batch;
 		batch.Texture = Texture;
 		batch.IndexStart = static_cast<uint32>(Indices.size());
 		batch.IndexCount = 0;
 		batch.BaseVertex = static_cast<int32>(Vertices.size());
+		batch.TintColor = TintColor;
 		Batches.push_back(batch);
 	}
 
@@ -133,13 +139,13 @@ void FSubUVBatcher::Flush(ID3D11DeviceContext* Context, const FRenderBus* Render
 
 	UMaterial* Mat = Cast<UMaterial>(Material);
 
-    // Context->PSSetShaderResources(0, 1, &SRV);
 	for (const FSRVBatch& Batch : Batches)
 	{
 		if (!Batch.Texture || Batch.IndexCount == 0) continue;
 
 		Mat->SetTexture("SubUVAtlas", Batch.Texture);
-		Material->Bind(Context, RenderBus);
+		FPerObjectConstants PerObj(FMatrix::Identity, Batch.TintColor);
+		Material->Bind(Context, RenderBus, &PerObj);
         if (bWireframe)
         {
             ID3D11RasterizerState* WireRS = FResourceManager::Get().GetOrCreateRasterizerState(ERasterizerType::WireFrame);

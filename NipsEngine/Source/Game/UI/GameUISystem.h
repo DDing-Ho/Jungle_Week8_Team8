@@ -59,6 +59,7 @@ enum class EInteractionHintType
     DropWithInspect,
     Keep,
     Discard,
+    Wash,
 };
 
 // -------------------------------------------------------

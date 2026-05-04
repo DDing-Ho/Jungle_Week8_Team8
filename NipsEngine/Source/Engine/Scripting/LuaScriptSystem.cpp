@@ -7,6 +7,7 @@
 #include "Component/DecalComponent.h"
 #include "Scripting/LuaBindings.h"
 #include "Core/Logger.h"
+#include "GameFramework/PrimitiveActors.h"
 
 #include <algorithm>
 #include <string>
@@ -239,6 +240,13 @@ void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptS
 	State.Lua->set_function("FindActorByName", [this, Component](const FString& ActorName) -> AActor*
 	{
 		return FindActorByName(Component, ActorName);
+	});
+
+	State.Lua->set_function("GetPlayerActor", [Component]() -> AActor*
+	{
+		const AActor* Owner = Component ? Component->GetOwner() : nullptr;
+		UWorld* World = Owner ? Owner->GetFocusedWorld() : nullptr;
+		return World ? World->FindPawn() : nullptr;
 	});
 
 	State.Lua->set_function("SetGameState", [this](const FString& Key, sol::object Value)

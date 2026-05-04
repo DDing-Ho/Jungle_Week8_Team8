@@ -36,8 +36,8 @@ float4 PS(PSInput input) : SV_TARGET
         {
             discard;
         }
-        return col;
+        return col * PrimitiveColor;
     }
 
-    return lerp(col, float4(WireframeRGB, 1.0f), bIsWireframe);
+    return lerp(col * PrimitiveColor, float4(WireframeRGB, 1.0f), bIsWireframe);
 }

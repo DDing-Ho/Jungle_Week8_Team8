@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 47535,
+  "NextUUID" : 47831,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [9.176284, -0.013087, 3.436975],
+    "Location" : [-7.927526, -6.026091, 4.230519],
     "NearClip" : 0.100000,
-    "Rotation" : [3.038384, 24.776365, -7.218536]
+    "Rotation" : [29.651274, -32.623474, -133.441940]
   },
   "Primitives" : {
     "11356" : {
@@ -727,6 +727,8 @@
       "MaxWalkSpeed" : 3.500000,
       "OwnerRootUUID" : 13179,
       "RigidBodyUUID" : 22230,
+      "SprintFootstepStepDistanceScale" : 1.000000,
+      "SprintFootstepVolumeScale" : 1.000000,
       "Type" : "UCharacterMovementComponent",
       "UpdateOnlyIfRendered" : false,
       "UpdatedComponentUUID" : 13179,
@@ -4129,6 +4131,18 @@
       "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
+    },
+    "47830" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 447,
+      "ScriptPath" : "Asset/Scripts/Bucket.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
     },
     "483" : {
       "ActorActive" : true,

@@ -529,7 +529,8 @@ void FRenderer::InitializePassBatchers()
 					SubUV.Particle->Columns,
 					SubUV.Particle->Rows,
 					SubUV.Width,
-					SubUV.Height
+					SubUV.Height,
+					SubUV.TintColor
 				);
 			}
 		}
