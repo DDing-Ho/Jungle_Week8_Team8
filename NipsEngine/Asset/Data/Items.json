@@ -114,6 +114,22 @@
       ]
     },
     {
+      "id": "crumpled_paper",
+      "name": "구겨진 종이",
+      "type": "DummyItem",
+      "desc": [
+        "구겨진 종이다.",
+        "방 한구석에 아무렇게나 버려진 평범한 쓰레기처럼 보인다."
+      ],
+      "keptDesc": "구겨진 종이를 보관하기로 했다.",
+      "discardedDesc": "구겨진 종이를 버릴 물건 상자에 넣었다.",
+      "canClassify": true,
+      "endingRole": "Bad",
+      "storyFlags": [
+        "found_crumpled_paper"
+      ]
+    },
+    {
       "id": "mop",
       "name": "대걸레",
       "type": "CleaningTool",

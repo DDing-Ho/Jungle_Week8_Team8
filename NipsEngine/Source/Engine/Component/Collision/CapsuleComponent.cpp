@@ -41,8 +41,11 @@ void UCapsuleComponent::Serialize(FArchive& Ar)
 
 void UCapsuleComponent::UpdateWorldAABB() const
 {
-    const float SafeHalfHeight = std::fabs(CapsuleHalfHeight);
-    const float SafeRadius = std::fabs(CapsuleRadius);
+    const FVector Scale = GetWorldScale();
+    const float RadiusScale = std::max(std::fabs(Scale.X), std::fabs(Scale.Y));
+    const float HeightScale = std::fabs(Scale.Z);
+    const float SafeHalfHeight = std::fabs(CapsuleHalfHeight) * HeightScale;
+    const float SafeRadius = std::fabs(CapsuleRadius) * RadiusScale;
 
     const FVector LocalExtent(SafeRadius, SafeRadius, SafeHalfHeight);
     const FAABB LocalAABB(-LocalExtent, LocalExtent);

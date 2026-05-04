@@ -37,7 +37,11 @@ void UBoxComponent::Serialize(FArchive& Ar)
 
 void UBoxComponent::UpdateWorldAABB() const
 {
-    const FVector SafeExtent(std::fabs(BoxExtent.X), std::fabs(BoxExtent.Y), std::fabs(BoxExtent.Z));
+    const FVector Scale(std::fabs(GetWorldScale().X), std::fabs(GetWorldScale().Y), std::fabs(GetWorldScale().Z));
+    const FVector SafeExtent(
+        std::fabs(BoxExtent.X) * Scale.X,
+        std::fabs(BoxExtent.Y) * Scale.Y,
+        std::fabs(BoxExtent.Z) * Scale.Z);
     const FAABB LocalAABB(-SafeExtent, SafeExtent);
     FMatrix ShapeWorldMatrix = GetWorldMatrix().GetRotationMatrix();
     ShapeWorldMatrix.SetOrigin(GetWorldLocation());
@@ -47,7 +51,11 @@ void UBoxComponent::UpdateWorldAABB() const
 // RayCasting 전용 OBB
 bool UBoxComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
-    const FVector SafeExtent(std::fabs(BoxExtent.X), std::fabs(BoxExtent.Y), std::fabs(BoxExtent.Z));
+    const FVector Scale(std::fabs(GetWorldScale().X), std::fabs(GetWorldScale().Y), std::fabs(GetWorldScale().Z));
+    const FVector SafeExtent(
+        std::fabs(BoxExtent.X) * Scale.X,
+        std::fabs(BoxExtent.Y) * Scale.Y,
+        std::fabs(BoxExtent.Z) * Scale.Z);
     const FQuat WorldRotation(GetWorldMatrix().GetRotationMatrix());
     const FQuat InverseRotation = WorldRotation.GetNormalized().Inverse();
     const FVector LocalOrigin = InverseRotation * (Ray.Origin - GetWorldLocation());
