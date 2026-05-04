@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 39234,
+  "NextUUID" : 39674,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-33.854916, -0.486455, 4.184036],
+    "Location" : [-15.783359, -4.676114, 5.188953],
     "NearClip" : 0.100000,
-    "Rotation" : [-0.032532, -2.650085, -0.703491]
+    "Rotation" : [0.237505, -2.488953, 5.452566]
   },
   "Primitives" : {
     "11356" : {
@@ -1320,7 +1320,7 @@
     "29831" : {
       "BlockComponent" : true,
       "CylinderHalfHeight" : 0.895956,
-      "CylinderRadius" : 0.558136,
+      "CylinderRadius" : 0.545514,
       "DebugBoundsVisibility" : 0,
       "DrawOnlyIfSelected" : false,
       "EditorOnly" : false,
@@ -3025,7 +3025,7 @@
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset/Mesh/Game/Medicine/MedicineBottle.obj",
       "Rotation" : [-91.871307, 41.237724, 91.234009],
-      "Scale" : [0.500000, 0.500000, 0.500000],
+      "Scale" : [0.330000, 0.330000, 0.330000],
       "Scroll U" : 0.000000,
       "Scroll V" : 0.000000,
       "Type" : "UStaticMeshComponent",
