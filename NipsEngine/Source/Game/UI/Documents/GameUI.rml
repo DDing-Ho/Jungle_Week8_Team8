@@ -136,9 +136,25 @@
 			<img id="ending-visual-image" src="Asset/Texture/TitleBackground.png" />
 		</div>
 		<div id="the-end">THE END</div>
+		<div id="ending-score-panel">
+			<div id="ending-score-separator"></div>
+			<div id="ending-score-title">SCORE</div>
+			<div class="ending-score-row"><span class="ending-score-label">Cleanliness</span><span id="ending-clean-score" class="ending-score-value">0</span></div>
+			<div class="ending-score-row"><span class="ending-score-label">Time Bonus</span><span id="ending-time-score" class="ending-score-value">0</span></div>
+			<div class="ending-score-row"><span class="ending-score-label">Given Item</span><span id="ending-item-score" class="ending-score-value">0</span></div>
+			<div id="ending-score-total-row"><span class="ending-score-label">Total</span><span id="ending-total-score" class="ending-score-value">0</span></div>
+		</div>
 		<div id="ending-buttons">
 			<div id="save-score-button" class="pause-button">Save Score</div>
 			<div id="exit-to-main-button" class="pause-button">Exit to Main Menu</div>
+		</div>
+		<div id="score-name-modal">
+			<div id="score-name-panel">
+				<div id="score-name-title">ENTER ID</div>
+				<div id="score-name-value">_</div>
+				<div id="score-name-rule">A-Z a-z / 10 letters max</div>
+				<div id="score-save-message"></div>
+			</div>
 		</div>
 	</div>
 

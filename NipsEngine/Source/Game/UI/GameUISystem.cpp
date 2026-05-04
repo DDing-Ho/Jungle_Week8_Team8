@@ -34,6 +34,7 @@
 #include "RmlUi/Core/StringUtilities.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <functional>
@@ -628,6 +629,180 @@ void GameUISystem::RequestSaveScore()
 	File.close();
 }
 
+void GameUISystem::RecalculateEndingScore()
+{
+	constexpr float MaxRemainingTimeForScore = 300.0f;
+	constexpr float GameTimeLimit = 300.0f;
+
+	const float CleanRatio = std::clamp(CleanProgress, 0.0f, 1.0f);
+	const float RemainingTime = std::max(0.0f, GameTimeLimit - ElapsedTime);
+	const float TimeRatio = std::clamp(RemainingTime / MaxRemainingTimeForScore, 0.0f, 1.0f);
+
+	EndingCleanScore = ScoreFromRatio(CleanRatio, 5000);
+	EndingTimeScore = ScoreFromRatio(TimeRatio, 3000);
+	EndingItemScore = 0;
+
+	const GGameContext& Context = GGameContext::Get();
+	const FItemSystem& ItemSystem = FItemSystem::Get();
+	for (const FString& ItemId : Context.GetKeptItemIds())
+	{
+		const FGameItemData* ItemData = ItemSystem.FindItemData(ItemId);
+		if (!ItemData)
+			continue;
+
+		int CandidateScore = 0;
+		switch (ItemData->EndingRole)
+		{
+		case EGameItemEndingRole::Good:
+			CandidateScore = 2000;
+			break;
+		case EGameItemEndingRole::Normal:
+			CandidateScore = 1000;
+			break;
+		case EGameItemEndingRole::None:
+			CandidateScore = 500;
+			break;
+		case EGameItemEndingRole::Bad:
+		default:
+			CandidateScore = 0;
+			break;
+		}
+
+		EndingItemScore = std::max(EndingItemScore, CandidateScore);
+	}
+
+	EndingTotalScore = EndingCleanScore + EndingTimeScore + EndingItemScore;
+	bEndingScoreDirty = false;
+}
+
+void GameUISystem::OpenScoreNameInput()
+{
+	if (bScoreSaved)
+	{
+		ScoreSaveMessage = "Score already saved.";
+		return;
+	}
+
+	if (bEndingScoreDirty)
+		RecalculateEndingScore();
+
+	bScoreNameInputOpen = true;
+	ScoreNameInput.clear();
+	ScoreSaveMessage = "Enter ID and press Enter.";
+}
+
+void GameUISystem::CloseScoreNameInput()
+{
+	bScoreNameInputOpen = false;
+	ScoreNameInput.clear();
+}
+
+bool GameUISystem::HandleScoreNameInputKey(int VK)
+{
+	if (!bScoreNameInputOpen)
+		return false;
+
+	if (VK == VK_ESCAPE)
+	{
+		CloseScoreNameInput();
+		return true;
+	}
+
+	if (VK == VK_BACK)
+	{
+		if (!ScoreNameInput.empty())
+			ScoreNameInput.pop_back();
+		return true;
+	}
+
+	if (VK == VK_RETURN)
+	{
+		CommitScoreNameInput();
+		return true;
+	}
+
+	if (ScoreNameInput.size() >= 10)
+		return true;
+
+	if (VK >= 'A' && VK <= 'Z')
+	{
+		const bool bShiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+		const bool bCapsOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+		char C = static_cast<char>(VK);
+		if (!(bShiftDown ^ bCapsOn))
+			C = static_cast<char>(std::tolower(C));
+		ScoreNameInput.push_back(C);
+		return true;
+	}
+
+	return true;
+}
+
+void GameUISystem::CommitScoreNameInput()
+{
+	if (ScoreNameInput.empty())
+	{
+		ScoreSaveMessage = "ID is required.";
+		return;
+	}
+
+	if (bEndingScoreDirty)
+		RecalculateEndingScore();
+
+	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
+	FPaths::CreateDir(SavesDir);
+
+	const std::wstring ScorePath = FPaths::Combine(SavesDir, L"Scores.txt");
+	std::ofstream File(FPaths::ToUtf8(ScorePath), std::ios::app);
+	if (!File.is_open())
+	{
+		ScoreSaveMessage = "Failed to save score.";
+		return;
+	}
+
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+
+	char DateBuf[64];
+	std::snprintf(DateBuf, sizeof(DateBuf), "%04d-%02d-%02d %02d:%02d:%02d",
+		st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+	File << ScoreNameInput
+		 << "," << EndingTotalScore
+		 << "," << EndingCleanScore
+		 << "," << EndingTimeScore
+		 << "," << EndingItemScore
+		 << "," << static_cast<int>(std::round(std::clamp(CleanProgress, 0.0f, 1.0f) * 100.0f))
+		 << "," << FormatTime(std::max(0.0f, 300.0f - ElapsedTime))
+		 << "," << DateBuf
+		 << "\n";
+
+	File.close();
+	bScoreSaved = true;
+	bScoreNameInputOpen = false;
+	ScoreSaveMessage = "Score saved.";
+}
+
+void GameUISystem::UpdateEndingScoreElements(bool bShowScorePanel)
+{
+	if (bShowScorePanel && bEndingScoreDirty)
+		RecalculateEndingScore();
+
+	SetElementVisible("ending-score-panel", bShowScorePanel);
+	SetElementVisible("score-name-modal", bShowScorePanel && bScoreNameInputOpen);
+
+	if (!bShowScorePanel)
+		return;
+
+	SetElementText("ending-clean-score", FormatScore(EndingCleanScore));
+	SetElementText("ending-time-score", FormatScore(EndingTimeScore));
+	SetElementText("ending-item-score", FormatScore(EndingItemScore));
+	SetElementText("ending-total-score", FormatScore(EndingTotalScore));
+	SetElementText("score-name-value", ScoreNameInput.empty() ? "_" : ScoreNameInput);
+	SetElementText("score-save-message", ScoreSaveMessage);
+	SetElementText("save-score-button", bScoreSaved ? "Saved" : "Save Score");
+}
+
 void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
 {
 	StartGameCallback = std::move(Callback);
@@ -936,6 +1111,9 @@ bool GameUISystem::OnUIKeyDown(int VK)
 	if (Key != Rml::Input::KI_UNKNOWN)
 		RmlContext->ProcessKeyDown(Key, 0);
 
+	if (HandleScoreNameInputKey(VK))
+		return true;
+
 	if (bSettingsOpen)
 	{
 		if (VK == VK_ESCAPE)
@@ -989,6 +1167,9 @@ bool GameUISystem::OnUIKeyUp(int VK)
 	const Rml::Input::KeyIdentifier Key = ToRmlKey(VK);
 	if (Key != Rml::Input::KI_UNKNOWN)
 		RmlContext->ProcessKeyUp(Key, 0);
+
+	if (bScoreNameInputOpen)
+		return true;
 
 	if (bSettingsOpen)
 		return true;
@@ -1111,6 +1292,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("the-end", bShowTheEnd);
 	SetElementVisible("ending-buttons", bShowEndingButtons);
 	SetElementProperty("ending-panel", "background-color", FormatAlphaColor(8.0f, 8.0f, 12.0f, bShowTheEnd ? 0.98f : 0.90f));
+	UpdateEndingScoreElements(bShowEndingButtons);
 	UpdateTitleTransitionElements();
 
 	const bool bShowCustomCursor = WantsCustomCursor();
