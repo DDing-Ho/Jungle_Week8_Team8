@@ -49,6 +49,10 @@ void GGameContext::Reset()
 	KeptItemIds.clear();
 	DiscardedItemIds.clear();
 	UnlockedStoryFlags.clear();
+	bMissionPickCleaningToolCompleted = false;
+	bMissionKeepImportantItemCompleted = false;
+	bMissionDiscardTrashCompleted = false;
+	bMissionCleanDustCompleted = false;
 
 	if (PreviousHeldObjectInfo.IsHolding())
 	{
@@ -68,6 +72,10 @@ void GGameContext::SetCleanProgress(float InProgress)
 	}
 
 	CleanProgress = ClampedProgress;
+	if (InitialDecalCount > 0 && CleanProgress > 0.0f)
+	{
+		CompleteMissionInternal(EGameMissionType::CleanDust);
+	}
 	BroadcastChanged();
 }
 
@@ -157,7 +165,62 @@ void GGameContext::SetCurrentTool(const FString& ToolId)
 	}
 
 	CurrentToolId = ToolId;
+	if (!CurrentToolId.empty())
+	{
+		CompleteMissionInternal(EGameMissionType::PickCleaningTool);
+	}
 	BroadcastChanged();
+}
+
+bool GGameContext::IsMissionCompleted(EGameMissionType MissionType) const
+{
+	switch (MissionType)
+	{
+	case EGameMissionType::PickCleaningTool:
+		return bMissionPickCleaningToolCompleted;
+	case EGameMissionType::KeepImportantItem:
+		return bMissionKeepImportantItemCompleted;
+	case EGameMissionType::DiscardTrash:
+		return bMissionDiscardTrashCompleted;
+	case EGameMissionType::CleanDust:
+		return bMissionCleanDustCompleted;
+	default:
+		return false;
+	}
+}
+
+bool GGameContext::MarkMissionCompleted(EGameMissionType MissionType)
+{
+	if (!CompleteMissionInternal(MissionType))
+	{
+		return false;
+	}
+
+	BroadcastChanged();
+	return true;
+}
+
+bool GGameContext::MarkTrashDiscardedForMission()
+{
+	return MarkMissionCompleted(EGameMissionType::DiscardTrash);
+}
+
+int GGameContext::GetCompletedMissionCount() const
+{
+	int Count = 0;
+	for (int MissionIndex = 0; MissionIndex < static_cast<int>(EGameMissionType::Count); ++MissionIndex)
+	{
+		if (IsMissionCompleted(static_cast<EGameMissionType>(MissionIndex)))
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+int GGameContext::GetMissionBonusScore() const
+{
+	return GetCompletedMissionCount() * 500;
 }
 
 void GGameContext::SetCurrentInspectedItem(const FString& ItemId)
@@ -259,6 +322,7 @@ bool GGameContext::MarkItemKept(const FString& ItemId)
 	const bool bInserted = KeptItemIds.insert(ItemId).second;
 	if (bInserted)
 	{
+		CompleteMissionInternal(EGameMissionType::KeepImportantItem);
 		OnItemDispositionChanged.Broadcast(ItemId, EGameItemDisposition::Kept);
 		BroadcastChanged();
 	}
@@ -341,4 +405,34 @@ bool GGameContext::HasStoryFlag(const FString& Flag) const
 void GGameContext::BroadcastChanged()
 {
 	OnContextChanged.Broadcast();
+}
+
+bool GGameContext::CompleteMissionInternal(EGameMissionType MissionType)
+{
+	bool* bCompleted = nullptr;
+	switch (MissionType)
+	{
+	case EGameMissionType::PickCleaningTool:
+		bCompleted = &bMissionPickCleaningToolCompleted;
+		break;
+	case EGameMissionType::KeepImportantItem:
+		bCompleted = &bMissionKeepImportantItemCompleted;
+		break;
+	case EGameMissionType::DiscardTrash:
+		bCompleted = &bMissionDiscardTrashCompleted;
+		break;
+	case EGameMissionType::CleanDust:
+		bCompleted = &bMissionCleanDustCompleted;
+		break;
+	default:
+		return false;
+	}
+
+	if (*bCompleted)
+	{
+		return false;
+	}
+
+	*bCompleted = true;
+	return true;
 }

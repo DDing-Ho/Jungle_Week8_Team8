@@ -167,10 +167,14 @@ private:
     void TickTitleTransitions(float DeltaTime);
     void UpdateTitleTransitionElements();
     void FinishStartGameTransition();
+    void StartPrologue();
+    void FinishPrologue();
     void OpenSettings();
     void CloseSettings();
     void OpenCredits();
     void CloseCredits();
+    void OpenScoreboard();
+    void CloseScoreboard();
     void OpenDebugMenu();
     void CloseDebugMenu();
     void ApplySettings();
@@ -190,10 +194,21 @@ private:
     void SetSettingsSliderNormalized(ESettingsSlider Slider, float Normalized);
     bool CreateGameDocument();
     void BindRmlUiEvents();
+    void UpdateEndingScoreElements(bool bShowScorePanel);
+    void UpdateScoreboardElements(bool bShowScoreboard);
+    void UpdateMissionElements(bool bShowMissionPanel);
+    void RecalculateEndingScore();
+    void OpenScoreNameInput();
+    void CloseScoreNameInput();
+    bool HandleScoreNameInputKey(int VK);
+    void CommitScoreNameInput();
+    bool WriteScoreRecord(const std::string& PlayerId);
+    void LoadScoreboard();
     void SetElementVisible(const char* Id, bool bVisible);
     void SetElementText(const char* Id, const std::string& Text);
     void SetElementProperty(const char* Id, const char* Property, const std::string& Value);
     void SetElementAttribute(const char* Id, const char* Attribute, const std::string& Value);
+    void SetElementClass(const char* Id, const char* ClassName, bool bEnabled);
     // 상태에 따라 커서/마우스 잠금을 자동으로 맞춤
 
     EGameUIState CurrentState        = EGameUIState::None;
@@ -212,6 +227,8 @@ private:
     std::unique_ptr<FRmlUiClickListener> SettingsCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> CreditsOpenClickListener;
     std::unique_ptr<FRmlUiClickListener> CreditsCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> ScoreboardOpenClickListener;
+    std::unique_ptr<FRmlUiClickListener> ScoreboardCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> PauseTitleClickListener;
     std::unique_ptr<FRmlUiClickListener> SaveScoreClickListener;
     std::unique_ptr<FRmlUiClickListener> ExitToMainClickListener;
@@ -232,8 +249,10 @@ private:
     bool bStartGameTransitionActive = false;
     float StartGameTransitionElapsed = 0.0f;
     bool bStartGameTransitionReady = false;
+    bool bPrologueFinishing = false;
     bool bSettingsOpen = false;
     bool bCreditsOpen = false;
+    bool bScoreboardOpen = false;
     bool bDebugMenuOpen = false;
     EEndingType CurrentEndingType = EEndingType::None;
     ESettingsSlider ActiveSettingsSlider = ESettingsSlider::None;
@@ -252,6 +271,27 @@ private:
     std::string InspectItemName;
     std::string InspectItemDesc;
     std::string InspectItemIconPath;
+    int EndingCleanScore = 0;
+    int EndingTimeScore = 0;
+    int EndingItemScore = 0;
+    int EndingMissionScore = 0;
+    int EndingTotalScore = 0;
+    bool bEndingScoreDirty = true;
+    bool bScoreNameInputOpen = false;
+    bool bScoreSaved = false;
+    std::string ScoreNameInput;
+    std::string ScoreSaveMessage;
+    struct FScoreboardEntry
+    {
+        std::string PlayerId;
+        int TotalScore = 0;
+        int CleanScore = 0;
+        int TimeScore = 0;
+        int ItemScore = 0;
+        int MissionScore = 0;
+        std::string Date;
+    };
+    std::vector<FScoreboardEntry> ScoreboardEntries;
 
     std::function<void()> ExitPlayCallback;
     std::function<void()> ExitToTitleCallback;
