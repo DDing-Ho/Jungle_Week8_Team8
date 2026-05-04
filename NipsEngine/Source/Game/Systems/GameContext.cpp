@@ -1,5 +1,7 @@
 #include "Game/Systems/GameContext.h"
 
+#include "GameFramework/AActor.h"
+
 #include <algorithm>
 
 GGameContext& GGameContext::Get()
@@ -10,13 +12,22 @@ GGameContext& GGameContext::Get()
 
 void GGameContext::Reset()
 {
+	const FHeldObjectInfo PreviousHeldObjectInfo = HeldObjectInfo;
+
 	CleanProgress = 0.0f;
 	CurrentToolId.clear();
 	CurrentInspectedItemId.clear();
+	HeldObjectInfo = {};
 	FoundItemIds.clear();
 	KeptItemIds.clear();
 	DiscardedItemIds.clear();
 	UnlockedStoryFlags.clear();
+
+	if (PreviousHeldObjectInfo.IsHolding())
+	{
+		OnObjectDropped.Broadcast(PreviousHeldObjectInfo);
+		OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	}
 
 	BroadcastChanged();
 }
@@ -58,6 +69,56 @@ void GGameContext::SetCurrentInspectedItem(const FString& ItemId)
 void GGameContext::ClearCurrentInspectedItem()
 {
 	SetCurrentInspectedItem("");
+}
+
+void GGameContext::SetHeldObject(AActor* Actor, const FString& ItemId, const FString& ToolId)
+{
+	FHeldObjectInfo NewInfo;
+	NewInfo.Actor = Actor;
+	NewInfo.ActorName = Actor ? Actor->GetFName().ToString() : FString();
+	NewInfo.ItemId = ItemId;
+	NewInfo.ToolId = ToolId;
+
+	if (!ToolId.empty())
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::CleaningTool;
+	}
+	else if (!ItemId.empty())
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::Item;
+	}
+	else if (Actor != nullptr)
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::Object;
+	}
+
+	if (HeldObjectInfo.Actor == NewInfo.Actor
+		&& HeldObjectInfo.ActorName == NewInfo.ActorName
+		&& HeldObjectInfo.ItemId == NewInfo.ItemId
+		&& HeldObjectInfo.ToolId == NewInfo.ToolId
+		&& HeldObjectInfo.ObjectType == NewInfo.ObjectType)
+	{
+		return;
+	}
+
+	HeldObjectInfo = NewInfo;
+	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	OnObjectPickedUp.Broadcast(HeldObjectInfo);
+	BroadcastChanged();
+}
+
+void GGameContext::ClearHeldObject()
+{
+	if (!HeldObjectInfo.IsHolding())
+	{
+		return;
+	}
+
+	const FHeldObjectInfo PreviousInfo = HeldObjectInfo;
+	HeldObjectInfo = {};
+	OnObjectDropped.Broadcast(PreviousInfo);
+	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	BroadcastChanged();
 }
 
 bool GGameContext::MarkItemFound(const FString& ItemId)

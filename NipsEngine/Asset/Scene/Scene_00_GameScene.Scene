@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 27032,
+  "NextUUID" : 27517,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-29.266474, -3.714372, 3.867265],
+    "Location" : [4.675877, -9.038678, 16.600403],
     "NearClip" : 0.100000,
-    "Rotation" : [1.061307, -5.025024, 11.942062]
+    "Rotation" : [-41.643097, -6.950226, 97.749626]
   },
   "Primitives" : {
     "11356" : {
@@ -603,7 +603,7 @@
       "ActorTickInEditor" : false,
       "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
-      "CastShadows" : false,
+      "CastShadows" : true,
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
@@ -1035,7 +1035,7 @@
       "ActorTickInEditor" : false,
       "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
-      "CastShadows" : false,
+      "CastShadows" : true,
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,

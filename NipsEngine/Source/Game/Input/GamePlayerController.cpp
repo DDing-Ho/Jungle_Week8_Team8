@@ -810,6 +810,7 @@ void FGamePlayerController::TogglePickup()
         GGameContext::Get().SetCurrentTool("");
         Handle->Release();
         Handle->ResetHoldDistance();
+        GGameContext::Get().ClearHeldObject();
         return;
     }
 
@@ -829,6 +830,8 @@ void FGamePlayerController::TogglePickup()
             if (AActor* HeldActor = HeldBody->GetOwner())
             {
                 const FString HeldToolId = FindCleaningToolIdFromActor(HeldActor);
+                const FString HeldItemId = FindItemIdFromActor(HeldActor);
+                GGameContext::Get().SetHeldObject(HeldActor, HeldItemId, HeldToolId);
                 bSelectedHeldTool = !HeldToolId.empty() && FCleaningToolSystem::Get().SelectTool(HeldToolId);
                 if (bSelectedHeldTool)
                 {
@@ -879,6 +882,7 @@ void FGamePlayerController::DestroyPhysicsHandle()
         PhysicsHandle->Release();
         PhysicsHandle = nullptr;
     }
+    GGameContext::Get().ClearHeldObject();
     HoveredPickableActor = nullptr;
 }
 

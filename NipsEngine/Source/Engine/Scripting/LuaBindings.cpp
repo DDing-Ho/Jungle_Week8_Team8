@@ -18,6 +18,25 @@
 #include "GameFramework/World.h"
 #include "Scripting/LuaScriptSystem.h"
 
+namespace
+{
+	const char* ToLuaHeldObjectType(EGameHeldObjectType Type)
+	{
+		switch (Type)
+		{
+		case EGameHeldObjectType::Object:
+			return "Object";
+		case EGameHeldObjectType::Item:
+			return "Item";
+		case EGameHeldObjectType::CleaningTool:
+			return "CleaningTool";
+		case EGameHeldObjectType::None:
+		default:
+			return "None";
+		}
+	}
+}
+
 void RegisterLuaBindings(sol::state& Lua)
 {
 	Lua.set_function("Log", [](const FString& Message)
@@ -178,6 +197,31 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set_function("GetResolvedItemCount", []()
 	{
 		return static_cast<int32>(GGameContext::Get().GetResolvedItemCount());
+	});
+
+	Lua.set_function("IsHoldingObject", []()
+	{
+		return GGameContext::Get().IsHoldingObject();
+	});
+
+	Lua.set_function("GetHeldActorName", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ActorName;
+	});
+
+	Lua.set_function("GetHeldItemId", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ItemId;
+	});
+
+	Lua.set_function("GetHeldToolId", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ToolId;
+	});
+
+	Lua.set_function("GetHeldObjectType", []()
+	{
+		return FString(ToLuaHeldObjectType(GGameContext::Get().GetHeldObjectInfo().ObjectType));
 	});
 
 	Lua.set_function("DeactivateActor", [](AActor* Actor)
