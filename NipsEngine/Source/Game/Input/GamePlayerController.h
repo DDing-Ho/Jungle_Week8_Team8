@@ -20,7 +20,9 @@ class UCharacterMovementComponent;
 class UPhysicsHandleComponent;
 class UPrimitiveComponent;
 class URigidBodyComponent;
+class USceneComponent;
 class UStaticMeshComponent;
+class USubUVComponent;
 class UWorld;
 
 class FGamePlayerController : public IBaseGameController
@@ -118,6 +120,8 @@ private:
     std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;
     TArray<UPrimitiveComponent*> HiddenCleaningToolPrimitives;
     TArray<bool> HiddenCleaningToolPrimitiveVisibility;
+    TArray<USubUVComponent*> CleaningToolSubUVs;
+    TArray<USceneComponent*> CleaningToolSubUVOriginalParents;
 
     float MoveSpeed = 10.0f;
     float RotateSensitivity = 0.15f;
