@@ -20,6 +20,8 @@
 		</div>
 	</div>
 
+	<div id="prologue-layer"></div>
+
 	<div id="settings-layer">
 		<div id="settings-panel">
 			<div id="settings-title">SETTINGS</div>
@@ -86,7 +88,8 @@
 	</div>
 
 	<div id="item-status">
-		<div id="current-item-name">No item</div>
+		<div id="current-item-label">보관한 물건</div>
+		<div id="current-item-name">없음</div>
 	</div>
 
 	<div id="crosshair-dot"></div>

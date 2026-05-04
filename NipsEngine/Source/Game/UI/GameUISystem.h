@@ -167,6 +167,8 @@ private:
     void TickTitleTransitions(float DeltaTime);
     void UpdateTitleTransitionElements();
     void FinishStartGameTransition();
+    void StartPrologue();
+    void FinishPrologue();
     void OpenSettings();
     void CloseSettings();
     void OpenCredits();
@@ -238,6 +240,7 @@ private:
     bool bStartGameTransitionActive = false;
     float StartGameTransitionElapsed = 0.0f;
     bool bStartGameTransitionReady = false;
+    bool bPrologueFinishing = false;
     bool bSettingsOpen = false;
     bool bCreditsOpen = false;
     bool bDebugMenuOpen = false;

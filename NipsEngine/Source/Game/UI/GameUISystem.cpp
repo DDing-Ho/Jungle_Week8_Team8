@@ -425,6 +425,8 @@ void GameUISystem::SetState(EGameUIState NewState)
 	}
 	if (NewState == EGameUIState::StartMenu && CurrentState != EGameUIState::StartMenu)
 		ResetTitleIntro();
+	if (NewState != EGameUIState::Prologue)
+		bPrologueFinishing = false;
 
 	CurrentState = NewState;
 	SetPauseMenuOpen(false);
@@ -1088,7 +1090,9 @@ bool GameUISystem::OnUIMouseButtonUp(int Button, float X, float Y)
 		EndSettingsSliderDrag();
 		return true;
 	}
-	if (Button == 0 && CurrentState == EGameUIState::Ending && DialoguePanel::AdvanceOrSkip())
+	if (Button == 0 &&
+		(CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue) &&
+		DialoguePanel::AdvanceOrSkip())
 		return true;
 	return WantsMouseCursor();
 }
@@ -1235,6 +1239,8 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	DialoguePanel::Tick(DeltaTime, Mode);
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
+	if (CurrentState == EGameUIState::Prologue && !DialoguePanel::IsActive())
+		FinishPrologue();
 
 	if (RmlRenderInterface)
 		RmlRenderInterface->SetFlashFactor(0.0f);
@@ -1262,6 +1268,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	}
 
 	const bool bShowStart = CurrentState == EGameUIState::StartMenu && Mode == EUIRenderMode::Play;
+	const bool bShowPrologue = CurrentState == EGameUIState::Prologue && Mode == EUIRenderMode::Play;
 	const bool bShowHud = CurrentState == EGameUIState::InGame;
 	const bool bShowPause = CurrentState == EGameUIState::InGame && bPauseMenuOpen;
 	const bool bShowSettings = bSettingsOpen && (bShowStart || bShowPause);
@@ -1276,6 +1283,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && !bShowItemInspect && InteractionHintType != EInteractionHintType::None;
 
 	SetElementVisible("start-menu", bShowStart);
+	SetElementVisible("prologue-layer", bShowPrologue);
 	SetElementVisible("settings-layer", bShowSettings);
 	SetElementVisible("credits-layer", bShowCredits);
 	SetElementVisible("hud-panel", bShowHud);
@@ -1334,7 +1342,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	const std::string RemainingTimeText = FormatTime(RemainingTime);
 	SetElementText("elapsed-time-value", RemainingTimeText);
 	SetElementText("pause-time", RemainingTimeText);
-	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
+	SetElementText("current-item-name", CurrentItemName.empty() ? "없음" : CurrentItemName);
 	UpdateSettingsElements();
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
 
@@ -1488,13 +1496,35 @@ void GameUISystem::FinishStartGameTransition()
 {
 	bStartGameTransitionReady = false;
 
+	StartPrologue();
+
+	bStartGameTransitionActive = false;
+	StartGameTransitionElapsed = 0.0f;
+}
+
+void GameUISystem::StartPrologue()
+{
+	SetState(EGameUIState::Prologue);
+	bPrologueFinishing = false;
+
+	DialoguePanel::Show("", "저 방이에요.");
+	DialoguePanel::Enqueue("", "오랫동안 손을 못 댔어요.");
+	DialoguePanel::Enqueue("", "…부탁드려요.");
+	DialoguePanel::Enqueue("", "들었던 대로 낡고 더러운 방이다.");
+	DialoguePanel::Enqueue("", "하지만 귀중한 물건도 몇 개 있는 것 같은데...");
+	DialoguePanel::Enqueue("", "보관해 뒀다가 청소가 끝나면 돌려주자.");
+}
+
+void GameUISystem::FinishPrologue()
+{
+	if (bPrologueFinishing)
+		return;
+
+	bPrologueFinishing = true;
 	if (StartGameCallback)
 		StartGameCallback();
 	else
 		SetState(EGameUIState::InGame);
-
-	bStartGameTransitionActive = false;
-	StartGameTransitionElapsed = 0.0f;
 }
 
 bool GameUISystem::CreateGameDocument()
