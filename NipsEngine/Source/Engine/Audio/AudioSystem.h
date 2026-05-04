@@ -27,6 +27,7 @@ struct FAudioPlayParams
 	bool bLoop = false;
 	bool bSpatial = false;  
 	bool bAffectedByAudioZones = true;
+	bool bAllowVolumeBoost = false;
 	EAudioBus Bus = EAudioBus::SFX;
 	float Volume = 1.0f;
 	float MinDistance = 1.0f;

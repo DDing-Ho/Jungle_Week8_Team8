@@ -158,9 +158,19 @@ void UGizmoComponent::RotateTarget(float DragAmount)
 
     if (TargetComponent)
     {
-        FQuat CurQuat = TargetComponent->GetRelativeQuat();
-        FQuat NewQuat = CurQuat * DeltaQuat;
-        TargetComponent->SetRelativeRotationQuat(NewQuat);
+        FQuat CurrentWorldQuat = TargetComponent->GetWorldTransform().GetRotation();
+        FQuat NewWorldQuat = CurrentWorldQuat * DeltaQuat;
+        NewWorldQuat.Normalize();
+
+        FQuat NewRelativeQuat = NewWorldQuat;
+        if (USceneComponent* Parent = TargetComponent->GetParent())
+        {
+            const FQuat ParentWorldQuat = Parent->GetWorldTransform().GetRotation();
+            NewRelativeQuat = NewWorldQuat * ParentWorldQuat.Inverse();
+            NewRelativeQuat.Normalize();
+        }
+
+        TargetComponent->SetRelativeRotationQuat(NewRelativeQuat);
         return;
     }
 

@@ -192,7 +192,11 @@ namespace
 		ItemData.DescriptionWhenKept = GetStringField(Node, "keptDesc");
 		ItemData.DescriptionWhenDiscarded = GetStringField(Node, "discardedDesc");
 		ItemData.IconPath = GetStringField(Node, "iconPath");
+		ItemData.PickSoundId = GetStringField(Node, "pickSoundId");
+		ItemData.DropSoundId = GetStringField(Node, "dropSoundId");
+		ItemData.FirstFoundSoundId = GetStringField(Node, "firstFoundSoundId");
 		ItemData.bCanClassify = GetBoolField(Node, "canClassify", true);
+		ItemData.bCanInspect = GetBoolField(Node, "canInspect", true);
 		ItemData.StoryFlags = ReadStringArray(Node, "storyFlags");
 		return ItemData;
 	}

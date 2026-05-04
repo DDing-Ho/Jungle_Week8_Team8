@@ -77,6 +77,8 @@ private:
     void EndCleaningUse();
     void StartCleaningLoopSound(const struct FCleaningToolData& ToolData);
     void StopCleaningLoopSound();
+    void UpdateCleaningUseSound();
+    void PlayNextSpongeCleaningSound();
     void TogglePickup();
     void NotifyPickedUp(AActor* PickedActor);
     void TryInspectHoveredItem();
@@ -131,6 +133,8 @@ private:
     bool bInitialRigidBodyRotationsCaptured = false;
     bool bIsCleaningUseHeld = false;
     FAudioHandle CleaningLoopSoundHandle;
+    FAudioHandle CleaningOneShotSoundHandle;
+    int LastSpongeUseStrokeCycle = -1;
     std::function<void()> OnRequestToggleInputCapture;
     std::function<void()> OnRequestTogglePause;
 };

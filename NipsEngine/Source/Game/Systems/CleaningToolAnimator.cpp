@@ -39,6 +39,8 @@ void FCleaningToolAnimator::SetActiveTool(const FCleaningToolData& ToolData)
 void FCleaningToolAnimator::BeginUse(const FCleaningToolData& ToolData)
 {
 	SetActiveTool(ToolData);
+	ElapsedTime = 0.0f;
+	CameraLocalOffset = FVector::ZeroVector;
 	bIsUsing = true;
 }
 
@@ -72,4 +74,15 @@ void FCleaningToolAnimator::Tick(float DeltaTime)
 	{
 		CameraLocalOffset = FVector::ZeroVector;
 	}
+}
+
+int FCleaningToolAnimator::GetUseStrokeCycleIndex() const
+{
+	if (BobSpeed <= 0.0f)
+	{
+		return 0;
+	}
+
+	constexpr float Pi = 3.14159265358979323846f;
+	return static_cast<int>(std::floor((ElapsedTime * BobSpeed) / (2.0f * Pi)));
 }
