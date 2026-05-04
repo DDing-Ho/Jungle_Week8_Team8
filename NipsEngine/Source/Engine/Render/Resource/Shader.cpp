@@ -530,6 +530,8 @@ void FShaderBindingInstance::ApplyUberPerObjectParameters(const FPerObjectConsta
 void FShaderBindingInstance::ApplyDecalParameters(const FDecalConstants& Constants)
 {
 	SetMatrix4("InvDecalWorld", Constants.InvDecalWorld);
+	SetFloat("DecalMaskInfluence", Constants.MaskInfluence);
+	SetFloat("DecalWhiteOverride", Constants.WhiteOverride);
 }
 
 void FShaderBindingInstance::UploadConstantBuffers(ID3D11DeviceContext* Context)

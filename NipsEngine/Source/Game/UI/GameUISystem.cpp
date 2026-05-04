@@ -1231,6 +1231,17 @@ void GameUISystem::UpdateTitleTransitionElements()
 	constexpr float StartFadeDuration = 1.0f;
 	const float StartFadeAlpha = bStartGameTransitionActive ? std::clamp(StartGameTransitionElapsed / StartFadeDuration, 0.0f, 1.0f) : 0.0f;
 
+	constexpr float TitleFlickerSpeed = 7.0f;
+	constexpr float TitleFlickerStrength = 0.08f;
+	const float TitleFlickerWave =
+		0.5f +
+		0.32f * std::sin(TitleIntroElapsed * TitleFlickerSpeed) +
+		0.18f * std::sin(TitleIntroElapsed * 17.0f + 0.9f);
+	const float TitleOpacity = bInStartMenu && !bShowIntro
+		? 1.0f - (TitleFlickerStrength * std::clamp(TitleFlickerWave, 0.0f, 1.0f))
+		: 1.0f;
+
+	SetElementProperty("game-title", "opacity", FormatOpacity(TitleOpacity));
 	SetElementVisible("title-intro-layer", bShowIntro);
 	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
 	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
