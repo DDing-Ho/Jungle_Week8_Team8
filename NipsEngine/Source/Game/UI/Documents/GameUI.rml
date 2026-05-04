@@ -54,19 +54,19 @@
 		<div id="credits-panel">
 			<div id="credits-title">CREDITS</div>
 			<div id="credits-row-1" class="credits-row">
-				<span class="credits-name">남윤지</span>
+				<span class="credits-name">Yoonji Nam</span>
 				<span class="credits-role">Lead Developer</span>
 			</div>
 			<div id="credits-row-2" class="credits-row">
-				<span class="credits-name">전현길</span>
+				<span class="credits-name">Hyeongil Jeon</span>
 				<span class="credits-role">First Developer</span>
 			</div>
 			<div id="credits-row-3" class="credits-row">
-				<span class="credits-name">박세영</span>
+				<span class="credits-name">Seyoung Park</span>
 				<span class="credits-role">Master Developer</span>
 			</div>
 			<div id="credits-row-4" class="credits-row">
-				<span class="credits-name">김기훈</span>
+				<span class="credits-name">Kihoon Kim</span>
 				<span class="credits-role">Best Developer</span>
 			</div>
 			<div id="credits-close-button" class="pause-button">Back</div>

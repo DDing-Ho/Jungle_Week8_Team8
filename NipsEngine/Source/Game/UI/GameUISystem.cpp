@@ -112,6 +112,13 @@ namespace
 		return std::to_string(Percent) + "%";
 	}
 
+	std::string FormatSensitivity(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.2f", std::clamp(Value, 0.2f, 3.0f));
+		return Buffer;
+	}
+
 	std::string FormatCssPercent(float Value)
 	{
 		char Buffer[32] = {};
@@ -589,7 +596,7 @@ void GameUISystem::ApplySettings()
 
 void GameUISystem::UpdateSettingsElements()
 {
-	SetElementText("settings-mouse-value", FormatValuePercent(MouseSensitivityScale));
+	SetElementText("settings-mouse-value", FormatSensitivity(MouseSensitivityScale));
 	SetElementText("settings-bgm-value", FormatValuePercent(BgmVolume));
 	SetElementText("settings-sfx-value", FormatValuePercent(SfxVolume));
 
