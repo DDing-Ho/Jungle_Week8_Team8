@@ -1015,7 +1015,7 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 	Handle->ResetHoldDistance();
 	GGameContext::Get().ClearHeldObject();
 
-	World->DestroyActor(HeldActor);
+	World->DeactivateActor(HeldActor);
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
