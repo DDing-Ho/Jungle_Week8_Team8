@@ -7,12 +7,14 @@
 #include "Engine/GameFramework/World.h"
 #include "Game/Systems/ItemSystem.h"
 #include "Object/Object.h"
+#include "Scripting/LuaScriptSystem.h"
 
 #include <algorithm>
 
 namespace
 {
 	constexpr float CleanDecalThreshold = 0.85f;
+	constexpr const char* CleanlinessItemId = "crumpled_paper";
 
 	bool IsLiveObjectPointer(const UObject* Object)
 	{
@@ -110,6 +112,18 @@ namespace
 			Body->QueueDropSound(ResolveAudioPathFromSoundId(ItemData->DropSoundId));
 		}
 	}
+
+	bool IsCleanlinessItemActor(const AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return false;
+		}
+
+		const FString RegisteredItemId =
+			FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+		return RegisteredItemId == CleanlinessItemId;
+	}
 }
 
 GGameContext& GGameContext::Get()
@@ -131,6 +145,10 @@ void GGameContext::Reset()
 	KeptItemIds.clear();
 	DiscardedItemIds.clear();
 	UnlockedStoryFlags.clear();
+	bMissionPickCleaningToolCompleted = false;
+	bMissionKeepImportantItemCompleted = false;
+	bMissionDiscardTrashCompleted = false;
+	bMissionCleanDustCompleted = false;
 
 	if (PreviousHeldObjectInfo.IsHolding())
 	{
@@ -150,6 +168,10 @@ void GGameContext::SetCleanProgress(float InProgress)
 	}
 
 	CleanProgress = ClampedProgress;
+	if (InitialDecalCount > 0 && CleanProgress > 0.0f)
+	{
+		CompleteMissionInternal(EGameMissionType::CleanDust);
+	}
 	BroadcastChanged();
 }
 
@@ -180,9 +202,16 @@ void GGameContext::RegisterMapDecals(UWorld* World)
 				}
 			}
 		}
+
+		if (IsCleanlinessItemActor(Actor)
+			&& std::find(MapCleanlinessItemActors.begin(), MapCleanlinessItemActors.end(), Actor) == MapCleanlinessItemActors.end())
+		{
+			MapCleanlinessItemActors.push_back(Actor);
+		}
 	}
 
 	InitialDecalCount = static_cast<int32>(MapDecals.size());
+	InitialCleanlinessItemCount = static_cast<int32>(MapCleanlinessItemActors.size());
 	RefreshCleanProgressFromDecals();
 }
 
@@ -190,18 +219,21 @@ void GGameContext::ClearMapDecals()
 {
 	MapDecals.clear();
 	InitialDecalCount = 0;
+	MapCleanlinessItemActors.clear();
+	InitialCleanlinessItemCount = 0;
 }
 
 void GGameContext::RefreshCleanProgressFromDecals()
 {
-	if (InitialDecalCount <= 0)
+	const int32 InitialCleanableCount = InitialDecalCount + InitialCleanlinessItemCount;
+	if (InitialCleanableCount <= 0)
 	{
 		SetCleanProgress(1.0f);
 		return;
 	}
 
-	const int32 RemainingDecalCount = GetRemainingDecalCount();
-	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingDecalCount) / static_cast<float>(InitialDecalCount));
+	const int32 RemainingCleanableCount = GetRemainingDecalCount() + GetRemainingCleanlinessItemCount();
+	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingCleanableCount) / static_cast<float>(InitialCleanableCount));
 	SetCleanProgress(CleanedRatio);
 }
 
@@ -231,6 +263,28 @@ int32 GGameContext::GetRemainingDecalCount() const
 	return RemainingCount;
 }
 
+int32 GGameContext::GetRemainingCleanlinessItemCount() const
+{
+	int32 RemainingCount = 0;
+
+	for (AActor* Actor : MapCleanlinessItemActors)
+	{
+		if (!IsLiveObjectPointer(Actor))
+		{
+			continue;
+		}
+
+		if (!Actor->IsActive())
+		{
+			continue;
+		}
+
+		++RemainingCount;
+	}
+
+	return RemainingCount;
+}
+
 void GGameContext::SetCurrentTool(const FString& ToolId)
 {
 	if (CurrentToolId == ToolId)
@@ -239,7 +293,62 @@ void GGameContext::SetCurrentTool(const FString& ToolId)
 	}
 
 	CurrentToolId = ToolId;
+	if (!CurrentToolId.empty())
+	{
+		CompleteMissionInternal(EGameMissionType::PickCleaningTool);
+	}
 	BroadcastChanged();
+}
+
+bool GGameContext::IsMissionCompleted(EGameMissionType MissionType) const
+{
+	switch (MissionType)
+	{
+	case EGameMissionType::PickCleaningTool:
+		return bMissionPickCleaningToolCompleted;
+	case EGameMissionType::KeepImportantItem:
+		return bMissionKeepImportantItemCompleted;
+	case EGameMissionType::DiscardTrash:
+		return bMissionDiscardTrashCompleted;
+	case EGameMissionType::CleanDust:
+		return bMissionCleanDustCompleted;
+	default:
+		return false;
+	}
+}
+
+bool GGameContext::MarkMissionCompleted(EGameMissionType MissionType)
+{
+	if (!CompleteMissionInternal(MissionType))
+	{
+		return false;
+	}
+
+	BroadcastChanged();
+	return true;
+}
+
+bool GGameContext::MarkTrashDiscardedForMission()
+{
+	return MarkMissionCompleted(EGameMissionType::DiscardTrash);
+}
+
+int GGameContext::GetCompletedMissionCount() const
+{
+	int Count = 0;
+	for (int MissionIndex = 0; MissionIndex < static_cast<int>(EGameMissionType::Count); ++MissionIndex)
+	{
+		if (IsMissionCompleted(static_cast<EGameMissionType>(MissionIndex)))
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+int GGameContext::GetMissionBonusScore() const
+{
+	return GetCompletedMissionCount() * 500;
 }
 
 void GGameContext::SetCurrentInspectedItem(const FString& ItemId)
@@ -350,6 +459,7 @@ bool GGameContext::MarkItemKept(const FString& ItemId)
 	const bool bInserted = KeptItemIds.insert(ItemId).second;
 	if (bInserted)
 	{
+		CompleteMissionInternal(EGameMissionType::KeepImportantItem);
 		OnItemDispositionChanged.Broadcast(ItemId, EGameItemDisposition::Kept);
 		BroadcastChanged();
 	}
@@ -432,4 +542,34 @@ bool GGameContext::HasStoryFlag(const FString& Flag) const
 void GGameContext::BroadcastChanged()
 {
 	OnContextChanged.Broadcast();
+}
+
+bool GGameContext::CompleteMissionInternal(EGameMissionType MissionType)
+{
+	bool* bCompleted = nullptr;
+	switch (MissionType)
+	{
+	case EGameMissionType::PickCleaningTool:
+		bCompleted = &bMissionPickCleaningToolCompleted;
+		break;
+	case EGameMissionType::KeepImportantItem:
+		bCompleted = &bMissionKeepImportantItemCompleted;
+		break;
+	case EGameMissionType::DiscardTrash:
+		bCompleted = &bMissionDiscardTrashCompleted;
+		break;
+	case EGameMissionType::CleanDust:
+		bCompleted = &bMissionCleanDustCompleted;
+		break;
+	default:
+		return false;
+	}
+
+	if (*bCompleted)
+	{
+		return false;
+	}
+
+	*bCompleted = true;
+	return true;
 }

@@ -401,6 +401,46 @@ FQuat BuildCameraLocalHandleRotation(const FVector& HandleCameraLocalDirection)
 		HandleCameraLocalDirection);
 }
 
+FQuat BuildCleaningToolLocalRotation(const FVector& RotationDegrees)
+{
+	if (RotationDegrees.IsNearlyZero())
+	{
+		return FQuat::Identity;
+	}
+
+	FQuat Rotation = FQuat(FVector(1.0f, 0.0f, 0.0f), MathUtil::DegreesToRadians(RotationDegrees.X))
+		* FQuat(FVector(0.0f, 1.0f, 0.0f), MathUtil::DegreesToRadians(RotationDegrees.Y))
+		* FQuat(FVector(0.0f, 0.0f, 1.0f), MathUtil::DegreesToRadians(RotationDegrees.Z));
+	Rotation.Normalize();
+	return Rotation;
+}
+
+FVector ApplyCleaningToolLocalRotationToStrokeOffset(const FCleaningToolData& ToolData, const FVector& CameraLocalOffset)
+{
+	if (ToolData.ViewModelLocalRotationDegrees.IsNearlyZero())
+	{
+		return CameraLocalOffset;
+	}
+
+	const FVector StrokeLocalOffset = CameraLocalOffset - ToolData.HoldCameraLocalOffset;
+	if (StrokeLocalOffset.IsNearlyZero())
+	{
+		return CameraLocalOffset;
+	}
+
+	const FVector LocalXAxis = GetCleaningToolAnimationDirection(ToolData);
+	if (LocalXAxis.IsNearlyZero())
+	{
+		return CameraLocalOffset;
+	}
+
+	const FQuat LocalToolRotation = BuildCameraLocalHandleRotation(LocalXAxis);
+	const FQuat LocalAdjustment = BuildCleaningToolLocalRotation(ToolData.ViewModelLocalRotationDegrees);
+	FQuat StrokeRotation = LocalToolRotation.Inverse() * LocalAdjustment * LocalToolRotation;
+	StrokeRotation.Normalize();
+	return ToolData.HoldCameraLocalOffset + (StrokeRotation * StrokeLocalOffset);
+}
+
 FVector BuildCameraScreenUp(const FVector& CameraForward, const FVector& CameraRight)
 {
 	FVector ScreenUp = FVector::CrossProduct(CameraForward.GetSafeNormal(), CameraRight.GetSafeNormal()).GetSafeNormal();
@@ -425,12 +465,17 @@ FQuat BuildCameraBasisRotation(const FVector& CameraForward, const FVector& Came
 	return CameraRotation;
 }
 
-FQuat BuildViewModelWorldRotation(const FVector& CameraForward, const FVector& CameraRight, const FVector& HandleCameraLocalDirection)
+FQuat BuildViewModelWorldRotation(
+	const FVector& CameraForward,
+	const FVector& CameraRight,
+	const FVector& HandleCameraLocalDirection,
+	const FVector& LocalRotationDegrees)
 {
 	const FVector CameraScreenUp = BuildCameraScreenUp(CameraForward, CameraRight);
 	FQuat LocalToolRotation = BuildCameraLocalHandleRotation(HandleCameraLocalDirection);
+	FQuat LocalRotation = BuildCleaningToolLocalRotation(LocalRotationDegrees);
 	FQuat CameraRotation = BuildCameraBasisRotation(CameraForward, CameraRight, CameraScreenUp);
-	FQuat Result = LocalToolRotation * CameraRotation;
+	FQuat Result = LocalRotation * LocalToolRotation * CameraRotation;
 	Result.Normalize();
 	return Result;
 }
@@ -1096,7 +1141,11 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 		return false;
 	}
 
-	if (!FItemSystem::Get().PlaceItemInDecisionBox(ItemId, BoxType))
+	const bool bPlacedInDecisionBox = FItemSystem::Get().PlaceItemInDecisionBox(ItemId, BoxType);
+	const bool bAllowRepeatedResolvedItemPlacement =
+		!bPlacedInDecisionBox
+		&& (GGameContext::Get().HasKeptItem(ItemId) || GGameContext::Get().HasDiscardedItem(ItemId));
+	if (!bPlacedInDecisionBox && !bAllowRepeatedResolvedItemPlacement)
 	{
 		return false;
 	}
@@ -1120,6 +1169,8 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
+	GGameContext::Get().RefreshCleanProgressFromDecals();
+	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 
 	UE_LOG("[ItemDecisionBox] Placed item=%s into box=%s actor=%s",
 		   ItemId.c_str(),
@@ -1593,7 +1644,8 @@ void FGamePlayerController::UpdateCleaningToolViewModel(
 		return;
 	}
 
-	const FVector LocalOffset = FVector(ToolData.HoldDistance, 0.0f, 0.0f) + CameraLocalOffset;
+	const FVector TiltedCameraLocalOffset = ApplyCleaningToolLocalRotationToStrokeOffset(ToolData, CameraLocalOffset);
+	const FVector LocalOffset = FVector(ToolData.HoldDistance, 0.0f, 0.0f) + TiltedCameraLocalOffset;
 	if (CleaningToolViewModel->GetParent() != nullptr)
 	{
 		CleaningToolViewModel->SetParent(nullptr);
@@ -1601,7 +1653,11 @@ void FGamePlayerController::UpdateCleaningToolViewModel(
 
 	const FVector CameraScreenUp = BuildCameraScreenUp(CameraForward, CameraRight);
 	CleaningToolViewModel->SetWorldLocation(CameraLocation + ToWorldOffset(CameraForward, CameraRight, CameraScreenUp, LocalOffset));
-	CleaningToolViewModel->SetRelativeRotationQuat(BuildViewModelWorldRotation(CameraForward, CameraRight, GetCleaningToolAnimationDirection(ToolData)));
+	CleaningToolViewModel->SetRelativeRotationQuat(BuildViewModelWorldRotation(
+		CameraForward,
+		CameraRight,
+		GetCleaningToolAnimationDirection(ToolData),
+		ToolData.ViewModelLocalRotationDegrees));
 }
 
 bool FGamePlayerController::IsRuntimeWorld() const

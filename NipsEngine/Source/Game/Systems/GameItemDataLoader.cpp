@@ -219,6 +219,10 @@ namespace
 			ToolData.UseStrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
 		}
 		ToolData.HandleCameraLocalDirection = GetVectorField(Node, "handleCameraLocalDirection", FVector::ZeroVector).GetSafeNormal();
+		ToolData.ViewModelLocalRotationDegrees = GetVectorField(
+			Node,
+			"viewModelLocalRotationDegrees",
+			FVector(GetFloatField(Node, "viewModelLocalXRotationDegrees", 0.0f), 0.0f, 0.0f));
 		ToolData.UseBobAmplitude = std::max(0.0f, GetFloatField(Node, "useBobAmplitude", 0.15f));
 		ToolData.UseBobSpeed = std::max(0.0f, GetFloatField(Node, "useBobSpeed", 8.0f));
 		ToolData.UseReturnSpeed = std::max(0.0f, GetFloatField(Node, "useReturnSpeed", 14.0f));
