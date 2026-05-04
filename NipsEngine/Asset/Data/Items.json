@@ -139,10 +139,11 @@
       "effectId": "wet_wipe",
       "cleaningPower": 0.1,
       "cleaningRadius": 0.8,
-      "holdDistance": 1.4,
+      "holdDistance": 2.5,
       "holdCameraLocalOffset": [0.0, 0.1, -0.1],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],
       "handleCameraLocalDirection": [0.0, 1.0, 1.0],
+      "viewModelLocalRotationDegrees": [50.0, -15.0, 0.0],
       "useBobAmplitude": 0.18,
       "useBobSpeed": 9.0,
       "useReturnSpeed": 14.0
@@ -161,6 +162,7 @@
       "holdCameraLocalOffset": [0.0, 0.1, -0.1],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],
       "handleCameraLocalDirection": [0.0, 1.0, 1.0],
+      "viewModelLocalRotationDegrees": [10.0, -10.0, 0.0],
       "useBobAmplitude": 0.18,
       "useBobSpeed": 9.0,
       "useReturnSpeed": 14.0
