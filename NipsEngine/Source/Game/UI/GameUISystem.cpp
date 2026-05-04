@@ -645,11 +645,13 @@ bool GameUISystem::CreateGameDocument()
 			position: absolute;
 			left: 50%;
 			top: 50%;
-			width: 6px;
-			height: 6px;
+			width: 4px;
+			height: 4px;
 			margin-left: -3px;
 			margin-top: -3px;
 			background-color: rgba(255, 255, 255, 235);
+			border-width: 1px;
+			border-color: rgba(82, 82, 82, 190);
 			border-radius: 3px;
 		}
 
