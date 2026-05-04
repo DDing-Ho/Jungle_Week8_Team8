@@ -15,7 +15,9 @@
       "endingRole": "Normal",
       "storyFlags": [
         "found_old_book"
-      ]
+      ],
+      "pickSoundId": "pick-item-book",
+      "dropSoundId": "drop-item-book"
     },
     {
       "id": "chocolate_bar",
@@ -47,7 +49,9 @@
       "endingRole": "Bad",
       "storyFlags": [
         "found_medicine_bottle"
-      ]
+      ],
+      "pickSoundId": "pick-item-medicine",
+      "dropSoundId": "drop-item-1"
     },
     {
       "id": "shell",
@@ -65,7 +69,10 @@
       "endingRole": "Good",
       "storyFlags": [
         "found_shell"
-      ]
+      ],
+      "pickSoundId": "pick-item-shell",
+      "dropSoundId": "drop-item-1",
+      "firstFoundSoundId": "found-secret-item"
     },
     {
       "id": "globe",
@@ -80,7 +87,9 @@
       "endingRole": "Normal",
       "storyFlags": [
         "found_globe"
-      ]
+      ],
+      "pickSoundId": "pick-item-2",
+      "dropSoundId": "drop-item-4"
     },
     {
       "id": "painting",
@@ -96,7 +105,9 @@
       "endingRole": "Normal",
       "storyFlags": [
         "found_painting"
-      ]
+      ],
+      "pickSoundId": "pick-item-paper",
+      "dropSoundId": "drop-item-paper"
     },
     {
       "id": "shoes",
@@ -111,7 +122,9 @@
       "endingRole": "Normal",
       "storyFlags": [
         "found_shoes"
-      ]
+      ],
+      "pickSoundId": "pick-item-3",
+      "dropSoundId": "drop-item-5"
     },
     {
       "id": "crumpled_paper",
@@ -127,7 +140,49 @@
       "endingRole": "Bad",
       "storyFlags": [
         "found_crumpled_paper"
-      ]
+      ],
+      "pickSoundId": "pick-item-trash",
+      "dropSoundId": "pick-item-trash"
+    },
+    {
+      "id": "moving_box",
+      "name": "이사 박스",
+      "type": "DummyItem",
+      "foundDesc": "짐을 담기 위한 평범한 이사 박스다.",
+      "canClassify": false,
+      "canInspect": false,
+      "pickSoundId": "pick-item-5",
+      "dropSoundId": "drop-item-5"
+    },
+    {
+      "id": "jar",
+      "name": "항아리",
+      "type": "DummyItem",
+      "foundDesc": "방 안에 놓여 있던 작은 항아리다.",
+      "canClassify": false,
+      "canInspect": false,
+      "pickSoundId": "pick-item-3",
+      "dropSoundId": "drop-item-1"
+    },
+    {
+      "id": "paper_roll",
+      "name": "종이 두루마리",
+      "type": "DummyItem",
+      "foundDesc": "박스 안에 들어 있던 종이 두루마리다.",
+      "canClassify": false,
+      "canInspect": false,
+      "pickSoundId": "pick-item-paper",
+      "dropSoundId": "drop-item-5"
+    },
+    {
+      "id": "bucket",
+      "name": "물통",
+      "type": "DummyItem",
+      "foundDesc": "청소에 쓰이는 평범한 물통이다.",
+      "canClassify": false,
+      "canInspect": false,
+      "pickSoundId": "pick-item-2",
+      "dropSoundId": "drop-item-4"
     },
     {
       "id": "mop",
@@ -139,6 +194,8 @@
       "effectId": "wet_wipe",
       "cleaningPower": 0.1,
       "cleaningRadius": 0.8,
+      "pickSoundId": "pick-item-5",
+      "dropSoundId": "drop-item-1",
       "holdDistance": 1.4,
       "holdCameraLocalOffset": [0.0, 0.1, -0.1],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],
@@ -157,6 +214,8 @@
       "effectId": "wet_wipe",
       "cleaningPower": 0.5,
       "cleaningRadius": 0.3,
+      "pickSoundId": "sponge-2",
+      "dropSoundId": "drop-item-5",
       "holdDistance": 1.4,
       "holdCameraLocalOffset": [0.0, 0.2, -0.2],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],

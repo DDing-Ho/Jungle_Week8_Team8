@@ -1,8 +1,11 @@
 ﻿#include "Game/Systems/GameContext.h"
 
+#include "Audio/AudioSystem.h"
 #include "Component/DecalComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
 #include "Engine/GameFramework/AActor.h"
 #include "Engine/GameFramework/World.h"
+#include "Game/Systems/ItemSystem.h"
 #include "Object/Object.h"
 
 #include <algorithm>
@@ -27,6 +30,85 @@ namespace
 		}
 
 		return false;
+	}
+
+	FString ResolveAudioPathFromSoundId(const FString& SoundId)
+	{
+		if (SoundId.empty())
+		{
+			return "";
+		}
+
+		if (SoundId.find('/') != FString::npos || SoundId.find('\\') != FString::npos || SoundId.find('.') != FString::npos)
+		{
+			return SoundId;
+		}
+
+		return "Asset/Audio/" + SoundId + ".wav";
+	}
+
+	void PlayItemSoundId(const FString& SoundId)
+	{
+		const FString SoundPath = ResolveAudioPathFromSoundId(SoundId);
+		if (SoundPath.empty())
+		{
+			return;
+		}
+
+		FAudioPlayParams Params;
+		Params.bSpatial = false;
+		Params.bLoop = false;
+		Params.bAffectedByAudioZones = false;
+		Params.Bus = EAudioBus::SFX;
+		Params.Volume = 1.0f;
+		FAudioSystem::Get().Play(SoundPath, Params);
+	}
+
+	const FGameItemData* FindHeldItemData(const FHeldObjectInfo& Info)
+	{
+		if (!Info.ItemId.empty())
+		{
+			return FItemSystem::Get().FindItemData(Info.ItemId);
+		}
+
+		if (!Info.ToolId.empty())
+		{
+			return FItemSystem::Get().FindItemData(Info.ToolId);
+		}
+
+		return nullptr;
+	}
+
+	URigidBodyComponent* FindRigidBodyComponent(AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component))
+			{
+				return Body;
+			}
+		}
+
+		return nullptr;
+	}
+
+	void QueueItemDropSound(const FHeldObjectInfo& Info)
+	{
+		const FGameItemData* ItemData = FindHeldItemData(Info);
+		if (ItemData == nullptr || ItemData->DropSoundId.empty())
+		{
+			return;
+		}
+
+		if (URigidBodyComponent* Body = FindRigidBodyComponent(Info.Actor))
+		{
+			Body->QueueDropSound(ResolveAudioPathFromSoundId(ItemData->DropSoundId));
+		}
 	}
 }
 
@@ -211,6 +293,14 @@ void GGameContext::SetHeldObject(AActor* Actor, const FString& ItemId, const FSt
 	}
 
 	HeldObjectInfo = NewInfo;
+	if (const FGameItemData* ItemData = FindHeldItemData(HeldObjectInfo))
+	{
+		if (!ItemData->FirstFoundSoundId.empty() && !ItemData->ItemId.empty() && FItemSystem::Get().DiscoverItem(ItemData->ItemId))
+		{
+			PlayItemSoundId(ItemData->FirstFoundSoundId);
+		}
+		PlayItemSoundId(ItemData->PickSoundId);
+	}
 	OnObjectPickedUp.Broadcast(HeldObjectInfo);
 	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
 	BroadcastChanged();
@@ -225,6 +315,7 @@ void GGameContext::ClearHeldObject()
 
 	const FHeldObjectInfo PreviousInfo = HeldObjectInfo;
 	HeldObjectInfo = {};
+	QueueItemDropSound(PreviousInfo);
 	OnObjectDropped.Broadcast(PreviousInfo);
 	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
 	BroadcastChanged();

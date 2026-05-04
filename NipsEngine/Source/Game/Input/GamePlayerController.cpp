@@ -184,6 +184,65 @@ namespace
 		return Value;
 	}
 
+	FString GetAssetFileStemMatchKey(FString Value)
+	{
+		Value = NormalizeToolMatchKey(Value);
+		const size_t SlashPos = Value.find_last_of('/');
+		if (SlashPos != FString::npos)
+		{
+			Value = Value.substr(SlashPos + 1);
+		}
+
+		const size_t DotPos = Value.find_last_of('.');
+		if (DotPos != FString::npos)
+		{
+			Value = Value.substr(0, DotPos);
+		}
+		return Value;
+	}
+
+	FString NormalizeLooseItemMatchKey(FString Value)
+	{
+		Value = NormalizeToolMatchKey(Value);
+		Value.erase(std::remove_if(Value.begin(), Value.end(), [](char C)
+		{
+			return C == '_' || C == '-' || C == ' ';
+		}), Value.end());
+		return Value;
+	}
+
+	FString ResolveItemAliasFromMeshStem(const FString& MeshStem)
+	{
+		if (MeshStem == "frame" || MeshStem == "drawingpaper")
+		{
+			return "painting";
+		}
+		if (MeshStem == "cardboard_box" || MeshStem == "box")
+		{
+			return "moving_box";
+		}
+		if (MeshStem == "candybottle")
+		{
+			return "jar";
+		}
+		if (MeshStem == "rolleduppapers")
+		{
+			return "paper_roll";
+		}
+		if (MeshStem == "wooden_bucket_01_1k")
+		{
+			return "bucket";
+		}
+
+		return "";
+	}
+
+	bool IsItemInspectable(const FString& ItemId)
+	{
+		const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
+		return ItemData != nullptr && ItemData->bCanInspect;
+	}
+
 	FString FindCleaningToolIdFromActor(const AActor* Actor, bool bLogResult = true)
 	{
 		if (!Actor)
@@ -246,6 +305,32 @@ namespace
 			if (ActorName == NormalizeToolMatchKey(ItemData.ItemId))
 			{
 				return ItemData.ItemId;
+			}
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(Component);
+			if (MeshComponent == nullptr || MeshComponent->GetStaticMesh() == nullptr)
+			{
+				continue;
+			}
+
+			const FString MeshName = GetAssetFileStemMatchKey(MeshComponent->GetStaticMesh()->GetAssetPathFileName());
+			const FString AliasItemId = ResolveItemAliasFromMeshStem(MeshName);
+			if (!AliasItemId.empty() && FItemSystem::Get().FindItemData(AliasItemId) != nullptr)
+			{
+				return AliasItemId;
+			}
+
+			const FString LooseMeshName = NormalizeLooseItemMatchKey(MeshName);
+			for (const FGameItemData& ItemData : Items)
+			{
+				if (MeshName == NormalizeToolMatchKey(ItemData.ItemId) ||
+					LooseMeshName == NormalizeLooseItemMatchKey(ItemData.ItemId))
+				{
+					return ItemData.ItemId;
+				}
 			}
 		}
 
@@ -1194,7 +1279,8 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 		{
 			if (AActor* HeldActor = HeldBody->GetOwner())
 			{
-				if (GGameContext::Get().GetCurrentToolId().empty() && !FindItemIdFromActor(HeldActor).empty())
+				const FString HeldItemId = FindItemIdFromActor(HeldActor);
+				if (GGameContext::Get().GetCurrentToolId().empty() && !HeldItemId.empty())
 				{
 					EItemDecisionBoxType BoxType = EItemDecisionBoxType::KeepBox;
 					HoveredDecisionBoxActor = FindHoveredDecisionBoxActor(BoxType);
@@ -1207,7 +1293,7 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 					}
 					else
 					{
-						HintType = EInteractionHintType::DropWithInspect;
+						HintType = IsItemInspectable(HeldItemId) ? EInteractionHintType::DropWithInspect : EInteractionHintType::Drop;
 					}
 				}
 			}

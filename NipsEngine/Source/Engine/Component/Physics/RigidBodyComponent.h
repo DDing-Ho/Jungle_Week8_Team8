@@ -58,6 +58,8 @@ public:
 
 	void PlayPickupSound() const;
 	void PlayDropSound() const;
+	void QueueDropSound(const FString& SoundPath);
+	const FString& GetDropSoundPath() const { return DropSoundPath; }
 
 	float GetMass() const { return Mass; }
 	float GetGravityScale() const { return GravityScale; }
@@ -77,6 +79,7 @@ protected:
 private:
 	void ClampEditableValues();
 	void ApplyBlockingResponse();
+	void TryPlayPendingDropSound();
 
 	static constexpr uint32 InvalidJoltBodyHandle = 0xffffffffu;
 
@@ -104,4 +107,7 @@ private:
 
 	FString PickupSoundPath;
 	FString DropSoundPath;
+	FString PendingDropSoundPath;
+	bool bDropSoundPending = false;
+	bool bDropSoundObservedFalling = false;
 };
