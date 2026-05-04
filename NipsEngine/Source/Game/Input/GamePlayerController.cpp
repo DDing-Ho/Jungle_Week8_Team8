@@ -351,11 +351,43 @@ void FGamePlayerController::Tick(float DeltaTime)
         const FVector PhysicsCameraLocalOffset = ToolData ? HoldCameraLocalOffset : AnimatedCameraLocalOffset;
         const FVector ToolOffset = ToWorldOffset(CameraForward, CameraRight, CameraUp, PhysicsCameraLocalOffset);
         Handle->TickHandle(DeltaTime, CameraLocation, CameraForward, ToolOffset, nullptr, ToolData != nullptr);
-        if (ToolData && Handle->IsHolding())
-        {
-            UpdateCleaningToolViewModel(*ToolData, AnimatedCameraLocalOffset, CameraLocation, CameraForward, CameraRight);
-        }
     }
+}
+
+void FGamePlayerController::LateTick(float DeltaTime)
+{
+    (void)DeltaTime;
+
+    UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+    if (Handle == nullptr || !Handle->IsHolding())
+    {
+        return;
+    }
+
+    const FString& CurrentToolId = GGameContext::Get().GetCurrentToolId();
+    if (CurrentToolId.empty())
+    {
+        return;
+    }
+
+    const FCleaningToolData* ToolData = FCleaningToolSystem::Get().FindToolData(CurrentToolId);
+    if (ToolData == nullptr)
+    {
+        return;
+    }
+
+    FVector CameraLocation;
+    FVector CameraForward;
+    FVector CameraRight;
+    FVector CameraUp;
+    if (!GetActiveCameraBasis(CameraLocation, CameraForward, CameraRight, CameraUp))
+    {
+        return;
+    }
+
+    const FVector AnimatedCameraLocalOffset =
+        FCleaningToolAnimator::Get().GetHoldCameraLocalOffset() + FCleaningToolAnimator::Get().GetCameraLocalOffset();
+    UpdateCleaningToolViewModel(*ToolData, AnimatedCameraLocalOffset, CameraLocation, CameraForward, CameraRight);
 }
 
 void FGamePlayerController::OnMouseMove(float DeltaX, float DeltaY)

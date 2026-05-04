@@ -102,6 +102,11 @@ void FGameViewportClient::Tick(float DeltaTime)
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
 
+void FGameViewportClient::LateTick(float DeltaTime)
+{
+	PlayerController.LateTick(DeltaTime);
+}
+
 // 카메라 활성화 여부에 따라 적절한 카메라를 선택하여 렌더러에 넘겨줄 FSceneView 구조체의 내용을 채웁니다.
 void FGameViewportClient::BuildSceneView(FSceneView& OutView) const
 {

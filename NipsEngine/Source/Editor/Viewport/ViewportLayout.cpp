@@ -154,6 +154,14 @@ void FEditorViewportLayout::Tick(float DeltaTime)
 	}
 }
 
+void FEditorViewportLayout::LateTick(float DeltaTime)
+{
+	for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
+	{
+		GetViewportClient(i)->LateTick(DeltaTime);
+	}
+}
+
 void FEditorViewportLayout::OnWindowResized(uint32 Width, uint32 Height)
 {
 	// 윈도우 리사이즈(최대화/복원 포함) 시 기존 HostRect는 이전 프레임 값일 수 있으므로 무효화합니다.

@@ -231,6 +231,14 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
 
+void FEditorViewportClient::LateTick(float DeltaTime)
+{
+	if (World && World->GetWorldType() == EWorldType::PIE)
+	{
+		GamePlayerController.LateTick(DeltaTime);
+	}
+}
+
 void FEditorViewportClient::BuildSceneView(FSceneView& OutView) const
 {
 	if (!bHasCamera)

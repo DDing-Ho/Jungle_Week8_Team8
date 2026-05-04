@@ -382,6 +382,7 @@ void UEditorEngine::Tick(float DeltaTime)
 	ViewportLayout.Tick(DeltaTime);
 	MainPanel.Update();
 	WorldTick(DeltaTime);
+	ViewportLayout.LateTick(DeltaTime);
 	Render(DeltaTime);
 }
 

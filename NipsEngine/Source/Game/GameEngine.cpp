@@ -144,6 +144,7 @@ void UGameEngine::Tick(float DeltaTime)
 	UpdateInputWorldType();
 	GameViewport->Tick(DeltaTime);
 	WorldTick(DeltaTime);
+	GameViewport->LateTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);
 	Render(DeltaTime);
 }

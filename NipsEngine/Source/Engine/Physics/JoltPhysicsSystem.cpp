@@ -200,7 +200,8 @@ bool IsFloorLikeStartContact(const FVector& CurrentLocation, const FVector& Requ
 
 bool ShouldIgnoreKinematicStartContact(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta)
 {
-    if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+    const bool bKinematicSweepBody = Body != nullptr && (Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle());
+    if (!bKinematicSweepBody)
     {
         return false;
     }
@@ -225,7 +226,8 @@ bool ShouldIgnoreKinematicStartContact(const URigidBodyComponent* Body, const JP
 
 bool TryBuildKinematicSlideDelta(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta, FVector& OutSlideDelta)
 {
-    if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+    const bool bKinematicSweepBody = Body != nullptr && (Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle());
+    if (!bKinematicSweepBody)
     {
         return false;
     }
@@ -249,20 +251,26 @@ bool TryBuildKinematicSlideDelta(const URigidBodyComponent* Body, const JPH::Sha
         Normal *= -1.0f;
     }
 
+    const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, Normal);
+    if (IntoSurfaceDistance >= 0.0f)
+    {
+        OutSlideDelta = RequestedDelta;
+        return true;
+    }
+
+    OutSlideDelta = RequestedDelta - Normal * IntoSurfaceDistance;
+
+    if (Body->IsHeldByPhysicsHandle())
+    {
+        return !OutSlideDelta.IsNearlyZero();
+    }
+
     const bool bMostlyVerticalSurface = std::fabs(Normal.Z) > 0.65f;
     if (!bMostlyVerticalSurface)
     {
         return false;
     }
 
-    const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, Normal);
-    if (IntoSurfaceDistance >= 0.0f)
-    {
-        OutSlideDelta = RequestedHorizontal;
-        return true;
-    }
-
-    OutSlideDelta = RequestedDelta - Normal * IntoSurfaceDistance;
     OutSlideDelta.Z = 0.0f;
     return !OutSlideDelta.IsNearlyZero();
 }
@@ -301,6 +309,27 @@ URigidBodyComponent* FindRigidBody(AActor* Actor)
     }
 
     return nullptr;
+}
+
+void ApplyImmediateBodyTransform(
+    URigidBodyComponent* Body,
+    JPH::BodyInterface& BodyInterface,
+    JPH::BodyID BodyID,
+    const FVector& Location,
+    const FQuat& Rotation)
+{
+    BodyInterface.SetPositionAndRotation(
+        BodyID,
+        ToJoltPosition(Location),
+        ToJoltQuat(Rotation),
+        JPH::EActivation::Activate);
+    BodyInterface.SetLinearVelocity(BodyID, JPH::Vec3::sZero());
+
+    if (USceneComponent* UpdatedComponent = Body ? Body->GetUpdatedComponent() : nullptr)
+    {
+        UpdatedComponent->SetWorldLocation(Location);
+        UpdatedComponent->SetRelativeRotationQuat(Rotation);
+    }
 }
 
 JPH::Vec3 ToJoltLocalPosition(const FVector& Vector)
@@ -1139,6 +1168,14 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
                 const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
                 const float RequestedDistance = RequestedDelta.Size();
                 float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
+                if (Body->IsHeldByPhysicsHandle())
+                {
+                    SafetyDistance = std::clamp(SmallestExtent * 0.08f, 0.005f, 0.03f);
+                    if (RequestedDistance > 0.001f)
+                    {
+                        SafetyDistance = std::min(SafetyDistance, RequestedDistance * 0.1f);
+                    }
+                }
                 if (Body->IsKinematicBody() && RequestedDistance > 0.001f)
                 {
                     SafetyDistance = std::min(SafetyDistance, RequestedDistance * 0.2f);
@@ -1165,6 +1202,12 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
                 }
             }
         }
+    }
+
+    if (Body->IsHeldByPhysicsHandle())
+    {
+        ApplyImmediateBodyTransform(Body, BodyInterface, BodyID, InOutTargetLocation, TargetRotation);
+        return true;
     }
 
     const float MoveDeltaTime = std::max(DeltaTime, 1.0f / 240.0f);

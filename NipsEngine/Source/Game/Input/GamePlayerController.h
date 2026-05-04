@@ -28,6 +28,7 @@ public:
 	~FGamePlayerController() override;
 
 	void Tick(float DeltaTime) override;
+	void LateTick(float DeltaTime);
 
 	void OnMouseMove(float DeltaX, float DeltaY) override;
 	void OnMouseMoveAbsolute(float X, float Y) override;
