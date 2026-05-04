@@ -128,7 +128,11 @@ namespace
 			}
 
 			const FVector BoxExtent = BoxComponent->GetBoxExtent();
-			const FVector WorldExtent(std::fabs(BoxExtent.X), std::fabs(BoxExtent.Y), std::fabs(BoxExtent.Z));
+			const FVector BoxScale = BoxComponent->GetWorldScale();
+			const FVector WorldExtent(
+				std::fabs(BoxExtent.X) * std::fabs(BoxScale.X),
+				std::fabs(BoxExtent.Y) * std::fabs(BoxScale.Y),
+				std::fabs(BoxExtent.Z) * std::fabs(BoxScale.Z));
 			const FOBB BoxOBB(BoxComponent->GetWorldLocation(), WorldExtent, BoxComponent->GetWorldMatrix().GetRotationMatrix());
 			LineBatcher->AddOBB(BoxOBB, ShapeColor);
 			return true;
@@ -143,7 +147,10 @@ namespace
 
 			LineBatcher->AddSphere(
 				SphereComponent->GetWorldLocation(),
-				std::fabs(SphereComponent->GetSphereRadius()),
+				std::fabs(SphereComponent->GetSphereRadius()) * std::max({
+					std::fabs(SphereComponent->GetWorldScale().X),
+					std::fabs(SphereComponent->GetWorldScale().Y),
+					std::fabs(SphereComponent->GetWorldScale().Z) }),
 				SphereComponent->GetRightVector(),
 				SphereComponent->GetUpVector(),
 				ShapeColor);
@@ -157,8 +164,11 @@ namespace
 				return true;
 			}
 
-			const float Radius = std::fabs(CapsuleComponent->GetCapsuleRadius());
-			const float HalfHeight = std::max(std::fabs(CapsuleComponent->GetCapsuleHalfHeight()), Radius);
+			const FVector CapsuleScale = CapsuleComponent->GetWorldScale();
+			const float RadiusScale = std::max(std::fabs(CapsuleScale.X), std::fabs(CapsuleScale.Y));
+			const float HeightScale = std::fabs(CapsuleScale.Z);
+			const float Radius = std::fabs(CapsuleComponent->GetCapsuleRadius()) * RadiusScale;
+			const float HalfHeight = std::max(std::fabs(CapsuleComponent->GetCapsuleHalfHeight()) * HeightScale, Radius);
 			LineBatcher->AddCapsule(
 				CapsuleComponent->GetWorldLocation(),
 				HalfHeight,
@@ -179,8 +189,10 @@ namespace
 
 			LineBatcher->AddCylinder(
 				CylinderComponent->GetWorldLocation(),
-				std::fabs(CylinderComponent->GetCylinderHalfHeight()),
-				std::fabs(CylinderComponent->GetCylinderRadius()),
+				std::fabs(CylinderComponent->GetCylinderHalfHeight()) * std::fabs(CylinderComponent->GetWorldScale().Z),
+				std::fabs(CylinderComponent->GetCylinderRadius()) * std::max({
+					std::fabs(CylinderComponent->GetWorldScale().X),
+					std::fabs(CylinderComponent->GetWorldScale().Y) }),
 				CylinderComponent->GetUpVector(),
 				CylinderComponent->GetRightVector(),
 				CylinderComponent->GetForwardVector(),
