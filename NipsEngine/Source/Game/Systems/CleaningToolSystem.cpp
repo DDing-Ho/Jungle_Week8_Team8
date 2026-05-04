@@ -97,6 +97,7 @@ FCleaningToolUseResult FCleaningToolSystem::BuildUseResult(const FString& Surfac
 	Result.EffectId = ToolData->EffectId;
 	Result.InteractionSoundId = ToolData->InteractionSoundId;
 	Result.CleaningPower = ToolData->CleaningPower;
+	Result.CleaningRadius = ToolData->CleaningRadius;
 	Result.bCanCleanSurface = CanCleanSurface(*ToolData, SurfaceType);
 	return Result;
 }

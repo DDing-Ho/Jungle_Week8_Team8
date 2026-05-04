@@ -206,6 +206,7 @@ namespace
 		ToolData.EffectId = GetStringField(Node, "effectId");
 		ToolData.InteractionSoundId = GetStringField(Node, "interactionSoundId");
 		ToolData.CleaningPower = std::max(0.0f, GetFloatField(Node, "cleaningPower", 1.0f));
+		ToolData.CleaningRadius = std::max(0.0f, GetFloatField(Node, "cleaningRadius", 0.8f));
 		ToolData.HoldDistance = std::max(0.1f, GetFloatField(Node, "holdDistance", 4.0f));
 		ToolData.HoldCameraLocalOffset = GetVectorField(Node, "holdCameraLocalOffset", FVector::ZeroVector);
 		ToolData.UseStrokeCameraLocalDirection = GetVectorField(Node, "useStrokeCameraLocalDirection", FVector(0.0f, 0.0f, 1.0f)).GetSafeNormal();
