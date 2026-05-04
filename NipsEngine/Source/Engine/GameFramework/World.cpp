@@ -190,6 +190,18 @@ void UWorld::Tick(float DeltaTime)
 	}
 }
 
+void UWorld::DeactivateActor(AActor* Actor)
+{
+	if (!Actor || Actor->GetFocusedWorld() != this)
+	{
+		return;
+	}
+
+	Actor->SetActive(false);
+	Actor->SetVisible(false);
+	SpatialIndex.UnregisterActor(Actor);
+}
+
 void UWorld::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
 	if (bHasBegunPlay)

@@ -15,6 +15,7 @@
 #include "Game/Systems/GameContext.h"
 #include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/ItemSystem.h"
+#include "GameFramework/World.h"
 #include "Scripting/LuaScriptSystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
@@ -179,6 +180,58 @@ void RegisterLuaBindings(sol::state& Lua)
 		return static_cast<int32>(GGameContext::Get().GetResolvedItemCount());
 	});
 
+	Lua.set_function("DeactivateActor", [](AActor* Actor)
+	{
+		if (!Actor)
+		{
+			UE_LOG("[Lua] DeactivateActor failed. actor=null");
+			return false;
+		}
+
+		UWorld* World = Actor->GetFocusedWorld();
+		if (!World)
+		{
+			UE_LOG("[Lua] DeactivateActor failed. actor=%s world=null", Actor->GetFName().ToString().c_str());
+			return false;
+		}
+
+		const FString ActorName = Actor->GetFName().ToString();
+		World->DeactivateActor(Actor);
+		UE_LOG("[Lua] Deactivated actor=%s", ActorName.c_str());
+		return true;
+	});
+
+	Lua.set_function("RegisterItemActor", [](AActor* Actor, const std::string& ItemId)
+	{
+		if (!Actor || ItemId.empty())
+		{
+			UE_LOG("[Item] RegisterItemActor failed. actor=%s itemId=%s",
+				Actor ? Actor->GetFName().ToString().c_str() : "null",
+				ItemId.c_str());
+			return false;
+		}
+
+		const FString ActorName = Actor->GetFName().ToString();
+		const FString Key = "Item:" + ActorName;
+		const bool bRegistered = FLuaScriptSystem::Get().SetStringGameStateValue(Key, ItemId);
+		UE_LOG("[Item] Registered actor=%s key=%s itemId=%s result=%d",
+			ActorName.c_str(),
+			Key.c_str(),
+			ItemId.c_str(),
+			bRegistered ? 1 : 0);
+		return bRegistered;
+	});
+
+	Lua.set_function("GetRegisteredItemId", [](AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return FString();
+		}
+
+		return FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+	});
+
 	Lua.set_function("SelectCleaningTool", [](const std::string& ToolId)
 	{
 		return FCleaningToolSystem::Get().SelectTool(ToolId);
@@ -245,6 +298,10 @@ void RegisterLuaBindings(sol::state& Lua)
 		"FaceIndex", &FHitResult::FaceIndex,
 		"bHit", &FHitResult::bHit,
 		"IsValid", &FHitResult::IsValid,
+		"GetHitActor", [](FHitResult& Hit) -> AActor*
+		{
+			return Hit.HitComponent ? Hit.HitComponent->GetOwner() : nullptr;
+		},
 		"GetDecalComponent", [](FHitResult& Hit) -> UDecalComponent*
 		{
         if (!Hit.bHit || !Hit.HitComponent) return nullptr;

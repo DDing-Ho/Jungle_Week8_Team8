@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "None",
   "Name" : "test",
-  "NextUUID" : 13177,
+  "NextUUID" : 18487,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-13.678138, -7.147102, 5.046821],
+    "Location" : [-2.701001, -0.033485, 6.741163],
     "NearClip" : 0.100000,
-    "Rotation" : [-3.682495, 35.498901, 6.324552]
+    "Rotation" : [0.253039, -3.404877, -175.747253]
   },
   "Primitives" : {
     "11356" : {
@@ -24,6 +24,10 @@
       "UseDefaultScriptPath" : false
     },
     "1307" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -43,6 +47,10 @@
       "Visible" : true
     },
     "1310" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -62,6 +70,10 @@
       "Visible" : true
     },
     "1313" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -81,6 +93,10 @@
       "Visible" : true
     },
     "1316" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -118,13 +134,13 @@
       "SimulatePhysics" : true,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 844,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "13175" : {
       "BlockComponent" : true,
-      "BoxExtent" : [0.500000, 0.500000, 0.500000],
+      "BoxExtent" : [0.100000, 0.300000, 0.100000],
       "DebugBoundsVisibility" : 0,
       "DrawOnlyIfSelected" : false,
       "EditorOnly" : false,
@@ -133,7 +149,7 @@
       "GenerateOverlapEvents" : false,
       "HiddenInEditor" : false,
       "LineThickness" : 1.000000,
-      "Location" : [0.000000, 0.000000, 0.000000],
+      "Location" : [0.000000, 0.000000, 0.020000],
       "ParentUUID" : 844,
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
@@ -153,7 +169,83 @@
       "Type" : "ULuaScriptComponent",
       "UseDefaultScriptPath" : false
     },
+    "13177" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 160,
+      "ScriptPath" : "Asset/Scripts/OldFairyTaleBook.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "13178" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 2215,
+      "ScriptPath" : "Asset/Scripts/ChocolateBar.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "13179" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 483,
+      "ScriptPath" : "Asset/Scripts/MedicineBottle.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "13180" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 597,
+      "ScriptPath" : "Asset/Scripts/Shell.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "13181" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 284,
+      "ScriptPath" : "Asset/Scripts/Globe.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "13182" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 456,
+      "ScriptPath" : "Asset/Scripts/Painting.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
     "1474" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -172,7 +264,77 @@
       "Type" : "UStaticMeshComponent",
       "Visible" : true
     },
+    "15321" : {
+      "BlockComponent" : true,
+      "BoxExtent" : [0.494841, 0.463611, 0.814177],
+      "DebugBoundsVisibility" : 0,
+      "DrawOnlyIfSelected" : false,
+      "EditorOnly" : false,
+      "EnableCull" : false,
+      "EnableTick" : true,
+      "GenerateOverlapEvents" : false,
+      "HiddenInEditor" : false,
+      "LineThickness" : 1.000000,
+      "Location" : [1.076532, 2.486138, -1.064987],
+      "ParentUUID" : 597,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
+      "Type" : "UBoxComponent",
+      "Visible" : true
+    },
+    "15322" : {
+      "AngularDamping" : 1.500000,
+      "AngularVelocity" : [0.000000, 0.000000, 0.000000],
+      "BodyType" : 1,
+      "CanBePickedUp" : true,
+      "DropSoundPath" : "",
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "GravityScale" : 1.000000,
+      "HiddenInEditor" : false,
+      "LinearDamping" : 1.500000,
+      "Mass" : 1.000000,
+      "MaxAngularSpeed" : 180.000000,
+      "MaxSpeed" : 50.000000,
+      "OwnerRootUUID" : 597,
+      "PickupSoundPath" : "",
+      "SimulatePhysics" : true,
+      "SleepSpeed" : 0.030000,
+      "Type" : "URigidBodyComponent",
+      "UpdatedComponentUUID" : 0,
+      "UseGravity" : true,
+      "Velocity" : [0.000000, 0.000000, 0.000000]
+    },
+    "15564" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 2655,
+      "ScriptPath" : "Asset/Scripts/DiscardBox.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "15565" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 2652,
+      "ScriptPath" : "Asset/Scripts/KeepBox.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
     "160" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -192,6 +354,10 @@
       "Visible" : true
     },
     "1676" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -211,6 +377,10 @@
       "Visible" : true
     },
     "1851" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -252,6 +422,10 @@
       "Width" : 1.000000
     },
     "1854" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -293,6 +467,10 @@
       "Width" : 1.000000
     },
     "1857" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -334,6 +512,10 @@
       "Width" : 1.000000
     },
     "1864" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -375,6 +557,10 @@
       "Width" : 1.000000
     },
     "1867" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -416,6 +602,10 @@
       "Width" : 1.000000
     },
     "1870" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -457,6 +647,10 @@
       "Width" : 1.000000
     },
     "1873" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -498,6 +692,10 @@
       "Width" : 1.000000
     },
     "1876" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -539,6 +737,10 @@
       "Width" : 1.000000
     },
     "1879" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -580,6 +782,10 @@
       "Width" : 1.000000
     },
     "1882" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -621,6 +827,10 @@
       "Width" : 1.000000
     },
     "1886" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADirectionalLightActor",
+      "ActorTickInEditor" : true,
+      "ActorVisible" : true,
       "CascadeSplitWeight" : 0.500000,
       "CastShadows" : true,
       "EditorOnly" : false,
@@ -662,6 +872,10 @@
       "Width" : 1.000000
     },
     "1889" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -703,6 +917,10 @@
       "Width" : 1.000000
     },
     "1892" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -744,6 +962,10 @@
       "Width" : 1.000000
     },
     "1895" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -785,6 +1007,10 @@
       "Width" : 1.000000
     },
     "1898" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -826,6 +1052,10 @@
       "Width" : 1.000000
     },
     "1901" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -867,6 +1097,10 @@
       "Width" : 1.000000
     },
     "1904" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -908,6 +1142,10 @@
       "Width" : 1.000000
     },
     "1907" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -949,6 +1187,10 @@
       "Width" : 1.000000
     },
     "1910" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -990,6 +1232,10 @@
       "Width" : 1.000000
     },
     "1913" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1031,6 +1277,10 @@
       "Width" : 1.000000
     },
     "1916" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1072,6 +1322,10 @@
       "Width" : 1.000000
     },
     "1919" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1113,6 +1367,10 @@
       "Width" : 1.000000
     },
     "1922" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1154,6 +1412,10 @@
       "Width" : 1.000000
     },
     "1925" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1195,6 +1457,10 @@
       "Width" : 1.000000
     },
     "1928" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1236,6 +1502,10 @@
       "Width" : 1.000000
     },
     "1931" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1277,6 +1547,10 @@
       "Width" : 1.000000
     },
     "1934" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1318,6 +1592,10 @@
       "Width" : 1.000000
     },
     "1937" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1359,6 +1637,10 @@
       "Width" : 1.000000
     },
     "1940" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1400,6 +1682,10 @@
       "Width" : 1.000000
     },
     "1943" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1441,6 +1727,10 @@
       "Width" : 1.000000
     },
     "1946" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1482,6 +1772,10 @@
       "Width" : 1.000000
     },
     "1949" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1523,6 +1817,10 @@
       "Width" : 1.000000
     },
     "2215" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1542,6 +1840,10 @@
       "Visible" : true
     },
     "230" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1561,6 +1863,10 @@
       "Visible" : true
     },
     "2652" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : true,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1580,6 +1886,10 @@
       "Visible" : true
     },
     "2655" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : true,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1599,6 +1909,10 @@
       "Visible" : true
     },
     "2839" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1622,6 +1936,10 @@
       "bShadowTexelSnapped" : true
     },
     "284" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1659,6 +1977,10 @@
       "Width" : 1.000000
     },
     "2842" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1700,6 +2022,10 @@
       "Width" : 1.000000
     },
     "2845" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1741,6 +2067,10 @@
       "Width" : 1.000000
     },
     "2848" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1782,6 +2112,10 @@
       "Width" : 1.000000
     },
     "2851" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1823,6 +2157,10 @@
       "Width" : 1.000000
     },
     "2854" : {
+      "ActorActive" : true,
+      "ActorClass" : "ASpotLightActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "AttenuationRadius" : 41.000000,
       "CastShadows" : false,
       "EditorOnly" : false,
@@ -1864,6 +2202,10 @@
       "Width" : 1.000000
     },
     "3291" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1883,6 +2225,10 @@
       "Visible" : true
     },
     "3666" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : true,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -1902,6 +2248,10 @@
       "Visible" : true
     },
     "3840" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -1942,6 +2292,10 @@
       "Width" : 1.000000
     },
     "3843" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -1982,6 +2336,10 @@
       "Width" : 1.000000
     },
     "3847" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2022,6 +2380,10 @@
       "Width" : 1.000000
     },
     "3850" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2062,6 +2424,10 @@
       "Width" : 1.000000
     },
     "3853" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2102,6 +2468,10 @@
       "Width" : 1.000000
     },
     "3856" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2142,6 +2512,10 @@
       "Width" : 1.000000
     },
     "3859" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2182,6 +2556,10 @@
       "Width" : 1.000000
     },
     "3862" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2222,6 +2600,10 @@
       "Width" : 1.000000
     },
     "3865" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2262,6 +2644,10 @@
       "Width" : 1.000000
     },
     "3868" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2302,6 +2688,10 @@
       "Width" : 1.000000
     },
     "3871" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2342,6 +2732,10 @@
       "Width" : 1.000000
     },
     "3874" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2382,6 +2776,10 @@
       "Width" : 1.000000
     },
     "3877" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2422,6 +2820,10 @@
       "Width" : 1.000000
     },
     "3881" : {
+      "ActorActive" : true,
+      "ActorClass" : "ADecalActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
       "DebugBoundsVisibility" : 0,
@@ -2462,6 +2864,10 @@
       "Width" : 1.000000
     },
     "391" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2504,6 +2910,10 @@
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "447" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2523,6 +2933,10 @@
       "Visible" : true
     },
     "450" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : true,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2530,7 +2944,7 @@
       "EnableTick" : true,
       "GenerateOverlapEvents" : false,
       "HiddenInEditor" : false,
-      "Location" : [-11.134586, -6.332959, 4.504965],
+      "Location" : [-13.392393, -6.332959, 4.504965],
       "Materials" : ["lambert1.001"],
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset/Mesh/Game/Mop/Mop.obj",
@@ -2542,6 +2956,10 @@
       "Visible" : true
     },
     "456" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2561,6 +2979,10 @@
       "Visible" : true
     },
     "483" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2622,6 +3044,10 @@
       "Visible" : true
     },
     "597" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2629,7 +3055,7 @@
       "EnableTick" : true,
       "GenerateOverlapEvents" : false,
       "HiddenInEditor" : false,
-      "Location" : [13.867099, 0.000000, 1.827594],
+      "Location" : [13.867099, 0.000000, 2.356486],
       "Materials" : ["01_-_Default"],
       "NormalizeOnImport" : false,
       "ObjStaticMeshAsset" : "Asset/Mesh/Game/SeaShell/SeaShell.obj",
@@ -2641,6 +3067,10 @@
       "Visible" : true
     },
     "600" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2721,6 +3151,10 @@
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "844" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
@@ -2761,7 +3195,7 @@
     "9131" : {
       "AngularDamping" : 1.500000,
       "AngularVelocity" : [0.000000, 0.000000, 0.000000],
-      "BodyType" : 0,
+      "BodyType" : 1,
       "CanBePickedUp" : true,
       "DropSoundPath" : "",
       "EditorOnly" : false,
@@ -2778,10 +3212,14 @@
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
       "UpdatedComponentUUID" : 0,
-      "UseGravity" : false,
+      "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "928" : {
+      "ActorActive" : true,
+      "ActorClass" : "AStaticMeshActor",
+      "ActorTickInEditor" : false,
+      "ActorVisible" : true,
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : false,
