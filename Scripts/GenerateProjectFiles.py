@@ -53,8 +53,9 @@ SHADER_DIRS = ["Shaders"]
 SOURCE_EXTS = {".cpp", ".c", ".cc", ".cxx"}
 HEADER_EXTS = {".h", ".hpp", ".hxx", ".inl"}
 SHADER_EXTS = {".hlsl", ".hlsli"}
+RESOURCE_EXTS = {".rc"}
 NATVIS_EXTS = {".natvis"}
-NONE_EXTS = {".natstepfilter", ".config"}
+NONE_EXTS = {".natstepfilter", ".config", ".rml", ".rcss"}
 
 # Root-level files to include (relative to project dir)
 ROOT_FILES = ["main.cpp"]
@@ -99,7 +100,7 @@ NS = "http://schemas.microsoft.com/developer/msbuild/2003"
 # ──────────────────────────────────────────────
 def scan_files(project_dir: Path) -> dict[str, list[str]]:
     """Scan directories and collect files grouped by type."""
-    result = {"ClCompile": [], "ClInclude": [], "FxCompile": [], "Natvis": [], "None": []}
+    result = {"ClCompile": [], "ClInclude": [], "FxCompile": [], "ResourceCompile": [], "Natvis": [], "None": []}
 
     # Scan source/header directories
     for scan_dir in SCAN_DIRS:
@@ -118,6 +119,8 @@ def scan_files(project_dir: Path) -> dict[str, list[str]]:
                         result["ClCompile"].append(rel_str)
                 elif ext in HEADER_EXTS:
                     result["ClInclude"].append(rel_str)
+                elif ext in RESOURCE_EXTS:
+                    result["ResourceCompile"].append(rel_str)
                 elif ext in NATVIS_EXTS:
                     result["Natvis"].append(rel_str)
                 elif ext in NONE_EXTS:
@@ -396,6 +399,12 @@ def generate_vcxproj(files: dict[str, list[str]]):
                     cond = f"'$(Configuration)|$(Platform)'=='{cfg}|{plat}'"
                     ET.SubElement(elem, "ExcludedFromBuild", Condition=cond).text = "true"
 
+    # ResourceCompile items
+    if files["ResourceCompile"]:
+        ig = ET.SubElement(proj, "ItemGroup")
+        for f in files["ResourceCompile"]:
+            ET.SubElement(ig, "ResourceCompile", Include=f)
+
     # Natvis items
     if files["Natvis"]:
         ig = ET.SubElement(proj, "ItemGroup")
@@ -493,6 +502,15 @@ def generate_filters(files: dict[str, list[str]]):
             if filt:
                 ET.SubElement(elem, "Filter").text = filt
 
+    # ResourceCompile items with filters
+    if files["ResourceCompile"]:
+        ig = ET.SubElement(proj, "ItemGroup")
+        for f in files["ResourceCompile"]:
+            filt = get_filter(f)
+            elem = ET.SubElement(ig, "ResourceCompile", Include=f)
+            if filt:
+                ET.SubElement(elem, "Filter").text = filt
+
     # Natvis items with filters
     if files["Natvis"]:
         ig = ET.SubElement(proj, "ItemGroup")
@@ -565,6 +583,7 @@ def main():
     print(f"  ClCompile:  {len(files['ClCompile'])} files")
     print(f"  ClInclude:  {len(files['ClInclude'])} files")
     print(f"  FxCompile:  {len(files['FxCompile'])} files")
+    print(f"  ResourceCompile: {len(files['ResourceCompile'])} files")
     print(f"  Natvis:     {len(files['Natvis'])} files")
     print(f"  None:       {len(files['None'])} files")
 

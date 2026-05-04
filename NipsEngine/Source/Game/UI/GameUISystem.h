@@ -42,6 +42,14 @@ enum class EUIRenderMode
     Play,
 };
 
+enum class EInteractionHintType
+{
+    None,
+    Pickup,
+    Clean,
+    Inspect,
+};
+
 // -------------------------------------------------------
 // GameUISystem
 //   - 게임 UI 전체를 관리하는 싱글턴
@@ -74,6 +82,7 @@ public:
     // -------------------------------------------------------
     void SetProgress(float InProgress);             // 0.0 ~ 1.0
     void SetCurrentItem(const char* Name, const char* Desc);
+    void SetInteractionHint(EInteractionHintType Type);
 
     // 일시정지 메뉴
     static void TogglePauseMenuIfInGame();
@@ -124,7 +133,7 @@ private:
     GameUISystem() = default;
 
     void RenderCurrentPanel(EUIRenderMode Mode);
-    void UpdateRmlUiDocument(EUIRenderMode Mode);
+    void UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height);
     bool CreateGameDocument();
     void BindRmlUiEvents();
     void SetElementVisible(const char* Id, bool bVisible);
@@ -152,6 +161,7 @@ private:
     float       ElapsedTime      = 0.f;
     std::string CurrentItemName;
     std::string CurrentItemDesc;
+    EInteractionHintType InteractionHintType = EInteractionHintType::None;
 
     std::function<void()> ExitPlayCallback;
     std::function<void()> StartGameCallback;

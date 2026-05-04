@@ -13,6 +13,8 @@
 #include "Game/Systems/CleaningToolAnimator.h"
 #include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/GameContext.h"
+#include "Game/Systems/ItemSystem.h"
+#include "Game/UI/GameUISystem.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Matrix.h"
@@ -28,98 +30,198 @@
 
 namespace
 {
-// 새 Action을 추가하려면:
-// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: ActionInteract() -> "Interact"
-// 2. SetupDefaultInputMappings()에서 원하는 키를 AddActionMapping으로 연결합니다.
-// 3. OnKeyPressed/OnKeyReleased에서 IsActionKey로 처리합니다.
-const FName& ActionToggleInputCapture()
-{
-    static const FName Name("ToggleInputCapture");
-    return Name;
-}
+	// 새 Action을 추가하려면:
+	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: ActionInteract() -> "Interact"
+	// 2. SetupDefaultInputMappings()에서 원하는 키를 AddActionMapping으로 연결합니다.
+	// 3. OnKeyPressed/OnKeyReleased에서 IsActionKey로 처리합니다.
+	const FName& ActionToggleInputCapture()
+	{
+		static const FName Name("ToggleInputCapture");
+		return Name;
+	}
 
-const FName& ActionTogglePause()
-{
-    static const FName Name("TogglePause");
-    return Name;
-}
+	const FName& ActionTogglePause()
+	{
+		static const FName Name("TogglePause");
+		return Name;
+	}
 
-const FName& ActionPickup()
-{
-    static const FName Name("Pickup");
-    return Name;
-}
+	const FName& ActionPickup()
+	{
+		static const FName Name("Pickup");
+		return Name;
+	}
 
-// 새 Axis를 추가하려면:
-// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: AxisMoveForward() -> "MoveForward"
-// 2. SetupDefaultInputMappings()에서 키와 Scale을 AddAxisMapping으로 연결합니다.
-// 3. ApplyInputAxes()에서 GetAxisValue로 값을 읽어 사용합니다.
-const FName& AxisMoveForward()
-{
-    static const FName Name("MoveForward");
-    return Name;
-}
+	// 새 Axis를 추가하려면:
+	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: AxisMoveForward() -> "MoveForward"
+	// 2. SetupDefaultInputMappings()에서 키와 Scale을 AddAxisMapping으로 연결합니다.
+	// 3. ApplyInputAxes()에서 GetAxisValue로 값을 읽어 사용합니다.
+	const FName& AxisMoveForward()
+	{
+		static const FName Name("MoveForward");
+		return Name;
+	}
 
-const FName& AxisMoveRight()
-{
-    static const FName Name("MoveRight");
-    return Name;
-}
+	const FName& AxisMoveRight()
+	{
+		static const FName Name("MoveRight");
+		return Name;
+	}
 
-const FName& AxisLookYaw()
-{
-    static const FName Name("LookYaw");
-    return Name;
-}
+	const FName& AxisLookYaw()
+	{
+		static const FName Name("LookYaw");
+		return Name;
+	}
 
-const FName& AxisLookPitch()
-{
-    static const FName Name("LookPitch");
-    return Name;
-}
+	const FName& AxisLookPitch()
+	{
+		static const FName Name("LookPitch");
+		return Name;
+	}
 
-FVector ToForward(float PitchDegrees, float YawDegrees)
-{
-    const float PitchRad = MathUtil::DegreesToRadians(PitchDegrees);
-    const float YawRad = MathUtil::DegreesToRadians(YawDegrees);
+	FVector ToForward(float PitchDegrees, float YawDegrees)
+	{
+		const float PitchRad = MathUtil::DegreesToRadians(PitchDegrees);
+		const float YawRad = MathUtil::DegreesToRadians(YawDegrees);
 
-    return FVector(std::cos(PitchRad) * std::cos(YawRad), std::cos(PitchRad) * std::sin(YawRad), std::sin(PitchRad)).GetSafeNormal();
-}
+		return FVector(std::cos(PitchRad) * std::cos(YawRad), std::cos(PitchRad) * std::sin(YawRad), std::sin(PitchRad)).GetSafeNormal();
+	}
 
-FVector ToRight(float YawDegrees)
-{
-    const float YawRad = MathUtil::DegreesToRadians(YawDegrees);
-    return FVector(-std::sin(YawRad), std::cos(YawRad), 0.0f).GetSafeNormal();
-}
+	FVector ToRight(float YawDegrees)
+	{
+		const float YawRad = MathUtil::DegreesToRadians(YawDegrees);
+		return FVector(-std::sin(YawRad), std::cos(YawRad), 0.0f).GetSafeNormal();
+	}
 
-FVector ToWorldOffset(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& CameraLocalOffset)
-{
-    return CameraForward.GetSafeNormal() * CameraLocalOffset.X + CameraRight.GetSafeNormal() * CameraLocalOffset.Y + CameraUp.GetSafeNormal() * CameraLocalOffset.Z;
-}
+	FVector ToWorldOffset(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& CameraLocalOffset)
+	{
+		return CameraForward.GetSafeNormal() * CameraLocalOffset.X
+			+ CameraRight.GetSafeNormal() * CameraLocalOffset.Y
+			+ CameraUp.GetSafeNormal() * CameraLocalOffset.Z;
+	}
 
-FQuat BuildCameraLocalHandleRotation(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& HandleCameraLocalDirection)
-{
-    const FVector Forward = CameraForward.GetSafeNormal();
-    const FVector HandleWorldDirection = ToWorldOffset(Forward, CameraRight, CameraUp, HandleCameraLocalDirection).GetSafeNormal();
-    if (HandleWorldDirection.IsNearlyZero() || Forward.IsNearlyZero())
-    {
-        return FQuat::Identity;
-    }
+	FVector ToWorldOffset(const FViewportCamera* Camera, const FVector& CameraLocalOffset)
+	{
+		if (!Camera)
+		{
+			return FVector::ZeroVector;
+		}
 
-    FVector YAxis = FVector::CrossProduct(Forward, HandleWorldDirection).GetSafeNormal();
-    if (YAxis.IsNearlyZero())
-    {
-        YAxis = CameraRight.GetSafeNormal();
-    }
+		return ToWorldOffset(Camera->GetForwardVector(), Camera->GetRightVector(), Camera->GetUpVector(), CameraLocalOffset);
+	}
 
-    const FVector ZAxis = FVector::CrossProduct(HandleWorldDirection, YAxis).GetSafeNormal();
-    FMatrix RotationMatrix = FMatrix::Identity;
-    RotationMatrix.SetAxes(HandleWorldDirection, YAxis, ZAxis);
+	FQuat BuildCameraLocalHandleRotation(const FVector& CameraForward, const FVector& CameraRight, const FVector& CameraUp, const FVector& HandleCameraLocalDirection)
+	{
+		const FVector Forward = CameraForward.GetSafeNormal();
+		const FVector HandleWorldDirection = ToWorldOffset(Forward, CameraRight, CameraUp, HandleCameraLocalDirection).GetSafeNormal();
+		if (HandleWorldDirection.IsNearlyZero() || Forward.IsNearlyZero())
+		{
+			return FQuat::Identity;
+		}
 
-    FQuat Rotation(RotationMatrix);
-    Rotation.Normalize();
-    return Rotation;
-}
+		FVector YAxis = FVector::CrossProduct(Forward, HandleWorldDirection).GetSafeNormal();
+		if (YAxis.IsNearlyZero())
+		{
+			YAxis = CameraRight.GetSafeNormal();
+		}
+
+		const FVector ZAxis = FVector::CrossProduct(HandleWorldDirection, YAxis).GetSafeNormal();
+		FMatrix RotationMatrix = FMatrix::Identity;
+		RotationMatrix.SetAxes(HandleWorldDirection, YAxis, ZAxis);
+
+		FQuat Rotation(RotationMatrix);
+		Rotation.Normalize();
+		return Rotation;
+	}
+
+	FQuat BuildCameraLocalHandleRotation(const FViewportCamera* Camera, const FVector& HandleCameraLocalDirection)
+	{
+		if (!Camera)
+		{
+			return FQuat::Identity;
+		}
+
+		return BuildCameraLocalHandleRotation(Camera->GetForwardVector(), Camera->GetRightVector(), Camera->GetUpVector(), HandleCameraLocalDirection);
+	}
+
+	FString NormalizeToolMatchKey(FString Value)
+	{
+		std::replace(Value.begin(), Value.end(), '\\', '/');
+		std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char C)
+		{
+			return static_cast<char>(std::tolower(C));
+		});
+		return Value;
+	}
+
+	FString FindCleaningToolIdFromActor(const AActor* Actor, bool bLogResult = true)
+	{
+		if (!Actor)
+		{
+			return "";
+		}
+
+		const FString ScriptToolId = FLuaScriptSystem::Get().GetStringGameStateValue("CleaningTool:" + Actor->GetFName().ToString());
+		if (!ScriptToolId.empty())
+		{
+			if (bLogResult)
+			{
+				UE_LOG("[CleaningTool] Actor=%s resolved by Lua toolId=%s", Actor->GetFName().ToString().c_str(), ScriptToolId.c_str());
+			}
+			return ScriptToolId;
+		}
+
+		const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
+		if (bLogResult)
+		{
+			UE_LOG("[CleaningTool] Actor=%s has no Lua tool id. Trying fallback match.", Actor->GetFName().ToString().c_str());
+		}
+		const TArray<FCleaningToolData>& ToolDataList = FCleaningToolSystem::Get().GetAllToolData();
+		for (const FCleaningToolData& ToolData : ToolDataList)
+		{
+			if (ActorName == NormalizeToolMatchKey(ToolData.ToolId))
+			{
+				if (bLogResult)
+				{
+					UE_LOG("[CleaningTool] Actor=%s resolved by actor name toolId=%s", Actor->GetFName().ToString().c_str(), ToolData.ToolId.c_str());
+				}
+				return ToolData.ToolId;
+			}
+		}
+
+		if (bLogResult)
+		{
+			UE_LOG("[CleaningTool] Actor=%s is not a registered cleaning tool.", Actor->GetFName().ToString().c_str());
+		}
+		return "";
+	}
+
+	FString FindItemIdFromActor(const AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return "";
+		}
+
+		const FString ScriptItemId = FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+		if (!ScriptItemId.empty())
+		{
+			return ScriptItemId;
+		}
+
+		const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
+		const TArray<FGameItemData>& Items = FItemSystem::Get().GetAllItemData();
+		for (const FGameItemData& ItemData : Items)
+		{
+			if (ActorName == NormalizeToolMatchKey(ItemData.ItemId))
+			{
+				return ItemData.ItemId;
+			}
+		}
+
+		return "";
+	}
 
 FVector GetCleaningToolAnimationDirection(const FCleaningToolData& ToolData)
 {
@@ -208,45 +310,7 @@ UStaticMeshComponent* FindFirstVisibleStaticMesh(AActor* Actor)
         }
     }
 
-    return nullptr;
-}
-
-FString NormalizeToolMatchKey(FString Value)
-{
-    std::replace(Value.begin(), Value.end(), '\\', '/');
-    std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char C)
-                   { return static_cast<char>(std::tolower(C)); });
-    return Value;
-}
-
-FString FindCleaningToolIdFromActor(const AActor* Actor)
-{
-    if (!Actor)
-    {
-        return "";
-    }
-
-    const FString ScriptToolId = FLuaScriptSystem::Get().GetStringGameStateValue("CleaningTool:" + Actor->GetFName().ToString());
-    if (!ScriptToolId.empty())
-    {
-        UE_LOG("[CleaningTool] Actor=%s resolved by Lua toolId=%s", Actor->GetFName().ToString().c_str(), ScriptToolId.c_str());
-        return ScriptToolId;
-    }
-
-    const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
-    UE_LOG("[CleaningTool] Actor=%s has no Lua tool id. Trying fallback match.", Actor->GetFName().ToString().c_str());
-    const TArray<FCleaningToolData>& ToolDataList = FCleaningToolSystem::Get().GetAllToolData();
-    for (const FCleaningToolData& ToolData : ToolDataList)
-    {
-        if (ActorName == NormalizeToolMatchKey(ToolData.ToolId))
-        {
-            UE_LOG("[CleaningTool] Actor=%s resolved by actor name toolId=%s", Actor->GetFName().ToString().c_str(), ToolData.ToolId.c_str());
-            return ToolData.ToolId;
-        }
-    }
-
-    UE_LOG("[CleaningTool] Actor=%s is not a registered cleaning tool.", Actor->GetFName().ToString().c_str());
-    return "";
+	return nullptr;
 }
 } // namespace
 
@@ -779,30 +843,50 @@ void FGamePlayerController::RefreshPawnComponents()
 
 void FGamePlayerController::UpdateHoveredPickableActor()
 {
-    HoveredPickableActor = nullptr;
+	HoveredPickableActor = nullptr;
+	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
 
     if (World == nullptr || !IsInputEnabled())
     {
         return;
     }
 
-    UPhysicsHandleComponent* Handle = GetPhysicsHandle();
-    if (Handle == nullptr || Handle->IsHolding())
-    {
-        return;
-    }
+	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+	if (Handle == nullptr)
+	{
+		return;
+	}
 
-    FVector CameraLocation;
-    FVector CameraForward;
-    if (!GetActiveCameraFrame(CameraLocation, CameraForward))
-    {
-        return;
-    }
+	if (Handle->IsHolding())
+	{
+		if (!GGameContext::Get().GetCurrentToolId().empty())
+		{
+			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Clean);
+		}
+		return;
+	}
 
-    if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
-    {
-        HoveredPickableActor = Body->GetOwner();
-    }
+	FVector CameraLocation;
+	FVector CameraForward;
+	if (!GetActiveCameraFrame(CameraLocation, CameraForward))
+	{
+		return;
+	}
+
+	if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
+	{
+		HoveredPickableActor = Body->GetOwner();
+		const bool bIsCleaningTool = !FindCleaningToolIdFromActor(HoveredPickableActor, false).empty();
+		const bool bIsItem = !FindItemIdFromActor(HoveredPickableActor).empty();
+		if (!bIsCleaningTool && bIsItem)
+		{
+			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Inspect);
+		}
+		else
+		{
+			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
+		}
+	}
 }
 
 bool FGamePlayerController::GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const

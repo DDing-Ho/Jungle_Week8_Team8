@@ -4,6 +4,7 @@
 #include "Game/UI/EndingPanel.h"
 #include "Game/UI/HUDPanel.h"
 #include "Game/UI/PauseMenuPanel.h"
+#include "Game/UI/RmlUi/RmlUiDocumentsResource.h"
 #include "Game/UI/RmlUi/RmlUiRenderInterfaceD3D11.h"
 #include "Game/UI/RmlUi/RmlUiSystemInterface.h"
 #include "Game/UI/StartMenuPanel.h"
@@ -99,6 +100,42 @@ namespace
 	{
 		const int Percent = static_cast<int>(std::clamp(Progress, 0.0f, 1.0f) * 100.0f);
 		return std::to_string(Percent) + "%";
+	}
+
+	std::string FormatPixels(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.2fpx", Value);
+		return Buffer;
+	}
+
+	std::string LoadTextResource(int ResourceId)
+	{
+		HMODULE Module = GetModuleHandleW(nullptr);
+		HRSRC Resource = FindResourceW(Module, MAKEINTRESOURCEW(ResourceId), RT_RCDATA);
+		if (!Resource)
+			return {};
+
+		HGLOBAL ResourceData = LoadResource(Module, Resource);
+		if (!ResourceData)
+			return {};
+
+		const DWORD ResourceSize = SizeofResource(Module, Resource);
+		const char* ResourceBytes = static_cast<const char*>(LockResource(ResourceData));
+		if (!ResourceBytes || ResourceSize == 0)
+			return {};
+
+		return std::string(ResourceBytes, ResourceSize);
+	}
+
+	void ReplaceAll(std::string& Text, const std::string& Token, const std::string& Value)
+	{
+		size_t Position = 0;
+		while ((Position = Text.find(Token, Position)) != std::string::npos)
+		{
+			Text.replace(Position, Token.length(), Value);
+			Position += Value.length();
+		}
 	}
 }
 
@@ -215,7 +252,7 @@ void GameUISystem::RenderToCurrentTarget(EUIRenderMode Mode, int Width, int Heig
 
 	RmlRenderInterface->BeginFrame(Width, Height);
 	RmlContext->SetDimensions(Rml::Vector2i(Width, Height));
-	UpdateRmlUiDocument(Mode);
+	UpdateRmlUiDocument(Mode, Width, Height);
 	RmlContext->Update();
 	RmlContext->Render();
 
@@ -271,6 +308,7 @@ void GameUISystem::ResetGameData()
 	ElapsedTime = 0.f;
 	CurrentItemName.clear();
 	CurrentItemDesc.clear();
+	InteractionHintType = EInteractionHintType::None;
 }
 
 void GameUISystem::SetProgress(float InProgress)
@@ -282,6 +320,11 @@ void GameUISystem::SetCurrentItem(const char* Name, const char* Desc)
 {
 	CurrentItemName = Name ? Name : "";
 	CurrentItemDesc = Desc ? Desc : "";
+}
+
+void GameUISystem::SetInteractionHint(EInteractionHintType Type)
+{
+	InteractionHintType = Type;
 }
 
 void GameUISystem::SetItemCount(int Count)
@@ -444,7 +487,7 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 	}
 }
 
-void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
+void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height)
 {
 	if (!RmlDocument)
 		return;
@@ -469,15 +512,40 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
 	const bool bShowTheEnd = bShowEnding && EndingPanel::ShouldShowTheEnd();
+	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && InteractionHintType != EInteractionHintType::None;
 
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("hud-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
+	SetElementVisible("interaction-hint", bShowInteractionHint);
 	SetElementVisible("pause-layer", bShowPause);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
 	SetElementVisible("the-end", bShowTheEnd);
+
+	constexpr float TitleBackgroundAspect = 2760.0f / 1504.0f;
+	float TitleBackgroundWidth = static_cast<float>(Width);
+	float TitleBackgroundHeight = static_cast<float>(Height);
+	if (Width > 0 && Height > 0)
+	{
+		const float ViewAspect = static_cast<float>(Width) / static_cast<float>(Height);
+		if (ViewAspect > TitleBackgroundAspect)
+		{
+			TitleBackgroundWidth = static_cast<float>(Width);
+			TitleBackgroundHeight = TitleBackgroundWidth / TitleBackgroundAspect;
+		}
+		else
+		{
+			TitleBackgroundHeight = static_cast<float>(Height);
+			TitleBackgroundWidth = TitleBackgroundHeight * TitleBackgroundAspect;
+		}
+	}
+
+	SetElementProperty("title-background", "width", FormatPixels(TitleBackgroundWidth));
+	SetElementProperty("title-background", "height", FormatPixels(TitleBackgroundHeight));
+	SetElementProperty("title-background", "left", FormatPixels((static_cast<float>(Width) - TitleBackgroundWidth) * 0.5f));
+	SetElementProperty("title-background", "top", FormatPixels((static_cast<float>(Height) - TitleBackgroundHeight) * 0.5f));
 
 	const std::string ProgressText = FormatPercent(CleanProgress);
 	SetElementText("progress-value", ProgressText);
@@ -489,6 +557,22 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
 	SetElementText("pause-time", FormatTime(ElapsedTime));
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
+
+	switch (InteractionHintType)
+	{
+	case EInteractionHintType::Pickup:
+		SetElementText("interaction-hint-text", "잡기");
+		break;
+	case EInteractionHintType::Clean:
+		SetElementText("interaction-hint-text", "놓기");
+		break;
+	case EInteractionHintType::Inspect:
+		SetElementText("interaction-hint-text", "살펴보기");
+		break;
+	default:
+		SetElementText("interaction-hint-text", "");
+		break;
+	}
 
 	SetElementText("dialogue-speaker", DialoguePanel::GetSpeaker());
 	SetElementText("dialogue-text", DialoguePanel::GetVisibleText());
@@ -503,302 +587,12 @@ bool GameUISystem::CreateGameDocument()
 	if (!RmlContext)
 		return false;
 
-	static const char* DocumentRml = R"(
-<rml>
-<head>
-	<title>Game UI</title>
-	<style>
-		body {
-			width: 100%;
-			height: 100%;
-			margin: 0px;
-			font-family: "Malgun Gothic";
-			color: #ffffff;
-		}
+	std::string DocumentRml = LoadTextResource(IDR_GAME_UI_RML);
+	const std::string DocumentRcss = LoadTextResource(IDR_GAME_UI_RCSS);
+	if (DocumentRml.empty() || DocumentRcss.empty())
+		return false;
 
-		#start-menu, #pause-layer, #ending-panel {
-			position: absolute;
-			left: 0px;
-			top: 0px;
-			width: 100%;
-			height: 100%;
-		}
-
-		#start-menu {
-			background-color: rgba(9, 10, 16, 255);
-		}
-
-		#game-title {
-			position: absolute;
-			top: 34%;
-			left: 0px;
-			width: 100%;
-			font-size: 42px;
-			text-align: center;
-			color: #f4f4f4;
-		}
-
-		.title-line {
-			position: absolute;
-			left: 35%;
-			width: 30%;
-			height: 1px;
-			background-color: rgba(130, 130, 160, 180);
-		}
-
-		#line-top {
-			top: 32%;
-		}
-
-		#line-bottom {
-			top: 43%;
-		}
-
-		.menu-button {
-			position: absolute;
-			left: 50%;
-			width: 160px;
-			height: 40px;
-			margin-left: -80px;
-			padding-top: 8px;
-			text-align: center;
-			font-size: 22px;
-			color: #cfcfcf;
-			background-color: rgba(0, 0, 0, 0);
-			border-width: 1px;
-			border-color: rgba(180, 180, 190, 0);
-		}
-
-		.menu-button:hover {
-			color: #ffdc64;
-			border-color: rgba(255, 220, 100, 180);
-		}
-
-		#start-button {
-			top: 50%;
-		}
-
-		#exit-button {
-			top: 58%;
-		}
-
-		#hud-panel {
-			position: absolute;
-			left: 30%;
-			top: 40px;
-			width: 40%;
-			height: 28px;
-		}
-
-		#progress-track {
-			position: absolute;
-			left: 0px;
-			top: 0px;
-			width: 100%;
-			height: 28px;
-			background-color: rgba(26, 26, 26, 210);
-			border-width: 1px;
-			border-color: rgba(80, 80, 80, 180);
-		}
-
-		#progress-fill {
-			position: absolute;
-			left: 0px;
-			top: 0px;
-			height: 28px;
-			background-color: rgb(64, 191, 255);
-		}
-
-		#progress-value {
-			position: absolute;
-			left: 0px;
-			top: 5px;
-			width: 100%;
-			text-align: center;
-			font-size: 16px;
-			color: #ffffff;
-		}
-
-		#item-status {
-			position: absolute;
-			right: 36px;
-			top: 34px;
-			width: 260px;
-			padding: 12px;
-			background-color: rgba(13, 15, 20, 185);
-			border-width: 1px;
-			border-color: rgba(110, 130, 150, 150);
-		}
-
-		#current-item-name {
-			font-size: 17px;
-			color: #ffe08a;
-		}
-
-		#current-item-desc {
-			margin-top: 6px;
-			font-size: 14px;
-			color: #d6d6d6;
-		}
-
-		#crosshair-dot {
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			width: 4px;
-			height: 4px;
-			margin-left: -3px;
-			margin-top: -3px;
-			background-color: rgba(255, 255, 255, 235);
-			border-width: 1px;
-			border-color: rgba(82, 82, 82, 190);
-			border-radius: 3px;
-		}
-
-		#pause-layer {
-			background-color: rgba(0, 0, 0, 150);
-		}
-
-		#pause-panel {
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			width: 320px;
-			height: 320px;
-			margin-left: -160px;
-			margin-top: -160px;
-			padding: 24px;
-			background-color: rgba(20, 20, 22, 245);
-			border-width: 1px;
-			border-color: rgba(130, 130, 145, 180);
-		}
-
-		#pause-title {
-			width: 100%;
-			text-align: center;
-			font-size: 24px;
-			color: #ffffff;
-		}
-
-		.stat-row {
-			margin-top: 16px;
-			font-size: 16px;
-			color: #dcdcdc;
-		}
-
-		.stat-value {
-			color: #9bd2ff;
-		}
-
-		.pause-button {
-			width: 100%;
-			height: 40px;
-			margin-top: 16px;
-			padding-top: 8px;
-			text-align: center;
-			font-size: 18px;
-			color: #ededed;
-			background-color: rgba(38, 40, 45, 255);
-			border-width: 1px;
-			border-color: rgba(115, 120, 130, 200);
-		}
-
-		.pause-button:hover {
-			background-color: rgba(58, 64, 74, 255);
-			color: #ffdc64;
-		}
-
-		#dialogue-panel {
-			position: absolute;
-			left: 10%;
-			bottom: 20px;
-			width: 80%;
-			height: 118px;
-			padding: 14px;
-			background-color: rgba(15, 15, 20, 220);
-			border-width: 1px;
-			border-color: rgba(100, 100, 120, 180);
-		}
-
-		#dialogue-speaker {
-			font-size: 18px;
-			color: #ffd264;
-		}
-
-		#dialogue-text {
-			margin-top: 8px;
-			font-size: 17px;
-			line-height: 22px;
-			color: #e6e6e6;
-		}
-
-		#dialogue-hint {
-			position: absolute;
-			right: 16px;
-			bottom: 12px;
-			font-size: 14px;
-			color: rgba(180, 180, 180, 220);
-		}
-
-		#ending-panel {
-			background-color: rgba(8, 8, 12, 230);
-		}
-
-		#the-end {
-			position: absolute;
-			top: 47%;
-			left: 0px;
-			width: 100%;
-			text-align: center;
-			font-size: 44px;
-			color: rgba(220, 210, 190, 0);
-		}
-	</style>
-</head>
-<body>
-	<div id="start-menu">
-		<div id="line-top" class="title-line"></div>
-		<div id="game-title">GAME TITLE</div>
-		<div id="line-bottom" class="title-line"></div>
-		<div id="start-button" class="menu-button">START</div>
-		<div id="exit-button" class="menu-button">EXIT</div>
-	</div>
-
-	<div id="hud-panel">
-		<div id="progress-track"></div>
-		<div id="progress-fill"></div>
-		<div id="progress-value">0%</div>
-	</div>
-
-	<div id="item-status">
-		<div id="current-item-name">No item</div>
-	</div>
-
-	<div id="crosshair-dot"></div>
-
-	<div id="pause-layer">
-		<div id="pause-panel">
-			<div id="pause-title">[MENU]</div>
-			<div class="stat-row">Items: <span id="pause-item-count" class="stat-value">0</span></div>
-			<div class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
-			<div class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
-			<div id="retry-button" class="pause-button">RETRY</div>
-			<div id="pause-exit-button" class="pause-button">EXIT</div>
-		</div>
-	</div>
-
-	<div id="ending-panel">
-		<div id="the-end">THE END</div>
-	</div>
-
-	<div id="dialogue-panel">
-		<div id="dialogue-speaker"></div>
-		<div id="dialogue-text"></div>
-		<div id="dialogue-hint">[SPACE] &gt;</div>
-	</div>
-</body>
-</rml>
-)";
+	ReplaceAll(DocumentRml, "{{GAME_UI_RCSS}}", DocumentRcss);
 
 	RmlDocument = RmlContext->LoadDocumentFromMemory(DocumentRml, "GameUI");
 	if (!RmlDocument)
@@ -806,7 +600,7 @@ bool GameUISystem::CreateGameDocument()
 
 	RmlDocument->Show();
 	BindRmlUiEvents();
-	UpdateRmlUiDocument(EUIRenderMode::Play);
+	UpdateRmlUiDocument(EUIRenderMode::Play, 1280, 720);
 	return true;
 }
 

@@ -7,6 +7,7 @@
 #include "Game/Systems/GameContext.h"
 #include "Game/Systems/GameItemDataLoader.h"
 #include "Game/Systems/ItemSystem.h"
+#include "Game/Settings/GameSettings.h"
 #include "Game/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Engine/Input/InputRouter.h"
@@ -494,6 +495,7 @@ void UEditorEngine::StartPlaySession()
 	GameUISystem::Get().ResetGameData();
 	GameUISystem::Get().SetState(GameUIStateFromBootMode(FSceneSaveManager::GetGameUIBootMode(CurrentScenePath)));
 	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
+	GameUISystem::Get().SetStartGameCallback([this]() { StartMainGamePIE(); });
 
 	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
 	const TArray<AActor*> PIEActors = PIEWorld->GetActors();
@@ -578,6 +580,66 @@ void UEditorEngine::StartPlaySession()
 		PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
 	}
 	PIEWorld->BeginPlay();
+}
+
+void UEditorEngine::StartMainGamePIE()
+{
+	if (GetEditorState() != EViewportPlayState::Playing)
+	{
+		return;
+	}
+
+	const int32 FocusedIdx = ViewportLayout.GetLastFocusedViewportIndex();
+	auto PIEHandleIt = ViewportPIEHandles.find(FocusedIdx);
+	if (PIEHandleIt == ViewportPIEHandles.end() && !ViewportPIEHandles.empty())
+	{
+		PIEHandleIt = ViewportPIEHandles.begin();
+	}
+
+	const FName PIEHandle = PIEHandleIt != ViewportPIEHandles.end()
+		? PIEHandleIt->second
+		: FName(("PIE_" + std::to_string(FocusedIdx)).c_str());
+	const std::string PIEName = "PIE_World_" + std::to_string(FocusedIdx);
+
+	const FString ScenePath = FPaths::ToString(FPaths::Combine(FPaths::SceneDir(), GameSettings::MainSceneName));
+	FWorldContext MainSceneContext;
+	FSceneSaveManager::Load(ScenePath, MainSceneContext, nullptr);
+	UWorld* MainSceneWorld = MainSceneContext.World;
+	if (MainSceneWorld == nullptr)
+	{
+		return;
+	}
+
+	MainSceneWorld->SetWorldType(EWorldType::PIE);
+	ApplySpatialIndexMaintenanceSettings(MainSceneWorld);
+
+	if (GetWorldContextFromHandle(PIEHandle) != nullptr)
+	{
+		UnregisterWorld(PIEHandle);
+	}
+
+	RegisterWorld(MainSceneWorld, EWorldType::PIE, PIEHandle, PIEName);
+	SetActiveWorld(PIEHandle);
+	for (int32 i = 0; i < FEditorViewportLayout::MaxViewports; ++i)
+	{
+		ViewportPIEHandles[i] = PIEHandle;
+		if (FEditorViewportClient* ViewportClient = ViewportLayout.GetViewportClient(i))
+		{
+			ViewportClient->SetPlayState(EViewportPlayState::Playing);
+			ViewportClient->StartPIE(MainSceneWorld);
+			ViewportClient->SetEndPIECallback([this]() { StopPlaySession(); });
+		}
+	}
+
+	InitializePlayGameData();
+	GameUISystem::Get().ResetGameData();
+	GameUISystem::Get().SetState(EGameUIState::InGame);
+	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
+	GameUISystem::Get().SetStartGameCallback([this]() { StartMainGamePIE(); });
+
+	FInputRouter::SetCursorVisibility(false);
+	FInputRouter::ResetMouseDelta(2);
+	MainSceneWorld->BeginPlay();
 }
 
 void UEditorEngine::PausePlaySession()
@@ -754,6 +816,7 @@ void UEditorEngine::StopPlaySession()
 	// PIE 종료 시 게임 UI 상태 초기화 (Ending 화면 등이 에디터에 남지 않도록)
 	GameUISystem::Get().SetState(EGameUIState::None);
 	GameUISystem::Get().SetExitPlayCallback(nullptr);
+	GameUISystem::Get().SetStartGameCallback(nullptr);
 
 	if (ViewportPIEHandles.empty())
 	{

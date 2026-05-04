@@ -2,7 +2,11 @@
 
 #include <cstddef>
 #include <cstring>
+#include <string>
 #include <vector>
+#include <wincodec.h>
+
+#pragma comment(lib, "windowscodecs")
 
 struct FRmlUiRenderInterfaceD3D11::FGeometry
 {
@@ -75,6 +79,54 @@ float4 PSMain(VSOutput Input) : SV_TARGET
 			OutputDebugStringA("\n");
 		}
 	}
+
+	std::wstring ToWideString(const std::string& Text)
+	{
+		if (Text.empty())
+			return {};
+
+		const int WideLength = MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), -1, nullptr, 0);
+		if (WideLength <= 0)
+			return {};
+
+		std::wstring WideText(static_cast<size_t>(WideLength - 1), L'\0');
+		MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), -1, WideText.data(), WideLength);
+		return WideText;
+	}
+
+	std::vector<std::string> GetTexturePathCandidates(const std::string& Source)
+	{
+		std::vector<std::string> Paths;
+		Paths.push_back(Source);
+
+		if (Source.rfind("Asset/", 0) == 0 || Source.rfind("Asset\\", 0) == 0)
+			Paths.push_back("NipsEngine/" + Source);
+
+		return Paths;
+	}
+
+	class FScopedComInit
+	{
+	public:
+		FScopedComInit()
+			: Result(CoInitializeEx(nullptr, COINIT_MULTITHREADED))
+		{
+		}
+
+		~FScopedComInit()
+		{
+			if (Result == S_OK || Result == S_FALSE)
+				CoUninitialize();
+		}
+
+		bool IsReady() const
+		{
+			return SUCCEEDED(Result) || Result == RPC_E_CHANGED_MODE;
+		}
+
+	private:
+		HRESULT Result;
+	};
 }
 
 FRmlUiRenderInterfaceD3D11::~FRmlUiRenderInterfaceD3D11()
@@ -193,9 +245,53 @@ void FRmlUiRenderInterfaceD3D11::ReleaseGeometry(Rml::CompiledGeometryHandle Geo
 
 Rml::TextureHandle FRmlUiRenderInterfaceD3D11::LoadTexture(Rml::Vector2i& TextureDimensions, const Rml::String& Source)
 {
-	(void)TextureDimensions;
-	(void)Source;
-	return {};
+	if (!Device || Source.empty())
+		return {};
+
+	FScopedComInit ComInit;
+	if (!ComInit.IsReady())
+		return {};
+
+	TComPtr<IWICImagingFactory> WicFactory;
+	if (FAILED(CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(WicFactory.GetAddressOf()))))
+		return {};
+
+	TComPtr<IWICBitmapFrameDecode> Frame;
+	for (const std::string& Path : GetTexturePathCandidates(Source))
+	{
+		TComPtr<IWICBitmapDecoder> Decoder;
+		const std::wstring WidePath = ToWideString(Path);
+		if (WidePath.empty())
+			continue;
+
+		if (SUCCEEDED(WicFactory->CreateDecoderFromFilename(WidePath.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnLoad, Decoder.GetAddressOf())) &&
+			SUCCEEDED(Decoder->GetFrame(0, Frame.GetAddressOf())))
+		{
+			break;
+		}
+	}
+
+	if (!Frame)
+		return {};
+
+	UINT Width = 0;
+	UINT Height = 0;
+	if (FAILED(Frame->GetSize(&Width, &Height)) || Width == 0 || Height == 0)
+		return {};
+
+	TComPtr<IWICFormatConverter> Converter;
+	if (FAILED(WicFactory->CreateFormatConverter(Converter.GetAddressOf())) ||
+		FAILED(Converter->Initialize(Frame.Get(), GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom)))
+	{
+		return {};
+	}
+
+	std::vector<Rml::byte> Pixels(static_cast<size_t>(Width) * static_cast<size_t>(Height) * 4);
+	if (FAILED(Converter->CopyPixels(nullptr, Width * 4, static_cast<UINT>(Pixels.size()), Pixels.data())))
+		return {};
+
+	TextureDimensions = Rml::Vector2i(static_cast<int>(Width), static_cast<int>(Height));
+	return GenerateTexture(Rml::Span<const Rml::byte>(Pixels.data(), Pixels.size()), TextureDimensions);
 }
 
 Rml::TextureHandle FRmlUiRenderInterfaceD3D11::GenerateTexture(Rml::Span<const Rml::byte> Source, Rml::Vector2i SourceDimensions)
@@ -299,7 +395,7 @@ bool FRmlUiRenderInterfaceD3D11::CreateStates()
 {
 	D3D11_BLEND_DESC BlendDesc = {};
 	BlendDesc.RenderTarget[0].BlendEnable = TRUE;
-	BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 	BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 	BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
 	BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
