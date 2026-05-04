@@ -32,6 +32,8 @@ private:
 	float MoveToward(float Current, float Target, float MaxDelta) const;
 	void UpdateFootsteps(float DeltaTime, const FVector& ActualDelta);
 	void PlayFootstep(float VolumeScale);
+	void PlayJumpSound();
+	void PlayLandingSound();
 
 private:
 	URigidBodyComponent* RigidBody = nullptr;

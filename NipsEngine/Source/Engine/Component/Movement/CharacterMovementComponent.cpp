@@ -19,6 +19,8 @@ namespace
 	constexpr float DefaultFootstepVolume = 0.8f;
 	constexpr float DefaultFootstepStepDistance = 1.70f;
 	constexpr float DefaultFootstepMinSpeed = 0.35f;
+	constexpr float JumpSoundVolume = 3.0f;
+	constexpr float LandingSoundVolume = 10.0f;
 
 	const FString& GetFootstepPath(int32 Index)
 	{
@@ -31,6 +33,18 @@ namespace
 		};
 		constexpr int32 Count = static_cast<int32>(sizeof(Paths) / sizeof(Paths[0]));
 		return Paths[Index % Count];
+	}
+
+	const FString& GetJumpSoundPath()
+	{
+		static const FString Path = "Asset/Audio/Linoleum_Mono_02.WAV";
+		return Path;
+	}
+
+	const FString& GetLandingSoundPath()
+	{
+		static const FString Path = "Asset/Audio/Linoleum_Mono_01.WAV";
+		return Path;
 	}
 }
 
@@ -129,6 +143,7 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 
 	ClampEditableValues();
 
+	const bool bWasGrounded = bGrounded;
 	FVector Input = ConsumeInputVector();
 	Input.Z = 0.0f;
 	if (Input.SizeSquared() > 1.0f)
@@ -199,6 +214,12 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 		Velocity.Y = 0.0f;
 	}
 
+	if (!bWasGrounded && bGrounded)
+	{
+		FootstepAccumulatedDistance = 0.0f;
+		PlayLandingSound();
+	}
+
 	UpdateFootsteps(DeltaTime, ActualDelta);
 }
 
@@ -238,6 +259,8 @@ void UCharacterMovementComponent::Jump()
 
 	Velocity.Z = std::max(Velocity.Z, JumpSpeed);
 	bGrounded = false;
+	FootstepAccumulatedDistance = 0.0f;
+	PlayJumpSound();
 }
 
 void UCharacterMovementComponent::SetSpeedMultiplier(float InSpeedMultiplier)
@@ -275,7 +298,7 @@ float UCharacterMovementComponent::MoveToward(float Current, float Target, float
 
 void UCharacterMovementComponent::UpdateFootsteps(float DeltaTime, const FVector& ActualDelta)
 {
-	if (!bEnableFootsteps || DeltaTime <= 0.0f)
+	if (!bEnableFootsteps || DeltaTime <= 0.0f || !bGrounded)
 	{
 		FootstepAccumulatedDistance = 0.0f;
 		return;
@@ -315,4 +338,28 @@ void UCharacterMovementComponent::PlayFootstep(float VolumeScale)
 	Params.Volume = std::clamp(FootstepVolume * VolumeScale, 0.0f, 2.0f);
 	FAudioSystem::Get().Play(FootstepPath, Params);
 	++FootstepIndex;
+}
+
+void UCharacterMovementComponent::PlayJumpSound()
+{
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.bAllowVolumeBoost = true;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = JumpSoundVolume;
+	FAudioSystem::Get().Play(GetJumpSoundPath(), Params);
+}
+
+void UCharacterMovementComponent::PlayLandingSound()
+{
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.bAllowVolumeBoost = true;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = LandingSoundVolume;
+	FAudioSystem::Get().Play(GetLandingSoundPath(), Params);
 }
