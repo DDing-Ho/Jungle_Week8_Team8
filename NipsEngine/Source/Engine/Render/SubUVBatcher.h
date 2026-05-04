@@ -8,6 +8,7 @@
 #include "Render/Common/ComPtr.h"
 #include "Render/Resource/Material.h"
 #include "Render/Resource/VertexTypes.h"
+#include "Render/Scene/RenderCommand.h"
 
 struct ID3D11Device;
 struct ID3D11DeviceContext;
@@ -31,6 +32,7 @@ struct FSRVBatch
     uint32 IndexStart; // Indices 배열 내 시작 위치
     uint32 IndexCount; // 이 SRV에 해당하는 인덱스 수
     int32 BaseVertex;  // DrawIndexed의 BaseVertexLocation
+    FVector4 TintColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 };
 
 // FSubUVBatcher — SubUV 스프라이트를 배치로 모아 1회 드로우콜로 처리
@@ -64,7 +66,8 @@ public:
                    uint32 Columns,
                    uint32 Rows,
                    float Width = 1.0f,
-                   float Height = 1.0f);
+                   float Height = 1.0f,
+                   const FVector4& TintColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f));
 
     // 이번 프레임에 누적된 스프라이트 전체 제거
     void Clear();

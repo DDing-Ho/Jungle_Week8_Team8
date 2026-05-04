@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 44660,
+  "NextUUID" : 45144,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
     "Location" : [-10.325126, -6.281332, 4.072352],
     "NearClip" : 0.100000,
-    "Rotation" : [-88.738800, -37.541107, 90.768562]
+    "Rotation" : [62.084156, -16.653595, -98.633850]
   },
   "Primitives" : {
     "11356" : {
@@ -3381,6 +3381,18 @@
       "Scroll V" : 0.000000,
       "Type" : "UStaticMeshComponent",
       "Visible" : true
+    },
+    "44905" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 447,
+      "ScriptPath" : "Asset/Scripts/Bucket.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
     },
     "450" : {
       "ActorActive" : true,

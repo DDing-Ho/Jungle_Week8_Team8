@@ -107,6 +107,7 @@ struct FSubUVConstants
 	uint32 FrameIndex = 0;
 	float Width  = 1.0f;
 	float Height = 1.0f;
+	FVector4 TintColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 };
 
 struct FBillboardConstants
