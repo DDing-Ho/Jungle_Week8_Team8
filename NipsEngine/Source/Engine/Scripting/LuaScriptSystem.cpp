@@ -146,6 +146,17 @@ void FLuaScriptSystem::CallInteract(ULuaScriptComponent* Component, AActor* Owne
 #endif
 }
 
+void FLuaScriptSystem::CallPickedUp(ULuaScriptComponent* Component, AActor* Owner, AActor* Picker)
+{
+#if WITH_LUA
+	CallFunction(Component, "OnPickedUp", Owner, Picker);
+#else
+	(void)Component;
+	(void)Owner;
+	(void)Picker;
+#endif
+}
+
 #if WITH_LUA
 void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptState& State)
 {

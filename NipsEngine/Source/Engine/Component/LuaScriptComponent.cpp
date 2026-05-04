@@ -431,6 +431,14 @@ void ULuaScriptComponent::HandleInteract(AActor* Interactor)
 	}
 }
 
+void ULuaScriptComponent::HandlePickedUp(AActor* Picker)
+{
+	if (bLoaded)
+	{
+		FLuaScriptSystem::Get().CallPickedUp(this, GetOwner(), Picker);
+	}
+}
+
 void ULuaScriptComponent::SetScriptPath(const FString& InScriptPath)
 {
 	ScriptPath = InScriptPath;

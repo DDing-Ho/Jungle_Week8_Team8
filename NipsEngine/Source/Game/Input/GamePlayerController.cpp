@@ -847,6 +847,8 @@ void FGamePlayerController::TogglePickup()
         {
             if (AActor* HeldActor = HeldBody->GetOwner())
             {
+                NotifyPickedUp(HeldActor);
+
                 const FString HeldToolId = FindCleaningToolIdFromActor(HeldActor);
                 bSelectedHeldTool = !HeldToolId.empty() && FCleaningToolSystem::Get().SelectTool(HeldToolId);
                 if (bSelectedHeldTool)
@@ -943,46 +945,65 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 
 void FGamePlayerController::TryInspectHoveredItem()
 {
-	if (!World || !IsInputEnabled())
-	{
-		return;
-	}
+    if (!World || !IsInputEnabled())
+    {
+        return;
+    }
 
-	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
-	if (Handle == nullptr || !Handle->IsHolding())
-	{
-		return;
-	}
+    UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+    if (Handle == nullptr || !Handle->IsHolding())
+    {
+        return;
+    }
 
-	URigidBodyComponent* HeldBody = Handle->GetHeldBody();
-	AActor* HeldActor = HeldBody ? HeldBody->GetOwner() : nullptr;
-	if (HeldActor == nullptr || !FindCleaningToolIdFromActor(HeldActor, false).empty())
-	{
-		return;
-	}
+    URigidBodyComponent* HeldBody = Handle->GetHeldBody();
+    AActor* HeldActor = HeldBody ? HeldBody->GetOwner() : nullptr;
+    if (HeldActor == nullptr || !FindCleaningToolIdFromActor(HeldActor, false).empty())
+    {
+        return;
+    }
 
-	const FString ItemId = FindItemIdFromActor(HeldActor);
-	if (ItemId.empty())
-	{
-		return;
-	}
+    const FString ItemId = FindItemIdFromActor(HeldActor);
+    if (ItemId.empty())
+    {
+        return;
+    }
 
-	if (!FItemSystem::Get().InspectItem(ItemId))
-	{
-		return;
-	}
+    if (!FItemSystem::Get().InspectItem(ItemId))
+    {
+        return;
+    }
 
-	const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
-	if (ItemData == nullptr)
-	{
-		return;
-	}
+    const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
+    if (ItemData == nullptr)
+    {
+        return;
+    }
 
-	const FString Description = FItemSystem::Get().GetDescriptionForCurrentState(ItemId);
-	GameUISystem::Get().ShowItemInspect(
-		ItemData->DisplayName.c_str(),
-		Description.c_str(),
-		ItemData->IconPath.c_str());
+    const FString Description = FItemSystem::Get().GetDescriptionForCurrentState(ItemId);
+    GameUISystem::Get().ShowItemInspect(
+        ItemData->DisplayName.c_str(),
+        Description.c_str(),
+        ItemData->IconPath.c_str());
+}
+
+void FGamePlayerController::NotifyPickedUp(AActor* PickedActor)
+{
+    if (PickedActor == nullptr)
+    {
+        return;
+    }
+
+    for (UActorComponent* Component : PickedActor->GetComponents())
+    {
+        ULuaScriptComponent* LuaComponent = Cast<ULuaScriptComponent>(Component);
+        if (LuaComponent == nullptr)
+        {
+            continue;
+        }
+
+        LuaComponent->HandlePickedUp(Player);
+    }
 }
 
 UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()

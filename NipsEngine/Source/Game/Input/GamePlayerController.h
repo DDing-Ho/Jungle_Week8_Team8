@@ -73,6 +73,7 @@ private:
     bool TryBeginCleaningUse();
     void EndCleaningUse();
     void TogglePickup();
+    void NotifyPickedUp(AActor* PickedActor);
     void TryInspectHoveredItem();
     bool TryPlaceHeldItemInHoveredDecisionBox();
     UPhysicsHandleComponent* GetPhysicsHandle();

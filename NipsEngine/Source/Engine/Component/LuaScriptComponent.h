@@ -44,6 +44,7 @@ public:
 	void HandleEndOverlap(const FOverlapResult& Overlap);
 	void HandleHit(const FHitResult& Hit);
 	void HandleInteract(AActor* Interactor);
+	void HandlePickedUp(AActor* Picker);
 
 protected:
 	void TickComponent(float DeltaTime) override;

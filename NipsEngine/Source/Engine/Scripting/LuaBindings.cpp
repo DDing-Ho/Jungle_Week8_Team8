@@ -4,6 +4,7 @@
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/DecalComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
 #include "Math/Vector.h"
 #include "Math/Vector2.h"
 #include "Object/Object.h"
@@ -17,6 +18,51 @@
 #include "Game/Systems/ItemSystem.h"
 #include "GameFramework/World.h"
 #include "Scripting/LuaScriptSystem.h"
+
+namespace
+{
+	AActor* FindRegisteredItemActor(UWorld* World, const FString& ItemId)
+	{
+		if (World == nullptr || ItemId.empty())
+		{
+			return nullptr;
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (Actor == nullptr)
+			{
+				continue;
+			}
+
+			const FString RegisteredItemId = FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+			if (RegisteredItemId == ItemId)
+			{
+				return Actor;
+			}
+		}
+
+		return nullptr;
+	}
+
+	URigidBodyComponent* FindFirstRigidBody(AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (URigidBodyComponent* Body = Cast<URigidBodyComponent>(Component))
+			{
+				return Body;
+			}
+		}
+
+		return nullptr;
+	}
+}
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -184,20 +230,16 @@ void RegisterLuaBindings(sol::state& Lua)
 	{
 		if (!Actor)
 		{
-			UE_LOG("[Lua] DeactivateActor failed. actor=null");
 			return false;
 		}
 
 		UWorld* World = Actor->GetFocusedWorld();
 		if (!World)
 		{
-			UE_LOG("[Lua] DeactivateActor failed. actor=%s world=null", Actor->GetFName().ToString().c_str());
 			return false;
 		}
 
-		const FString ActorName = Actor->GetFName().ToString();
 		World->DeactivateActor(Actor);
-		UE_LOG("[Lua] Deactivated actor=%s", ActorName.c_str());
 		return true;
 	});
 
@@ -205,21 +247,12 @@ void RegisterLuaBindings(sol::state& Lua)
 	{
 		if (!Actor || ItemId.empty())
 		{
-			UE_LOG("[Item] RegisterItemActor failed. actor=%s itemId=%s",
-				Actor ? Actor->GetFName().ToString().c_str() : "null",
-				ItemId.c_str());
 			return false;
 		}
 
 		const FString ActorName = Actor->GetFName().ToString();
 		const FString Key = "Item:" + ActorName;
-		const bool bRegistered = FLuaScriptSystem::Get().SetStringGameStateValue(Key, ItemId);
-		UE_LOG("[Item] Registered actor=%s key=%s itemId=%s result=%d",
-			ActorName.c_str(),
-			Key.c_str(),
-			ItemId.c_str(),
-			bRegistered ? 1 : 0);
-		return bRegistered;
+		return FLuaScriptSystem::Get().SetStringGameStateValue(Key, ItemId);
 	});
 
 	Lua.set_function("GetRegisteredItemId", [](AActor* Actor)
@@ -232,6 +265,47 @@ void RegisterLuaBindings(sol::state& Lua)
 		return FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
 	});
 
+	Lua.set_function("DropRegisteredItemFromActor", [](const std::string& ItemId, AActor* SourceActor, sol::optional<FVector> Offset)
+	{
+		if (ItemId.empty() || SourceActor == nullptr)
+		{
+			return false;
+		}
+
+		UWorld* World = SourceActor->GetFocusedWorld();
+		if (World == nullptr)
+		{
+			return false;
+		}
+
+		AActor* DropActor = FindRegisteredItemActor(World, ItemId);
+		if (DropActor == nullptr)
+		{
+			return false;
+		}
+
+		if (!DropActor->IsActive())
+		{
+			return false;
+		}
+
+		const FVector DropOffset = Offset.value_or(FVector(0.0f, 0.0f, 0.45f));
+		const FVector DropLocation = SourceActor->GetActorLocation() + DropOffset;
+		DropActor->SetVisible(true);
+		if (URigidBodyComponent* DropBody = FindFirstRigidBody(DropActor))
+		{
+			DropBody->SetPhysicsLocation(DropLocation);
+			DropBody->SetVelocity(FVector::ZeroVector);
+			DropBody->SetAngularVelocity(FVector::ZeroVector);
+		}
+		else
+		{
+			DropActor->SetActorLocation(DropLocation);
+		}
+
+		return true;
+	});
+
 	Lua.set_function("SelectCleaningTool", [](const std::string& ToolId)
 	{
 		return FCleaningToolSystem::Get().SelectTool(ToolId);
@@ -241,21 +315,12 @@ void RegisterLuaBindings(sol::state& Lua)
 	{
 		if (!Actor || ToolId.empty())
 		{
-			UE_LOG("[CleaningTool] RegisterCleaningToolActor failed. actor=%s toolId=%s",
-				Actor ? Actor->GetFName().ToString().c_str() : "null",
-				ToolId.c_str());
 			return false;
 		}
 
 		const FString ActorName = Actor->GetFName().ToString();
 		const FString Key = "CleaningTool:" + ActorName;
-		const bool bRegistered = FLuaScriptSystem::Get().SetStringGameStateValue(Key, ToolId);
-		UE_LOG("[CleaningTool] Registered actor=%s key=%s toolId=%s result=%d",
-			ActorName.c_str(),
-			Key.c_str(),
-			ToolId.c_str(),
-			bRegistered ? 1 : 0);
-		return bRegistered;
+		return FLuaScriptSystem::Get().SetStringGameStateValue(Key, ToolId);
 	});
 
 
