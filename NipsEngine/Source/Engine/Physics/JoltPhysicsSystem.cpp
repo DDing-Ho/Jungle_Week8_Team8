@@ -189,6 +189,75 @@ namespace
 		return bBodyClearlyBelow && RequestedDelta.Z >= -0.001f;
 	}
 
+	bool ShouldIgnoreKinematicStartContact(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta)
+	{
+		if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+		{
+			return false;
+		}
+
+		const FVector PenetrationAxis = ToEngineVector(Hit.mPenetrationAxis).GetSafeNormal();
+		if (PenetrationAxis.IsNearlyZero())
+		{
+			return true;
+		}
+
+		const FVector HorizontalNormal(PenetrationAxis.X, PenetrationAxis.Y, 0.0f);
+		const FVector HorizontalDelta(RequestedDelta.X, RequestedDelta.Y, 0.0f);
+		if (HorizontalNormal.IsNearlyZero() || HorizontalDelta.IsNearlyZero())
+		{
+			return true;
+		}
+
+		const float IntoA = FVector::DotProduct(HorizontalDelta.GetSafeNormal(), HorizontalNormal.GetSafeNormal());
+		const float IntoB = FVector::DotProduct(HorizontalDelta.GetSafeNormal(), (HorizontalNormal * -1.0f).GetSafeNormal());
+		return std::max(IntoA, IntoB) < 0.35f;
+	}
+
+	bool TryBuildKinematicSlideDelta(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta, FVector& OutSlideDelta)
+	{
+		if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+		{
+			return false;
+		}
+
+		const FVector RequestedHorizontal(RequestedDelta.X, RequestedDelta.Y, 0.0f);
+		if (RequestedHorizontal.IsNearlyZero())
+		{
+			return false;
+		}
+
+		FVector Normal = (ToEngineVector(Hit.mPenetrationAxis) * -1.0f).GetSafeNormal();
+		if (Normal.IsNearlyZero())
+		{
+			return false;
+		}
+
+		// Jolt의 penetration axis 부호는 shape cast 상황에 따라 뒤집힐 수 있으므로,
+		// 요청 이동에 반대되는 쪽을 접촉 normal로 사용합니다.
+		if (FVector::DotProduct(RequestedDelta, Normal) > 0.0f)
+		{
+			Normal *= -1.0f;
+		}
+
+		const bool bMostlyVerticalSurface = std::fabs(Normal.Z) > 0.65f;
+		if (!bMostlyVerticalSurface)
+		{
+			return false;
+		}
+
+		const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, Normal);
+		if (IntoSurfaceDistance >= 0.0f)
+		{
+			OutSlideDelta = RequestedHorizontal;
+			return true;
+		}
+
+		OutSlideDelta = RequestedDelta - Normal * IntoSurfaceDistance;
+		OutSlideDelta.Z = 0.0f;
+		return !OutSlideDelta.IsNearlyZero();
+	}
+
 	void GatherBlockingShapes(AActor* Actor, TArray<UShapeComponent*>& OutShapes)
 	{
 		if (Actor == nullptr)
@@ -745,7 +814,7 @@ void FJoltPhysicsSystem::SetBodyTransformFromComponent(URigidBodyComponent* Body
 
 bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime)
 {
-	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || Body->IsStaticBody())
 	{
 		return false;
 	}
@@ -803,6 +872,11 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 							}
 						}
 
+						if (ShouldIgnoreKinematicStartContact(Body, Hit, RequestedDelta))
+						{
+							continue;
+						}
+
 						const FVector ContactNormal = (ToEngineVector(Hit.mPenetrationAxis) * -1.0f).GetSafeNormal();
 						const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, ContactNormal);
 						if (ContactNormal.IsNearlyZero() || IntoSurfaceDistance >= 0.0f)
@@ -823,8 +897,27 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 			{
 				const JPH::Vec3 LocalExtent = Shape->GetLocalBounds().GetExtent();
 				const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
-				const float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
 				const float RequestedDistance = RequestedDelta.Size();
+				if (Body->IsKinematicBody())
+				{
+					static int32 KinematicHitLogCounter = 0;
+					if ((KinematicHitLogCounter++ % 30) == 0)
+					{
+						const FVector PenetrationAxis = ToEngineVector(BlockingHit.mPenetrationAxis);
+						UE_LOG("[PlayerMove] Jolt block body=%s fraction=%.4f depth=%.4f axis=(%.3f, %.3f, %.3f) requested=(%.4f, %.4f, %.4f) current=(%.3f, %.3f, %.3f)",
+							Body->GetOwner() ? Body->GetOwner()->GetFName().ToString().c_str() : "None",
+							BlockingHit.mFraction,
+							BlockingHit.mPenetrationDepth,
+							PenetrationAxis.X, PenetrationAxis.Y, PenetrationAxis.Z,
+							RequestedDelta.X, RequestedDelta.Y, RequestedDelta.Z,
+							CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z);
+					}
+				}
+				float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
+				if (Body->IsKinematicBody() && RequestedDistance > 0.001f)
+				{
+					SafetyDistance = std::min(SafetyDistance, RequestedDistance * 0.2f);
+				}
 				const float SafetyFraction = RequestedDistance > 0.001f ? SafetyDistance / RequestedDistance : 1.0f;
 				if (BlockingHit.mFraction <= 0.001f)
 				{
@@ -835,6 +928,10 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 						const FVector SlideDelta = RequestedDelta - ContactNormal * IntoSurfaceDistance;
 						InOutTargetLocation = CurrentLocation + SlideDelta;
 					}
+				}
+				else if (FVector SlideDelta; TryBuildKinematicSlideDelta(Body, BlockingHit, RequestedDelta, SlideDelta))
+				{
+					InOutTargetLocation = CurrentLocation + SlideDelta;
 				}
 				else
 				{

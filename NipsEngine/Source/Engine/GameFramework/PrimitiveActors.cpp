@@ -7,6 +7,7 @@
 #include "Component/HeightFogComponent.h"
 #include "Component/SkyAtmosphereComponent.h"
 #include "Component/Movement/RotatingMovementComponent.h"
+#include "Component/Movement/CharacterMovementComponent.h"
 #include "Component/Light/DirectionalLightComponent.h"
 #include "Component/Light/AmbientLightComponent.h"
 #include "Component/Light/PointLightComponent.h"
@@ -15,8 +16,11 @@
 #include "Component/AudioZoneComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Physics/PhysicsHandleComponent.h"
+#include "Component/Physics/RigidBodyComponent.h"
+#include "Component/Collision/CapsuleComponent.h"
 #include "Component/SubUVComponent.h"
 #include "Core/ResourceManager.h"
+#include "GameFramework/World.h"
 #include <format>
 
 DEFINE_CLASS(APawnActor, AActor)
@@ -69,19 +73,93 @@ REGISTER_FACTORY(APlayerStartActor)
 
 void APawnActor::InitDefaultComponents()
 {
-	USceneComponent* SceneRoot = AddComponent<USceneComponent>();
-	SetRootComponent(SceneRoot);
+	EnsureDefaultComponents();
+}
 
-	UCameraComponent* Camera = AddComponent<UCameraComponent>();
-	Camera->AttachToComponent(SceneRoot);
+void APawnActor::EnsureDefaultComponents()
+{
+	const UWorld* World = GetFocusedWorld();
+	const bool bRuntimeWorld = World && (World->GetWorldType() == EWorldType::PIE || World->GetWorldType() == EWorldType::Game);
 
-	AddComponent<UPhysicsHandleComponent>();
+	USceneComponent* SceneRoot = GetRootComponent();
+	if (SceneRoot == nullptr)
+	{
+		SceneRoot = AddComponent<USceneComponent>();
+		SetRootComponent(SceneRoot);
+	}
 
-	UBillboardComponent* Billboard = AddComponent<UBillboardComponent>();
-	Billboard->AttachToComponent(SceneRoot);
-	Billboard->SetEditorOnly(true);
-	Billboard->SetHiddenInEditor(true);
-	Billboard->SetTexturePath("Asset/Texture/Pawn_64x.png");
+	UCameraComponent* Camera = nullptr;
+	UCapsuleComponent* Capsule = nullptr;
+	URigidBodyComponent* RigidBody = nullptr;
+	UCharacterMovementComponent* CharacterMovement = nullptr;
+	UPhysicsHandleComponent* PhysicsHandle = nullptr;
+	UBillboardComponent* Billboard = nullptr;
+
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Camera == nullptr) Camera = Cast<UCameraComponent>(Component);
+		if (Capsule == nullptr) Capsule = Cast<UCapsuleComponent>(Component);
+		if (RigidBody == nullptr) RigidBody = Cast<URigidBodyComponent>(Component);
+		if (CharacterMovement == nullptr) CharacterMovement = Cast<UCharacterMovementComponent>(Component);
+		if (PhysicsHandle == nullptr) PhysicsHandle = Cast<UPhysicsHandleComponent>(Component);
+		if (Billboard == nullptr) Billboard = Cast<UBillboardComponent>(Component);
+	}
+
+	const bool bCreatedCapsule = Capsule == nullptr;
+	if (bCreatedCapsule)
+	{
+		Capsule = AddComponent<UCapsuleComponent>();
+		Capsule->AttachToComponent(SceneRoot);
+		Capsule->SetRelativeLocation(FVector(0.0f, 0.0f, 0.85f));
+		Capsule->SetCapsuleSize(0.85f, 0.28f);
+	}
+	Capsule->SetBlockComponent(true);
+
+	if (RigidBody == nullptr)
+	{
+		RigidBody = AddComponent<URigidBodyComponent>();
+	}
+	RigidBody->SetUpdatedComponent(SceneRoot);
+	RigidBody->SetBodyType(EPhysicsBodyType::Kinematic);
+	RigidBody->SetSimulatePhysics(true);
+	RigidBody->SetUseGravity(false);
+	RigidBody->SetCanBePickedUp(false);
+
+	if (CharacterMovement == nullptr)
+	{
+		CharacterMovement = AddComponent<UCharacterMovementComponent>();
+	}
+	CharacterMovement->SetActive(true);
+	CharacterMovement->SetComponentTickEnabled(true);
+	CharacterMovement->SetUpdatedComponent(SceneRoot);
+	CharacterMovement->SetRigidBody(RigidBody);
+
+	const bool bCreatedCamera = Camera == nullptr;
+	if (bCreatedCamera)
+	{
+		Camera = AddComponent<UCameraComponent>();
+		Camera->AttachToComponent(SceneRoot);
+		Camera->SetRelativeLocation(FVector(0.0f, 0.0f, 1.55f));
+	}
+	else if (bRuntimeWorld && Camera->GetRelativeLocation().Z < 0.5f)
+	{
+		const FVector ExistingLocation = Camera->GetRelativeLocation();
+		Camera->SetRelativeLocation(FVector(ExistingLocation.X, ExistingLocation.Y, 1.55f));
+	}
+
+	if (PhysicsHandle == nullptr)
+	{
+		AddComponent<UPhysicsHandleComponent>();
+	}
+
+	if (Billboard == nullptr)
+	{
+		Billboard = AddComponent<UBillboardComponent>();
+		Billboard->AttachToComponent(SceneRoot);
+		Billboard->SetEditorOnly(true);
+		Billboard->SetHiddenInEditor(true);
+		Billboard->SetTexturePath("Asset/Texture/Pawn_64x.png");
+	}
 }
 
 void ASceneActor::InitDefaultComponents()

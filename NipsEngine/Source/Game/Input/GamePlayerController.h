@@ -14,6 +14,7 @@ class FViewportCamera;
 struct FViewportRect;
 struct FCameraSnapshot;
 class UCameraComponent;
+class UCharacterMovementComponent;
 class UPhysicsHandleComponent;
 class URigidBodyComponent;
 class UWorld;
@@ -68,6 +69,7 @@ private:
 	void EndCleaningUse();
 	void TogglePickup();
 	UPhysicsHandleComponent* GetPhysicsHandle();
+	UCharacterMovementComponent* GetCharacterMovement();
 	void DestroyPhysicsHandle();
 	void RefreshPawnComponents();
 	void UpdateHoveredPickableActor();
@@ -87,6 +89,7 @@ private:
 	UCameraComponent* Camera = nullptr;
 	FViewportCamera* FreeCamera = nullptr;
 	UPhysicsHandleComponent* PhysicsHandle = nullptr;
+	UCharacterMovementComponent* CharacterMovement = nullptr;
 	AActor* HoveredPickableActor = nullptr;
 	FInputMappingContext InputMapping;
 	std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;

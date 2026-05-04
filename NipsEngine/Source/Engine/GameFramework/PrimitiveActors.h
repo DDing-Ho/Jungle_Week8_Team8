@@ -12,6 +12,7 @@ public:
 	APawnActor() = default;
 
 	void InitDefaultComponents();
+	void EnsureDefaultComponents();
 };
 
 class ASceneActor : public AActor

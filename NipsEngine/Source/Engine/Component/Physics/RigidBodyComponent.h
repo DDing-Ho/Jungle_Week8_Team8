@@ -29,11 +29,13 @@ public:
 	USceneComponent* GetUpdatedComponent() const;
 
 	EPhysicsBodyType GetBodyType() const { return static_cast<EPhysicsBodyType>(BodyType); }
+	void SetBodyType(EPhysicsBodyType InBodyType) { BodyType = static_cast<int32>(InBodyType); ClampEditableValues(); }
 	bool IsStaticBody() const { return GetBodyType() == EPhysicsBodyType::Static; }
 	bool IsDynamicBody() const { return GetBodyType() == EPhysicsBodyType::Dynamic; }
 	bool IsKinematicBody() const { return GetBodyType() == EPhysicsBodyType::Kinematic; }
 
 	void SetSimulatePhysics(bool bInSimulate) { bSimulatePhysics = bInSimulate; }
+	void SetUseGravity(bool bInUseGravity) { bUseGravity = bInUseGravity; }
 	bool IsSimulatingPhysics() const { return bSimulatePhysics; }
 	bool IsUsingJoltPhysics() const { return JoltBodyHandle != InvalidJoltBodyHandle; }
 

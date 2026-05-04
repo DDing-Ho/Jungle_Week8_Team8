@@ -5,6 +5,7 @@
 #include <chrono>
 #include <functional>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "SimpleJSON/json.hpp"
 #include "GameFramework/World.h"
@@ -894,6 +895,8 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
     std::unordered_map<uint32, USceneComponent*> UUIDToSceneComp;
     // 루트SceneComponent UUID → Actor* 맵: 비씬 컴포넌트 귀속에 사용
     std::unordered_map<uint32, AActor*> RootUUIDToActor;
+	std::unordered_set<USceneComponent*> UsedSceneComponents;
+	std::unordered_set<UActorComponent*> UsedNonSceneComponents;
 
     // ---------------------------------------------------------------
     // 2단계: SceneComponent 트리 복원 (기존 로직 + UUID 맵 구축)
@@ -938,17 +941,31 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
         }
         else
         {
-            // 자식 컴포넌트: 직접 생성 후 부모에 연결
-            UObject* Obj = FObjectFactory::Get().Create(CompType);
-            if (!Obj || !Obj->IsA<USceneComponent>()) return;
+            // 자식 컴포넌트: Actor 기본 컴포넌트가 이미 있으면 재사용하고, 없을 때만 새로 생성합니다.
+			for (USceneComponent* Child : ParentComp->GetChildren())
+			{
+				if (Child != nullptr && UsedSceneComponents.find(Child) == UsedSceneComponents.end() &&
+					Child->GetTypeInfo()->name == CompType)
+				{
+					Comp = Child;
+					break;
+				}
+			}
 
-            Comp = static_cast<USceneComponent*>(Obj);
-            Owner->RegisterComponent(Comp);
-            Comp->AttachToComponent(ParentComp);
+			if (Comp == nullptr)
+			{
+				UObject* Obj = FObjectFactory::Get().Create(CompType);
+				if (!Obj || !Obj->IsA<USceneComponent>()) return;
+
+				Comp = static_cast<USceneComponent*>(Obj);
+				Owner->RegisterComponent(Comp);
+				Comp->AttachToComponent(ParentComp);
+			}
         }
 
         // UUID → SceneComponent 매핑 등록
         UUIDToSceneComp[UUID] = Comp;
+		UsedSceneComponents.insert(Comp);
 
         // 프로퍼티 기반 역직렬화 (SceneComponentRef는 아직 연결 불필요)
         DeserializeProperties(Comp, PrimJSON, nullptr);
@@ -982,12 +999,29 @@ void FSceneSaveManager::DeserializePrimitivesToWorld(json::JSON& PrimitivesNode,
         AActor* OwnerActor = ActorIt->second;
         string CompType = CompJSON[SceneKeys::Type].ToString();
 
-        UObject* Obj = FObjectFactory::Get().Create(CompType);
-        if (!Obj || !Obj->IsA<UActorComponent>()) continue;
-        if (Obj->IsA<USceneComponent>()) continue; // 안전장치
+        UActorComponent* Comp = nullptr;
+		for (UActorComponent* ExistingComp : OwnerActor->GetComponents())
+		{
+			if (ExistingComp != nullptr && !ExistingComp->IsA<USceneComponent>() &&
+				UsedNonSceneComponents.find(ExistingComp) == UsedNonSceneComponents.end() &&
+				ExistingComp->GetTypeInfo()->name == CompType)
+			{
+				Comp = ExistingComp;
+				break;
+			}
+		}
 
-        UActorComponent* Comp = static_cast<UActorComponent*>(Obj);
-        OwnerActor->RegisterComponent(Comp);
+		if (Comp == nullptr)
+		{
+			UObject* Obj = FObjectFactory::Get().Create(CompType);
+			if (!Obj || !Obj->IsA<UActorComponent>()) continue;
+			if (Obj->IsA<USceneComponent>()) continue; // 안전장치
+
+			Comp = static_cast<UActorComponent*>(Obj);
+			OwnerActor->RegisterComponent(Comp);
+		}
+
+		UsedNonSceneComponents.insert(Comp);
 
         // SceneComponentRef 포함 모든 프로퍼티 역직렬화
         DeserializeProperties(Comp, CompJSON, &UUIDToSceneComp);
