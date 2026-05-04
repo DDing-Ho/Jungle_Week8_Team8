@@ -62,7 +62,7 @@ private:
 	float HoldDistance = 4.0f;
 	float SizeDistanceScale = 2.0f;
 	float MaxSizeDistanceOffset = 5.0f;
-	float SpringStrength = 70.0f;
-	float Damping = 12.0f;
-	float MaxHoldSpeed = 30.0f;
+	float SpringStrength = 350.0f;
+	float Damping = 22.0f;
+	float MaxHoldSpeed = 120.0f;
 };

@@ -490,17 +490,17 @@
       "Width" : 1.000000
     },
     "2396" : {
-      "Damping" : 12.000000,
+      "Damping" : 22.000000,
       "DefaultHoldDistance" : 4.000000,
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
       "HoldDistance" : 4.000000,
-      "MaxHoldSpeed" : 30.000000,
+      "MaxHoldSpeed" : 120.000000,
       "MaxSizeDistanceOffset" : 5.000000,
       "OwnerRootUUID" : 2142,
       "SizeDistanceScale" : 2.000000,
-      "SpringStrength" : 70.000000,
+      "SpringStrength" : 350.000000,
       "TraceDistance" : 5.000000,
       "Type" : "UPhysicsHandleComponent"
     },

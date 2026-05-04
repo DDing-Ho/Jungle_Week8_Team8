@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
+#include "Math/Quat.h"
 #include "Math/Vector.h"
 
 class UPrimitiveComponent;
@@ -25,6 +26,7 @@ public:
 	void SetBodyKinematic(URigidBodyComponent* Body);
 	void SetBodyDynamic(URigidBodyComponent* Body);
 	void SetBodyTransformFromComponent(URigidBodyComponent* Body);
+	bool MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime);
 	void SetBodyLinearVelocity(URigidBodyComponent* Body, const FVector& Velocity);
 	void AddBodyImpulse(URigidBodyComponent* Body, const FVector& Impulse);
 

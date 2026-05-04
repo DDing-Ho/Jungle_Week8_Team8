@@ -25,8 +25,11 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
+#include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
@@ -155,6 +158,35 @@ namespace
 	FVector AbsVector(const FVector& Vector)
 	{
 		return FVector(std::fabs(Vector.X), std::fabs(Vector.Y), std::fabs(Vector.Z));
+	}
+
+	bool IsBetterShapeCastHit(const JPH::ShapeCastResult& Candidate, const JPH::ShapeCastResult& CurrentBest)
+	{
+		if (Candidate.mFraction > 0.001f && CurrentBest.mFraction <= 0.001f)
+		{
+			return true;
+		}
+
+		if (Candidate.mFraction <= 0.001f && CurrentBest.mFraction > 0.001f)
+		{
+			return false;
+		}
+
+		if (Candidate.mFraction > 0.001f || CurrentBest.mFraction > 0.001f)
+		{
+			return Candidate.mFraction < CurrentBest.mFraction;
+		}
+
+		return Candidate.mPenetrationDepth > CurrentBest.mPenetrationDepth;
+	}
+
+	bool IsFloorLikeStartContact(const FVector& CurrentLocation, const FVector& RequestedDelta, const FVector& HitBodyLocation)
+	{
+		const FVector ToBody = HitBodyLocation - CurrentLocation;
+		const float VerticalSeparation = CurrentLocation.Z - HitBodyLocation.Z;
+		const float HorizontalSeparation = std::sqrt(ToBody.X * ToBody.X + ToBody.Y * ToBody.Y);
+		const bool bBodyClearlyBelow = VerticalSeparation > 0.05f && VerticalSeparation > HorizontalSeparation * 0.1f;
+		return bBodyClearlyBelow && RequestedDelta.Z >= -0.001f;
 	}
 
 	void GatherBlockingShapes(AActor* Actor, TArray<UShapeComponent*>& OutShapes)
@@ -369,6 +401,7 @@ struct FJoltPhysicsSystem::FImpl
 	std::vector<JPH::BodyID> BodyIDs;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> RigidBodies;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> DynamicBodies;
+	std::unordered_map<uint32, FString> BodyDebugNames;
 };
 
 FJoltPhysicsSystem& FJoltPhysicsSystem::Get()
@@ -496,6 +529,7 @@ void FJoltPhysicsSystem::ClearWorld()
 	Impl->BodyIDs.clear();
 	Impl->RigidBodies.clear();
 	Impl->DynamicBodies.clear();
+	Impl->BodyDebugNames.clear();
 }
 
 void FJoltPhysicsSystem::RebuildWorld(UWorld* World)
@@ -562,6 +596,12 @@ void FJoltPhysicsSystem::RegisterStaticBody(UPrimitiveComponent* ShapeComponent)
 	if (!BodyID.IsInvalid())
 	{
 		Impl->BodyIDs.push_back(BodyID);
+		const AActor* Owner = ShapeComponent->GetOwner();
+		Impl->BodyDebugNames[BodyID.GetIndexAndSequenceNumber()] =
+			FString("Static:") +
+			(Owner ? Owner->GetName() : FString("None")) +
+			FString("/") +
+			ShapeComponent->GetName();
 	}
 }
 
@@ -622,6 +662,11 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 	Body->SetJoltBodyHandle(BodyID.GetIndexAndSequenceNumber());
 	Impl->BodyIDs.push_back(BodyID);
 	Impl->RigidBodies[Body] = BodyID;
+	Impl->BodyDebugNames[BodyID.GetIndexAndSequenceNumber()] =
+		FString("Rigid:") +
+		(Body->GetOwner() ? Body->GetOwner()->GetName() : FString("None")) +
+		FString("/") +
+		Body->GetName();
 	if (!bStaticBody)
 	{
 		Impl->DynamicBodies[Body] = BodyID;
@@ -709,6 +754,148 @@ void FJoltPhysicsSystem::SetBodyTransformFromComponent(URigidBodyComponent* Body
 		ToJoltPosition(UpdatedComponent->GetWorldLocation()),
 		ToJoltQuat(GetWorldQuat(UpdatedComponent)),
 		JPH::EActivation::Activate);
+}
+
+bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime)
+{
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
+	{
+		UE_LOG("[PickupDebug] MoveKinematicBody failed precheck: body=%p impl=%d managed=%d dynamic=%d target=(%.3f, %.3f, %.3f)",
+			Body,
+			Impl != nullptr ? 1 : 0,
+			(Impl != nullptr && Body != nullptr && Impl->DynamicBodies.find(Body) != Impl->DynamicBodies.end()) ? 1 : 0,
+			(Body != nullptr && Body->IsDynamicBody()) ? 1 : 0,
+			InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z);
+		return false;
+	}
+
+	const JPH::BodyID BodyID = Impl->DynamicBodies[Body];
+	JPH::BodyInterface& BodyInterface = Impl->PhysicsSystem.GetBodyInterface();
+	const FVector CurrentLocation = Body->GetPhysicsLocation();
+	const FVector RequestedDelta = InOutTargetLocation - CurrentLocation;
+	if (!RequestedDelta.IsNearlyZero())
+	{
+		JPH::RefConst<JPH::Shape> Shape = BodyInterface.GetShape(BodyID);
+		if (Shape != nullptr)
+		{
+			const JPH::RMat44 StartTransform = JPH::RMat44::sRotationTranslation(
+				ToJoltQuat(TargetRotation),
+				ToJoltPosition(CurrentLocation));
+			const JPH::RShapeCast ShapeCast = JPH::RShapeCast::sFromWorldTransform(
+				Shape,
+				JPH::Vec3::sReplicate(1.0f),
+				StartTransform,
+				ToJoltVector(RequestedDelta));
+			JPH::ShapeCastSettings Settings;
+			Settings.mReturnDeepestPoint = true;
+			JPH::IgnoreSingleBodyFilter BodyFilter(BodyID);
+			JPH::AllHitCollisionCollector<JPH::CastShapeCollector> Collector;
+			Impl->PhysicsSystem.GetNarrowPhaseQuery().CastShape(
+				ShapeCast,
+				Settings,
+				ToJoltPosition(CurrentLocation),
+				Collector,
+				{},
+				{},
+				BodyFilter);
+
+			bool bHasBlockingHit = false;
+			JPH::ShapeCastResult BlockingHit;
+			if (Collector.HadHit())
+			{
+				for (const JPH::ShapeCastResult& Hit : Collector.mHits)
+				{
+					if (Hit.mFraction >= 1.0f)
+					{
+						continue;
+					}
+
+					if (Hit.mFraction <= 0.001f)
+					{
+						const JPH::BodyID HitBodyID = Hit.mBodyID2;
+						if (!HitBodyID.IsInvalid())
+						{
+							const FVector HitBodyLocation = ToEngineVector(BodyInterface.GetPosition(HitBodyID));
+							if (IsFloorLikeStartContact(CurrentLocation, RequestedDelta, HitBodyLocation))
+							{
+								continue;
+							}
+						}
+
+						const FVector ContactNormal = (ToEngineVector(Hit.mPenetrationAxis) * -1.0f).GetSafeNormal();
+						const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, ContactNormal);
+						if (ContactNormal.IsNearlyZero() || IntoSurfaceDistance >= 0.0f)
+						{
+							continue;
+						}
+					}
+
+					if (!bHasBlockingHit || IsBetterShapeCastHit(Hit, BlockingHit))
+					{
+						BlockingHit = Hit;
+						bHasBlockingHit = true;
+					}
+				}
+			}
+
+			if (bHasBlockingHit)
+			{
+				const FVector HitAxis = ToEngineVector(BlockingHit.mPenetrationAxis);
+				const uint32 HitBodyRaw = BlockingHit.mBodyID2.GetIndexAndSequenceNumber();
+				const auto HitNameIt = Impl->BodyDebugNames.find(HitBodyRaw);
+				const FString HitName = HitNameIt != Impl->BodyDebugNames.end() ? HitNameIt->second : FString("Unknown");
+				UE_LOG("[PickupDebug] MoveKinematicBody cast hit: actor=%s body=%p hits=%d current=(%.3f, %.3f, %.3f) target=(%.3f, %.3f, %.3f) delta=(%.3f, %.3f, %.3f) fraction=%.4f depth=%.4f axis=(%.3f, %.3f, %.3f)",
+					Body->GetOwner() ? Body->GetOwner()->GetName().c_str() : "None",
+					Body,
+					static_cast<int32>(Collector.mHits.size()),
+					CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z,
+					InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z,
+					RequestedDelta.X, RequestedDelta.Y, RequestedDelta.Z,
+					BlockingHit.mFraction,
+					BlockingHit.mPenetrationDepth,
+					HitAxis.X, HitAxis.Y, HitAxis.Z);
+				UE_LOG("[PickupDebug] MoveKinematicBody hit target: hitBodyRaw=%u hitName=%s subShape1=%u subShape2=%u",
+					HitBodyRaw,
+					HitName.c_str(),
+					BlockingHit.mSubShapeID1.GetValue(),
+					BlockingHit.mSubShapeID2.GetValue());
+				const JPH::Vec3 LocalExtent = Shape->GetLocalBounds().GetExtent();
+				const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
+				const float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
+				const float RequestedDistance = RequestedDelta.Size();
+				const float SafetyFraction = RequestedDistance > 0.001f ? SafetyDistance / RequestedDistance : 1.0f;
+				if (BlockingHit.mFraction <= 0.001f)
+				{
+					const FVector ContactNormal = (ToEngineVector(BlockingHit.mPenetrationAxis) * -1.0f).GetSafeNormal();
+					const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, ContactNormal);
+					if (!ContactNormal.IsNearlyZero() && IntoSurfaceDistance < 0.0f)
+					{
+						const FVector SlideDelta = RequestedDelta - ContactNormal * IntoSurfaceDistance;
+						InOutTargetLocation = CurrentLocation + SlideDelta;
+					}
+				}
+				else
+				{
+					const float AllowedFraction = std::max(0.0f, BlockingHit.mFraction - SafetyFraction);
+					InOutTargetLocation = CurrentLocation + RequestedDelta * AllowedFraction;
+				}
+			}
+		}
+	}
+
+	const float MoveDeltaTime = std::max(DeltaTime, 1.0f / 240.0f);
+	BodyInterface.MoveKinematic(
+		BodyID,
+		ToJoltPosition(InOutTargetLocation),
+		ToJoltQuat(TargetRotation),
+		MoveDeltaTime);
+	UE_LOG("[PickupDebug] MoveKinematicBody move: actor=%s body=%p current=(%.3f, %.3f, %.3f) finalTarget=(%.3f, %.3f, %.3f) dt=%.4f",
+		Body->GetOwner() ? Body->GetOwner()->GetName().c_str() : "None",
+		Body,
+		CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z,
+		InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z,
+		MoveDeltaTime);
+	return true;
 }
 
 void FJoltPhysicsSystem::SetBodyLinearVelocity(URigidBodyComponent* Body, const FVector& Velocity)
