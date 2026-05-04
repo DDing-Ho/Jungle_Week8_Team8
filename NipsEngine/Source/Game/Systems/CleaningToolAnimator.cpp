@@ -1,4 +1,4 @@
-#include "Game/Systems/CleaningToolAnimator.h"
+﻿#include "Game/Systems/CleaningToolAnimator.h"
 
 #include <algorithm>
 #include <cmath>

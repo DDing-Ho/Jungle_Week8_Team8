@@ -1,4 +1,4 @@
-#include "Game/UI/DialoguePanel.h"
+﻿#include "Game/UI/DialoguePanel.h"
 
 #include <algorithm>
 

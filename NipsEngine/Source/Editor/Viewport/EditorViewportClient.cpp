@@ -228,7 +228,16 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	RouteContext.bControlLocked = bControlLocked || bUIWantsMouse;
 	RouteContext.bInputActive = !bUIWantsMouse;
 	RouteContext.bHasActiveCamera = bHasCamera;
+	RouteContext.bUseCustomCursor = GameUISystem::Get().WantsCustomCursor();
 	InputRouter.Tick(DeltaTime, RouteContext);
+}
+
+void FEditorViewportClient::LateTick(float DeltaTime)
+{
+	if (World && World->GetWorldType() == EWorldType::PIE)
+	{
+		GamePlayerController.LateTick(DeltaTime);
+	}
 }
 
 void FEditorViewportClient::BuildSceneView(FSceneView& OutView) const

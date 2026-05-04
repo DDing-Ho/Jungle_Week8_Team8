@@ -45,6 +45,7 @@ public:
 	void Shutdown();
 	void UpdateHoverStates();
 	void Tick(float DeltaTime);
+	void LateTick(float DeltaTime);
 	void OnWindowResized(uint32 Width, uint32 Height);
 	void SetHostRect(const FViewportRect& InHostRect);
 	

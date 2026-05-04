@@ -298,7 +298,7 @@ void UDecalComponent::PaintMask(FVector2 UV, float Radius, uint8 Value)
 
 			if (DistSq <= RadiusSq)
 			{
-                float Distance = std::sqrt(DistSq);
+                float Distance = static_cast<float>(std::sqrt(DistSq));
 				float NormalizedDistance = Distance / PixelRadius;
                 float Falloff = 1.0f - NormalizedDistance;
 				Falloff = std::pow(Falloff, 2.0f);

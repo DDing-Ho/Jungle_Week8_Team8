@@ -10,6 +10,7 @@ void FD3DDevice::Create(HWND InHWindow)
 	CreateDeviceAndSwapChain(InHWindow);
 	CreateFrameBuffer();
 	CreateDepthStencilBuffer();
+	PresentStartupFrame();
 }
 
 void FD3DDevice::Release()
@@ -41,6 +42,21 @@ void FD3DDevice::BeginFrame()
 
 void FD3DDevice::EndFrame()
 {
+	UINT PresentFlags = bTearingSupported ? DXGI_PRESENT_ALLOW_TEARING : 0;
+	SwapChain->Present(0, PresentFlags);
+}
+
+void FD3DDevice::PresentStartupFrame()
+{
+	if (!DeviceContext || !FrameBufferRTV || !SwapChain)
+	{
+		return;
+	}
+
+	const float StartupClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	DeviceContext->ClearRenderTargetView(FrameBufferRTV.Get(), StartupClearColor);
+	DeviceContext->Flush();
+
 	UINT PresentFlags = bTearingSupported ? DXGI_PRESENT_ALLOW_TEARING : 0;
 	SwapChain->Present(0, PresentFlags);
 }

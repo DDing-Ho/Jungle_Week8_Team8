@@ -99,7 +99,13 @@ void FGameViewportClient::Tick(float DeltaTime)
 	RouteContext.bControlLocked = bUIWantsMouse;
 	RouteContext.bInputActive = bInputActive && !bUIWantsMouse;
 	RouteContext.bHasActiveCamera = ActiveCamera != nullptr;
+	RouteContext.bUseCustomCursor = GameUISystem::Get().WantsCustomCursor();
 	InputRouter.Tick(DeltaTime, RouteContext);
+}
+
+void FGameViewportClient::LateTick(float DeltaTime)
+{
+	PlayerController.LateTick(DeltaTime);
 }
 
 // 카메라 활성화 여부에 따라 적절한 카메라를 선택하여 렌더러에 넘겨줄 FSceneView 구조체의 내용을 채웁니다.

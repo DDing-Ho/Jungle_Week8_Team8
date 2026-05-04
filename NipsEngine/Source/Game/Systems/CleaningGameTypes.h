@@ -23,17 +23,25 @@ enum class EGameItemType
 	CleaningTool,
 };
 
+enum class EGameItemEndingRole
+{
+	None,
+	Bad,
+	Normal,
+	Good,
+};
+
 struct FGameItemData
 {
 	FString ItemId;
 	FString DisplayName;
 	EGameItemType ItemType = EGameItemType::StoryItem;
+	EGameItemEndingRole EndingRole = EGameItemEndingRole::None;
 	FString DescriptionWhenFound;
 	FString DescriptionWhenKept;
 	FString DescriptionWhenDiscarded;
 	FString IconPath;
 	bool bCanClassify = true;
-	bool bRequiredForSuccessEnding = false;
 	TArray<FString> StoryFlags;
 };
 
@@ -68,7 +76,7 @@ struct FCleaningToolUseResult
 struct FEndingResult
 {
 	FString EndingId;
-	bool bIsSuccess = false;
-	TArray<FString> MissingRequiredItemIds;
-	TArray<FString> KeptFailureItemIds;
+	TArray<FString> KeptBadItemIds;
+	TArray<FString> KeptNormalItemIds;
+	TArray<FString> KeptGoodItemIds;
 };

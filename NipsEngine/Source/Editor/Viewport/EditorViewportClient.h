@@ -91,6 +91,7 @@ public:
 	void SyncCameraTarget() { EditorWorldController.ResetTargetLocation(); }
 
 	void Tick(float DeltaTime) override;
+	void LateTick(float DeltaTime);
 	void BuildSceneView(FSceneView& OutView) const override;
 
 	// Get / Set

@@ -17,6 +17,7 @@ public:
 	void Initialize(FWindowsWindow* InWindow) override;
 	void SetViewportSize(float InWidth, float InHeight) override;
 	void Tick(float DeltaTime) override;
+	void LateTick(float DeltaTime);
 	void BuildSceneView(FSceneView& OutView) const override;
 
 	void SetWorld(UWorld* InWorld);
