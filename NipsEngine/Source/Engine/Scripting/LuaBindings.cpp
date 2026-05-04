@@ -4,9 +4,11 @@
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/DecalComponent.h"
+#include "Component/SubUVComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Math/Vector.h"
 #include "Math/Vector2.h"
+#include "Math/Vector4.h"
 #include "Object/Object.h"
 #include "Core/CollisionTypes.h"
 #include "Core/Logger.h"
@@ -175,6 +177,16 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set_function("SetElapsedTime", [](float Seconds)
 	{
 		GameUISystem::Get().SetElapsedTime(Seconds);
+	});
+
+	Lua.set_function("SetInteractionHint", [](const std::string& HintName)
+	{
+		if      (HintName == "None")    GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
+		else if (HintName == "Pickup")  GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
+		else if (HintName == "Drop")    GameUISystem::Get().SetInteractionHint(EInteractionHintType::Drop);
+		else if (HintName == "Keep")    GameUISystem::Get().SetInteractionHint(EInteractionHintType::Keep);
+		else if (HintName == "Discard") GameUISystem::Get().SetInteractionHint(EInteractionHintType::Discard);
+		else if (HintName == "Wash")    GameUISystem::Get().SetInteractionHint(EInteractionHintType::Wash);
 	});
 
 	Lua.set_function("SetPauseMenuOpen", [](bool bOpen)
@@ -408,6 +420,7 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set("KEY_SPACE",  0x20);
 	Lua.set("KEY_ESCAPE", 0x1B);
 	Lua.set("KEY_P",      0x50);
+	Lua.set("KEY_R",      0x52);
 	Lua.set("KEY_TAB",    0x09);
 	Lua.set("KEY_ENTER",  0x0D);
 
@@ -492,5 +505,44 @@ void RegisterLuaBindings(sol::state& Lua)
 			}
 		}
 	);
+
+	// -------------------------------------------------------
+	// SubUV Component (오염도 시각화용 색상 틴트)
+	// -------------------------------------------------------
+	Lua.new_usertype<USubUVComponent>(
+		"USubUVComponent",
+		"SetTintColor", [](USubUVComponent& Comp, float R, float G, float B)
+		{
+			Comp.SetTintColor(FVector4(R, G, B, 1.0f));
+		},
+		"GetTintR", [](USubUVComponent& Comp) { return Comp.GetTintColor().X; },
+		"GetTintG", [](USubUVComponent& Comp) { return Comp.GetTintColor().Y; },
+		"GetTintB", [](USubUVComponent& Comp) { return Comp.GetTintColor().Z; }
+	);
+
+	// 액터에서 첫 번째 SubUVComponent 찾기
+	Lua.set_function("GetSubUVComponent", [](AActor* Actor) -> USubUVComponent*
+	{
+		if (!Actor) return nullptr;
+		for (UActorComponent* Comp : Actor->GetComponents())
+		{
+			if (USubUVComponent* SubUV = Cast<USubUVComponent>(Comp))
+				return SubUV;
+		}
+		return nullptr;
+	});
+
+	// 액터의 모든 SubUVComponent에 동시에 색상 적용 (오염도 시각화용)
+	Lua.set_function("SetAllSubUVTints", [](AActor* Actor, float R, float G, float B)
+	{
+		if (!Actor) return;
+		FVector4 Tint(R, G, B, 1.0f);
+		for (UActorComponent* Comp : Actor->GetComponents())
+		{
+			if (USubUVComponent* SubUV = Cast<USubUVComponent>(Comp))
+				SubUV->SetTintColor(Tint);
+		}
+	});
+
 }
 #endif

@@ -1253,6 +1253,10 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
+	if (BoxType == EItemDecisionBoxType::DiscardBox && ItemId == "crumpled_paper")
+	{
+		GGameContext::Get().MarkTrashDiscardedForMission();
+	}
 	GGameContext::Get().RefreshCleanProgressFromDecals();
 	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 

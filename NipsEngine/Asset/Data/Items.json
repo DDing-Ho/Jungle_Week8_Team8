@@ -30,7 +30,7 @@
       "keptDesc": "포장이 뜯어진 초콜릿 바는 마음이 걸려 보관하기로 했다.",
       "discardedDesc": "뜯어져 있는 초콜릿은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Chocolate_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/chocolate_ItemDetail.png",
       "endingRole": "Bad",
       "storyFlags": [
         "found_chocolate"

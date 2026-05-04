@@ -32,6 +32,7 @@ void USubUVComponent::PostDuplicate(UObject* Original)
     TimeAccumulator = Orig->TimeAccumulator;
     bLoop = Orig->bLoop;
     bIsExecute = Orig->bIsExecute;
+    TintColor = Orig->TintColor;
 }
 
 void USubUVComponent::Serialize(FArchive& Ar)

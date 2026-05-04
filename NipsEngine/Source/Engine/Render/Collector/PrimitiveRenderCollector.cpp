@@ -230,13 +230,14 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 		FRenderCommand Cmd = {};
 		Cmd.PerObjectConstants = FPerObjectConstants{
 			MakeViewBillboardMatrix(Primitive, RenderBus),
-			FColor::White().ToVector4()
+			SubUVComp->GetTintColor()
 		};
 		Cmd.Type = ERenderCommandType::SubUV;
 		Cmd.Constants.SubUV.Particle = Particle;
 		Cmd.Constants.SubUV.FrameIndex = SubUVComp->GetFrameIndex();
 		Cmd.Constants.SubUV.Width = SubUVComp->GetWidth();
 		Cmd.Constants.SubUV.Height = SubUVComp->GetHeight();
+		Cmd.Constants.SubUV.TintColor = SubUVComp->GetTintColor();
 
 		RenderBus.AddCommand(ERenderPass::SubUV, Cmd);
 		break;
