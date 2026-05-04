@@ -6,10 +6,21 @@ REGISTER_FACTORY(UActorComponent)
 
 void UActorComponent::BeginPlay()
 {
+    if (bHasBegunPlay)
+    {
+        return;
+    }
+
+    bHasBegunPlay = true;
     if (bAutoActivate)
     {
         Activate();
     }
+}
+
+void UActorComponent::EndPlay()
+{
+    bHasBegunPlay = false;
 }
 
 void UActorComponent::Activate()

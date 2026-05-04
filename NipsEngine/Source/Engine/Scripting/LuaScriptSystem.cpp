@@ -1,8 +1,9 @@
-#include "Scripting/LuaScriptSystem.h"
+﻿#include "Scripting/LuaScriptSystem.h"
 
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
+#include "Engine/Viewport/ViewportCamera.h"
 #include "Scripting/LuaBindings.h"
 #include "Core/Logger.h"
 
@@ -236,6 +237,23 @@ void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptS
 	State.Lua->set_function("GetGameState", [this](sol::this_state LuaState, const FString& Key)
 	{
 		return GetGameStateValue(Key, LuaState);
+	});
+
+	State.Lua->set_function("RaycastCenter", [Component](float MaxDistance) -> FHitResult
+	{
+		FHitResult Hit;
+		const AActor* Owner = Component->GetOwner();
+		UWorld* World = Owner ? Owner->GetFocusedWorld() : nullptr;
+		if (!World) return Hit;
+		FViewportCamera* Cam = World->GetActiveCamera();
+		if (!Cam) return Hit;
+
+		float W = static_cast<float>(Cam->GetWidth());
+		float H = static_cast<float>(Cam->GetHeight());
+		FRay Ray = Cam->DeprojectScreenToWorld(W * 0.5f, H * 0.5f, W, H);
+
+		World->LineTraceSingle(Ray, MaxDistance, Hit, Owner);
+		return Hit;
 	});
 }
 
@@ -565,6 +583,42 @@ void FLuaScriptSystem::ReportCallError(ULuaScriptComponent* Component, const cha
 	}
 }
 #endif
+
+bool FLuaScriptSystem::SetStringGameStateValue(const FString& Key, const FString& Value)
+{
+#if WITH_LUA
+	if (Key.empty())
+	{
+		return false;
+	}
+
+	FGameStateValue StoredValue;
+	StoredValue.Type = FGameStateValue::EType::String;
+	StoredValue.StringValue = Value;
+	GameState[Key] = StoredValue;
+	return true;
+#else
+	(void)Key;
+	(void)Value;
+	return false;
+#endif
+}
+
+FString FLuaScriptSystem::GetStringGameStateValue(const FString& Key) const
+{
+#if WITH_LUA
+	auto It = GameState.find(Key);
+	if (It == GameState.end() || It->second.Type != FGameStateValue::EType::String)
+	{
+		return "";
+	}
+
+	return It->second.StringValue;
+#else
+	(void)Key;
+	return "";
+#endif
+}
 
 void FLuaScriptSystem::SetLastError(const FString& Error)
 {

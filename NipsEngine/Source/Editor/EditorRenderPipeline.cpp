@@ -8,6 +8,9 @@
 #include "Core/Logging/GPUProfiler.h"
 #include "Runtime/SceneView.h"
 #include "Engine/Component/GizmoComponent.h"
+#include "GameFramework/AActor.h"
+#include "Game/UI/GameUISystem.h"
+#include "Math/Vector4.h"
 
 FEditorRenderPipeline::FEditorRenderPipeline(UEditorEngine* InEditor, FRenderer& InRenderer) : Editor(InEditor)
 {
@@ -56,6 +59,7 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 	UWorld* World = VC->GetFocusedWorld();
 	const FEditorSettings& Settings = Editor->GetSettings();
 	const FShowFlags& ShowFlags = Settings.ShowFlags;
+	const bool bEditingViewport = VC->GetPlayState() == EViewportPlayState::Editing;
 	const EViewMode ViewMode = SceneView.ViewMode;
 	const FFrustum& ViewFrustum = SceneView.CameraFrustum;
 
@@ -72,11 +76,12 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 		DebugShowFlags.bAudioRange = false;
 	}
 	Collector.CollectDebugBounds(World, DebugShowFlags, ViewMode, Bus);
-	Collector.CollectGrid(Settings.GridSpacing, Settings.GridHalfLineCount, Bus, SceneView.bOrthographic);
 
-	// 뷰포트가 편집 모드일 때만 기즈모·선택 오버레이를 그립니다.
-	if (VC->GetPlayState() == EViewportPlayState::Editing)
+	// 뷰포트가 편집 모드일 때만 그리드·축선·기즈모·선택 오버레이를 그립니다.
+	if (bEditingViewport)
 	{
+		Collector.CollectGrid(Settings.GridSpacing, Settings.GridHalfLineCount, Bus, SceneView.bOrthographic);
+
 		if (UGizmoComponent* Gizmo = Editor->GetGizmo())
 		{
 			if (SceneView.bOrthographic)
@@ -88,10 +93,29 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 		Collector.CollectGizmo(Editor->GetGizmo(), ShowFlags, Bus, VC->GetViewportState()->bHovered);
 		Collector.CollectSelection(Editor->GetSelectionManager().GetSelectedActors(), ShowFlags, ViewMode, Bus);
 	}
+	else if (AActor* HoveredActor = VC->GetGamePlayerController().GetHoveredPickableActor())
+	{
+		TArray<AActor*> HoveredActors = { HoveredActor };
+		Collector.CollectOutline(HoveredActors, FVector4(1.0f, 0.92f, 0.05f, 1.0f), 5.0f, Bus);
+	}
+	if (!bEditingViewport)
+	{
+		if (AActor* HeldActor = VC->GetGamePlayerController().GetHeldNonCleaningToolActor())
+		{
+			TArray<AActor*> HeldActors = { HeldActor };
+			Collector.CollectOutline(HeldActors, FVector4(1.0f, 0.05f, 0.02f, 1.0f), 5.0f, Bus);
+		}
+	}
 
 	// CPU 배처 데이터 준비 → GPU 드로우 (SetSubViewport 영역에만 출력됨)
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);
+
+	if (VC->GetPlayState() != EViewportPlayState::Editing &&
+		ViewportIndex == Editor->GetViewportLayout().GetLastFocusedViewportIndex())
+	{
+		GameUISystem::Get().RenderToCurrentTarget(EUIRenderMode::Play, SceneView.ViewRect.Width, SceneView.ViewRect.Height);
+	}
 }
 
 // 지정한 에디터 뷰포트의 렌더 타겟과 RenderBus 기본 상태를 준비합니다.

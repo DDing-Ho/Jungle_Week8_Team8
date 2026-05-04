@@ -54,9 +54,35 @@ void UPrimitiveComponent::SetVisibility(bool bVisible)
     NotifySpatialIndexDirty();
 }
 
+void UPrimitiveComponent::SetSceneQueryEnabled(bool bEnabled)
+{
+    if (bSceneQueryEnabled == bEnabled)
+    {
+        return;
+    }
+
+    bSceneQueryEnabled = bEnabled;
+
+    if (!bSceneQueryEnabled)
+    {
+        if (bRegistered)
+        {
+            OnUnregister();
+        }
+        return;
+    }
+
+    if (!bRegistered)
+    {
+        OnRegister();
+    }
+
+    NotifySpatialIndexDirty();
+}
+
 bool UPrimitiveComponent::Raycast(const FRay& Ray, FHitResult& OutHitResult)
 {
-    if (!bIsVisible || !IsRaycastTarget())
+    if (!bIsVisible || !bSceneQueryEnabled || !IsRaycastTarget())
     {
         return false;
     }
@@ -131,7 +157,7 @@ void UPrimitiveComponent::OnTransformDirty()
 
 void UPrimitiveComponent::OnRegister()
 {
-    if (!Owner || bRegistered) { return; }
+    if (!Owner || bRegistered || !bSceneQueryEnabled) { return; }
     UWorld* World = Owner->GetFocusedWorld();
     if (!World) { return; }
 
@@ -152,6 +178,11 @@ void UPrimitiveComponent::OnUnregister()
 
 void UPrimitiveComponent::NotifySpatialIndexDirty() const
 {
+    if (!bSceneQueryEnabled)
+    {
+        return;
+    }
+
     AActor* Owner = GetOwner();
     if (Owner == nullptr)
     {

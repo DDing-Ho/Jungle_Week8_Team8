@@ -36,6 +36,8 @@ public:
 
 	bool IsLuaEnabled() const { return bLuaEnabled; }
 	const FString& GetLastError() const { return LastError; }
+	bool SetStringGameStateValue(const FString& Key, const FString& Value);
+	FString GetStringGameStateValue(const FString& Key) const;
 
 private:
 	FLuaScriptSystem();

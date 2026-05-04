@@ -5,6 +5,7 @@
 #include "Render/Resource/Material.h"
 
 class AActor;
+class USceneComponent;
 #include "Render/Resource/VertexTypes.h"
 
 class UGizmoComponent : public UPrimitiveComponent
@@ -19,6 +20,7 @@ private:
 	};
 
 	AActor* TargetActor = nullptr;
+	USceneComponent* TargetComponent = nullptr;
 	const TArray<AActor*>* AllSelectedActors = nullptr;
 	EGizmoMode CurMode = EGizmoMode::Translate;
 	FVector LastIntersectionLocation;
@@ -39,6 +41,9 @@ private:
 	void TranslateTarget(float DragAmount);
 	void RotateTarget(float DragAmount);
 	void ScaleTarget(float DragAmount);
+	USceneComponent* GetEffectiveTargetComponent() const;
+	FVector GetTargetLocation() const;
+	FVector GetTargetRotation() const;
 
 	void UpdateLinearDrag(const FRay& Ray);
 	void UpdateAngularDrag(const FRay& Ray);
@@ -56,12 +61,14 @@ public:
 	FVector GetVectorForAxis(int32 Axis);
 	void RenderGizmo() {}
 	void SetTarget(AActor* NewTarget);
+	void SetTargetComponent(USceneComponent* NewTargetComponent);
 	void SetSelectedActors(const TArray<AActor*>* InSelectedActors) { AllSelectedActors = InSelectedActors; }
 	inline void SetHolding(bool bHold) { bIsHolding = bHold; }
 	inline bool IsHolding() const { return bIsHolding; }
 	inline bool IsHovered() const { return SelectedAxis != -1; }
 	inline bool HasTarget() const { return TargetActor != nullptr; }
 	inline AActor* GetTarget() const { return TargetActor; }
+	inline USceneComponent* GetTargetComponent() const { return TargetComponent; }
 	inline int32 GetSelectedAxis() const { return SelectedAxis; }
 
 	inline void SetPressedOnHandle(bool bPressed) { bPressedOnHandle = bPressed; }

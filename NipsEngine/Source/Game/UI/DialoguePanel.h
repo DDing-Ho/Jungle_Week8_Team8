@@ -21,6 +21,7 @@ class DialoguePanel
 {
 public:
     static void Render(EUIRenderMode Mode);
+    static void Tick(float DeltaTime, EUIRenderMode Mode);
 
     // 즉시 표시 (기존 큐 초기화)
     static void Show(const char* Speaker, const char* Text);
@@ -29,6 +30,10 @@ public:
     // 대화창 닫기 (큐 포함)
     static void Hide();
     static bool IsActive();
+    static bool AdvanceOrSkip();
+    static bool IsTextComplete();
+    static const std::string& GetSpeaker();
+    static std::string GetVisibleText();
 
 private:
     static void StartEntry(const FDialogueEntry& Entry);

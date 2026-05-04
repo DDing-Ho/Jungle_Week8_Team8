@@ -62,30 +62,56 @@ bool FItemSystem::DiscoverItem(const FString& ItemId)
 
 bool FItemSystem::KeepItem(const FString& ItemId)
 {
+	return ClassifyItem(ItemId, EGameItemDisposition::Kept);
+}
+
+bool FItemSystem::DiscardItem(const FString& ItemId)
+{
+	return ClassifyItem(ItemId, EGameItemDisposition::Discarded);
+}
+
+bool FItemSystem::ClassifyItem(const FString& ItemId, EGameItemDisposition Disposition)
+{
 	const FGameItemData* ItemData = FindItemData(ItemId);
-	if (!ItemData)
+	if (!ItemData || !ItemData->bCanClassify)
 	{
 		return false;
 	}
 
 	GGameContext& Context = GGameContext::Get();
-	const bool bChanged = Context.MarkItemKept(ItemId);
-	for (const FString& Flag : ItemData->StoryFlags)
+	switch (Disposition)
 	{
-		Context.UnlockStoryFlag(Flag);
+	case EGameItemDisposition::Kept:
+	{
+		const bool bChanged = Context.MarkItemKept(ItemId);
+		for (const FString& Flag : ItemData->StoryFlags)
+		{
+			Context.UnlockStoryFlag(Flag);
+		}
+		return bChanged;
 	}
 
-	return bChanged;
-}
+	case EGameItemDisposition::Discarded:
+		return Context.MarkItemDiscarded(ItemId);
 
-bool FItemSystem::DiscardItem(const FString& ItemId)
-{
-	if (!FindItemData(ItemId))
-	{
+	default:
 		return false;
 	}
+}
 
-	return GGameContext::Get().MarkItemDiscarded(ItemId);
+bool FItemSystem::PlaceItemInDecisionBox(const FString& ItemId, EItemDecisionBoxType BoxType)
+{
+	switch (BoxType)
+	{
+	case EItemDecisionBoxType::KeepBox:
+		return ClassifyItem(ItemId, EGameItemDisposition::Kept);
+
+	case EItemDecisionBoxType::DiscardBox:
+		return ClassifyItem(ItemId, EGameItemDisposition::Discarded);
+
+	default:
+		return false;
+	}
 }
 
 bool FItemSystem::InspectItem(const FString& ItemId)

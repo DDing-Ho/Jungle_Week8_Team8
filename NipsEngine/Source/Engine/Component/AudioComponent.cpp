@@ -33,6 +33,7 @@ void UAudioComponent::EndPlay()
 {
 	Stop();
 	StopPreview();
+	USceneComponent::EndPlay();
 }
 
 void UAudioComponent::OnUnregister()

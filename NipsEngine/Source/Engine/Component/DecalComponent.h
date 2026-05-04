@@ -42,6 +42,14 @@ public:
 
 	bool SupportsOutline() const override { return true; }
 
+	// GameJam
+    void InitializeMask(uint32 InWidth, uint32 InHeight);
+    void PaintMask(FVector2 UV, float Radius, uint8 Value);
+	void UpdateMaskTexture();
+	ID3D11ShaderResourceView* GetMaskSRV() const { return MaskSRV.Get(); }
+    float GetCleanPercentage() const;
+    bool WorldPosToDecalUV(const FVector& WorldPos, FVector2& OutUV) const;
+
 protected:
 	void TickComponent(float DeltaTime) override;
 
@@ -61,4 +69,16 @@ private:
 	bool bDestroyOwnerAfterFade = false;
 
 	float LifeTime = 0.0f;
+
+
+	// GameJam
+    TArray<uint8_t> MaskPixels;
+
+	uint32 MaskWidth = 256;
+    uint32 MaskHeight = 256;
+
+	TComPtr<ID3D11Texture2D> MaskTexture;
+	TComPtr<ID3D11ShaderResourceView> MaskSRV;
+
+	bool bMaskDirty = false;
 };

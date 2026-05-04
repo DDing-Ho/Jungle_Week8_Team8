@@ -1,6 +1,7 @@
 ﻿#include "Engine/Input/InputRouter.h"
 
 #include "Engine/Input/IInputController.h"
+#include "Engine/Input/IUIInputHandler.h"
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Math/Utils.h"
@@ -385,6 +386,20 @@ void FInputRouter::TickKeyboardInput(const FInputRouteContext& Context)
 		}
 	}
 
+	if (UIInputHandler && (WorldType == EWorldType::Game || WorldType == EWorldType::PIE))
+	{
+		for (int VK = 0; VK < 256; ++VK)
+		{
+			if (!IsRoutableKeyboardKey(VK))
+				continue;
+
+			if (IS.GetKeyDown(VK) && UIInputHandler->OnUIKeyDown(VK))
+				return;
+			if (IS.GetKeyUp(VK) && UIInputHandler->OnUIKeyUp(VK))
+				return;
+		}
+	}
+
 	if (WorldType == EWorldType::Game && Context.bControlLocked)
 	{
 		for (int VK = 0; VK < 256; ++VK)
@@ -447,12 +462,6 @@ void FInputRouter::TickMouseInput(const FInputRouteContext& Context)
 	if (IS.GetGuiInputState().bBlockViewportInput)
 		return;
 
-	if (WorldType == EWorldType::Game && !Context.bHasActiveCamera && !Context.bInputActive)
-		return;
-
-	if (Context.bControlLocked)
-		return;
-
 	POINT MousePoint = IS.GetMousePos();
 	if (Context.Window)
 	{
@@ -463,6 +472,25 @@ void FInputRouter::TickMouseInput(const FInputRouteContext& Context)
 	const float LocalY = static_cast<float>(MousePoint.y) - static_cast<float>(Context.ViewportRect.Y);
 	const float DeltaX = static_cast<float>(IS.MouseDeltaX());
 	const float DeltaY = static_cast<float>(IS.MouseDeltaY());
+
+	if (UIInputHandler && (WorldType == EWorldType::Game || WorldType == EWorldType::PIE))
+	{
+		bool bUIConsumed = false;
+		if (IS.MouseMoved())
+			bUIConsumed |= UIInputHandler->OnUIMouseMove(LocalX, LocalY);
+		if (IS.GetKeyDown(VK_LBUTTON))
+			bUIConsumed |= UIInputHandler->OnUIMouseButtonDown(0, LocalX, LocalY);
+		if (IS.GetKeyUp(VK_LBUTTON))
+			bUIConsumed |= UIInputHandler->OnUIMouseButtonUp(0, LocalX, LocalY);
+		if (bUIConsumed)
+			return;
+	}
+
+	if (WorldType == EWorldType::Game && !Context.bHasActiveCamera && !Context.bInputActive)
+		return;
+
+	if (Context.bControlLocked)
+		return;
 
 	if (IS.MouseMoved())
 	{

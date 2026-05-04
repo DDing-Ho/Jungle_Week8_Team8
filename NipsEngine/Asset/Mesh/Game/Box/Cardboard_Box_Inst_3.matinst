@@ -3,7 +3,7 @@
         "OverridedParams" : [{
             "Name" : "EmissiveColor",
             "Type" : "Vector3",
-            "Value" : [0.831224, 0.659367, 0.659367]
+            "Value" : [0.898734, 0.409550, 0.409550]
           }],
         "Parent" : "Box_4"
       }

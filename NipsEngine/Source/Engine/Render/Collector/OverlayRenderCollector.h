@@ -18,6 +18,7 @@ public:
 	void Release() { MeshBufferManager = nullptr; }
 
 	void CollectSelection(const TArray<AActor*>& SelectedActors, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus, FLineBatcher* LineBatcher);
+	void CollectOutline(const TArray<AActor*>& Actors, const FVector4& OutlineColor, float OutlineThicknessPixels, FRenderBus& RenderBus);
 	void CollectDebugBounds(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus, FLineBatcher* LineBatcher);
 	void CollectGizmo(UGizmoComponent* Gizmo, const FShowFlags& ShowFlags, FRenderBus& RenderBus, bool bIsActiveOperation);
 	void CollectGrid(float GridSpacing, int32 GridHalfLineCount, FRenderBus& RenderBus, bool bOrthographic = false);

@@ -1,4 +1,5 @@
 ﻿#include "Component/CameraComponent.h"
+#include <algorithm>
 #include <cmath>
 
 DEFINE_CLASS(UCameraComponent, USceneComponent)
@@ -6,41 +7,32 @@ REGISTER_FACTORY(UCameraComponent)
 
 FMatrix UCameraComponent::GetViewMatrix() const
 {
-	UpdateWorldMatrix();
+	const FVector Location = GetWorldLocation();
+	const FVector Forward = GetForwardVector().GetSafeNormal();
+	const FVector Up = GetUpVector().GetSafeNormal();
+	if (Forward.IsNearlyZero() || Up.IsNearlyZero())
+	{
+		return FMatrix::Identity;
+	}
 
-	const FTransform WorldTransform = GetWorldTransform();
-	const FTransform ViewSource(
-		WorldTransform.GetRotation(),
-		WorldTransform.GetTranslation(),
-		FVector::OneVector
-	);
-	return ViewSource.ToInverseMatrixWithScale();
+	return FMatrix::MakeViewLookAtLH(Location, Location + Forward, Up);
 }
 
 FMatrix UCameraComponent::GetProjectionMatrix() const
 {
-	float Cot = 1.0f / tanf(CameraState.FOV * 0.5f);
-	float Denom = CameraState.FarZ - CameraState.NearZ;
+	const float SafeFOV = MathUtil::Clamp(CameraState.FOV, 0.1f, 3.13f);
+	const float SafeAspectRatio = std::max(CameraState.AspectRatio, 0.001f);
+	const float SafeNearZ = std::max(CameraState.NearZ, 0.001f);
+	const float SafeFarZ = std::max(CameraState.FarZ, SafeNearZ + 0.001f);
 
 	if (!CameraState.bIsOrthogonal)
 	{
-		return FMatrix(
-			Cot / CameraState.AspectRatio, 0, 0, 0,
-			0, Cot, 0, 0,
-			0, 0, CameraState.FarZ / Denom, 1,
-			0, 0, -(CameraState.FarZ * CameraState.NearZ) / Denom, 0
-		);
+		return FMatrix::MakePerspectiveFovLH(SafeFOV, SafeAspectRatio, SafeNearZ, SafeFarZ);
 	}
 	else
 	{
-		float HalfW = CameraState.OrthoWidth * 0.5f;
-		float HalfH = HalfW / CameraState.AspectRatio;
-		return FMatrix(
-			1.0f / HalfW, 0, 0, 0,
-			0, 1.0f / HalfH, 0, 0,
-			0, 0, 1.0f / Denom, 0,
-			0, 0, -CameraState.NearZ / Denom, 1
-		);
+		const float SafeOrthoWidth = std::max(CameraState.OrthoWidth, 0.001f);
+		return FMatrix::MakeOrthographicLH(SafeOrthoWidth, SafeOrthoWidth / SafeAspectRatio, SafeNearZ, SafeFarZ);
 	}
 }
 
@@ -68,7 +60,10 @@ void UCameraComponent::LookAt(const FVector& Target)
 
 void UCameraComponent::OnResize(int32 Width, int32 Height)
 {
-	CameraState.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
+	if (Width > 0 && Height > 0)
+	{
+		CameraState.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
+	}
 }
 
 void UCameraComponent::SetCameraState(const FCameraState& NewState)

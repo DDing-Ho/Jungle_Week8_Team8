@@ -20,6 +20,65 @@
 #include <unordered_set>
 #include "GameFramework/PrimitiveActors.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/CameraComponent.h"
+
+namespace
+{
+	bool IsActorPlacementRaycastTarget(const UPrimitiveComponent* Primitive)
+	{
+		if (Primitive == nullptr)
+		{
+			return false;
+		}
+
+		const EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+		return PrimType != EPrimitiveType::EPT_Decal &&
+			PrimType != EPrimitiveType::EPT_Billboard &&
+			PrimType != EPrimitiveType::EPT_Text &&
+			PrimType != EPrimitiveType::EPT_SubUV;
+	}
+
+	APawnActor* EnsurePlayerPawn(UWorld* World)
+	{
+		if (World == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (APawnActor* ExistingPawn = World->FindPawn())
+		{
+			ExistingPawn->EnsureDefaultComponents();
+			return ExistingPawn;
+		}
+
+		APawnActor* Pawn = World->SpawnActor<APawnActor>();
+		Pawn->InitDefaultComponents();
+		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())
+		{
+			Pawn->SetActorLocation(PlayerStart->GetActorLocation());
+			Pawn->SetActorRotation(PlayerStart->GetActorRotation());
+		}
+		return Pawn;
+	}
+
+	UCameraComponent* FindPawnCamera(APawnActor* Pawn)
+	{
+		if (Pawn == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Pawn->GetComponents())
+		{
+			if (UCameraComponent* CameraComponent = Cast<UCameraComponent>(Component))
+			{
+				return CameraComponent;
+			}
+		}
+
+		return nullptr;
+	}
+}
 
 void FEditorViewportClient::Initialize(FWindowsWindow* InWindow, UEditorEngine* InEditor)
 {
@@ -32,30 +91,47 @@ void FEditorViewportClient::Initialize(FWindowsWindow* InWindow, UEditorEngine* 
 	InputRouter.SetEditorWorldController(&EditorWorldController);
 	InputRouter.SetPIEController(&PIEController);
 	InputRouter.SetGamePlayerController(&GamePlayerController);
+	InputRouter.SetUIInputHandler(&GameUISystem::Get());
 }
 
 void FEditorViewportClient::SetWorld(UWorld* InWorld)
 {
 	World = InWorld;
 	EditorWorldController.SetWorld(InWorld);
+	GamePlayerController.SetWorld(InWorld);
 }
 
 void FEditorViewportClient::StartPIE(UWorld* InWorld)
 {
 	World = InWorld;
-	if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+	APawnActor* Pawn = EnsurePlayerPawn(InWorld);
+	UCameraComponent* PawnCamera = FindPawnCamera(Pawn);
+	if (PawnCamera == nullptr)
 	{
-		Camera.SetProjectionType(EViewportProjectionType::Perspective);
-		Camera.ClearCustomLookDir();
-		Camera.SetLocation(PlayerStart->GetActorLocation());
-		Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+		if (APlayerStartActor* PlayerStart = InWorld ? InWorld->FindPlayerStart() : nullptr)
+		{
+			Camera.SetProjectionType(EViewportProjectionType::Perspective);
+			Camera.ClearCustomLookDir();
+			Camera.SetLocation(PlayerStart->GetActorLocation());
+			Camera.SetRotation(FRotator::MakeFromEuler(PlayerStart->GetActorRotation()));
+		}
 	}
 
-	GamePlayerController.SetCamera(nullptr);
-	GamePlayerController.SetFreeCamera(&Camera);
-	if (bHasCameraSnapshot)
+	GamePlayerController.SetWorld(InWorld);
+	GamePlayerController.SetPlayer(Pawn);
+	GamePlayerController.SetCamera(PawnCamera);
+	if (PawnCamera != nullptr)
 	{
-		GamePlayerController.InitializeFreeCameraFromSnapshot(SavedCamera);
+		GamePlayerController.SetFreeCamera(nullptr);
+		InWorld->SetActiveCameraComponent(PawnCamera);
+	}
+	else
+	{
+		GamePlayerController.SetFreeCamera(&Camera);
+		if (bHasCameraSnapshot)
+		{
+			GamePlayerController.InitializeFreeCameraFromSnapshot(SavedCamera);
+		}
 	}
 	FInputRouter::ResetMouseDelta(2);
 }
@@ -68,6 +144,7 @@ void FEditorViewportClient::EndPIE(UWorld* InWorld)
 	EditorWorldController.ResetTargetLocation();
 	GamePlayerController.SetCamera(nullptr);
 	GamePlayerController.SetFreeCamera(nullptr);
+	GamePlayerController.SetWorld(nullptr);
 	ClearEndPIECallback();
 	FInputRouter::LockMouse(false);
 	bControlLocked = false;
@@ -147,7 +224,10 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	RouteContext.Window = Window;
 	RouteContext.ViewportRect = Viewport ? Viewport->GetRect() : FViewportRect(0, 0, static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
 	RouteContext.bHovered = State ? State->bHovered : true;
-	RouteContext.bControlLocked = bControlLocked;
+	const bool bUIWantsMouse = GameUISystem::Get().WantsMouseCursor();
+	RouteContext.bControlLocked = bControlLocked || bUIWantsMouse;
+	RouteContext.bInputActive = !bUIWantsMouse;
+	RouteContext.bHasActiveCamera = bHasCamera;
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
 
@@ -291,7 +371,7 @@ bool FEditorViewportClient::RequestActorPlacement(float X, float Y, float PopupX
 			break;
 
 		UPrimitiveComponent* PrimitiveComp = CandidatePrimitives[CandidateIndex];
-		if (!PrimitiveComp)
+		if (!IsActorPlacementRaycastTarget(PrimitiveComp))
 			continue;
 
 		FHitResult HitResult{};

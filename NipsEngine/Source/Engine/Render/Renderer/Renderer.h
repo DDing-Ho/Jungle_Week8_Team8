@@ -119,6 +119,7 @@ public:
 	void BeginViewportFrame(FRenderTargetSet* InRenderTargetSet);
 	void Render(const FRenderBus& InRenderBus);
 	void PresentToBackBuffer(const ID3D11ShaderResourceView* FinalSRV);
+	void RenderToCurrentTarget(const std::function<void(int32 Width, int32 Height)>& RenderCallback);
 	void EndFrame();
 	void UseBackBufferRenderTargets();
 	

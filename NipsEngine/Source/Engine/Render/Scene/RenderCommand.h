@@ -294,4 +294,7 @@ struct FRenderCommand
 	} Constants;
 
 	ERenderCommandType Type = ERenderCommandType::Primitive;
+
+	// GameJam
+	ID3D11ShaderResourceView* MaskSRV = nullptr;
 };

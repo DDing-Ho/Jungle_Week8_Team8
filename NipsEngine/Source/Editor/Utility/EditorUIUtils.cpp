@@ -89,6 +89,12 @@ namespace EditorUIUtils
     {
         if (!MoveComp) return "None";
 
+        FString ComponentName = MoveComp->GetFName().ToString();
+        if (ComponentName.empty())
+        {
+            ComponentName = MoveComp->GetTypeInfo()->name;
+        }
+
         USceneComponent* UpdatedComp = MoveComp->GetUpdatedComponent();
         if (UpdatedComp)
         {
@@ -97,11 +103,9 @@ namespace EditorUIUtils
             {
                 TargetName = UpdatedComp->GetTypeInfo()->name;
             }
-            return FString("MC_") + TargetName;
+            return ComponentName + " (Updated: " + TargetName + ")";
         }
 
-        // 대상이 없는 경우
-
-        return FString("MC_None");
+        return ComponentName + " (Updated: None)";
     }
 }

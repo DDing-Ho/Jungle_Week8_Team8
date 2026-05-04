@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine/Core/CoreMinimal.h"
 
@@ -10,15 +10,30 @@ enum class EGameItemDisposition
 	Discarded,
 };
 
+enum class EItemDecisionBoxType
+{
+	KeepBox,
+	DiscardBox,
+};
+
+enum class EGameItemType
+{
+	StoryItem,
+	DummyItem,
+	CleaningTool,
+};
+
 struct FGameItemData
 {
 	FString ItemId;
 	FString DisplayName;
+	EGameItemType ItemType = EGameItemType::StoryItem;
 	FString DescriptionWhenFound;
 	FString DescriptionWhenKept;
 	FString DescriptionWhenDiscarded;
 	FString IconPath;
-	TArray<FString> EndingTags;
+	bool bCanClassify = true;
+	bool bRequiredForSuccessEnding = false;
 	TArray<FString> StoryFlags;
 };
 
@@ -29,6 +44,13 @@ struct FCleaningToolData
 	FString AnimationSetId;
 	FString EffectId;
 	float CleaningPower = 1.0f;
+	float HoldDistance = 4.0f;
+	FVector HoldCameraLocalOffset = FVector::ZeroVector;
+	FVector UseStrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
+	FVector HandleCameraLocalDirection = FVector::ZeroVector;
+	float UseBobAmplitude = 0.15f;
+	float UseBobSpeed = 8.0f;
+	float UseReturnSpeed = 14.0f;
 	TArray<FString> ValidSurfaceTypes;
 	FString InteractionSoundId;
 };
@@ -46,5 +68,7 @@ struct FCleaningToolUseResult
 struct FEndingResult
 {
 	FString EndingId;
-	TArray<FString> MatchedTags;
+	bool bIsSuccess = false;
+	TArray<FString> MissingRequiredItemIds;
+	TArray<FString> KeptFailureItemIds;
 };

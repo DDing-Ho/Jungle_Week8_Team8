@@ -2,6 +2,11 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
+//#include "Game/GameTypes.h"
+#include "Game/Systems/CleaningToolSystem.h"
+#include "Game/Systems/GameContext.h"
+#include "Game/Systems/GameItemDataLoader.h"
+#include "Game/Systems/ItemSystem.h"
 #include "Game/UI/GameUISystem.h"
 #include "Engine/Slate/SlateApplication.h"
 #include "Engine/Input/InputRouter.h"
@@ -11,8 +16,10 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/World.h"
+#include "GameFramework/PrimitiveActors.h"
 #include "Editor/EditorRenderPipeline.h"
 #include "Audio/AudioSystem.h"
+#include "Core/Paths.h"
 #include "Core/Logging/Stats.h"
 #include "Slate/SSplitterV.h"
 #include "Slate/SSplitterH.h"
@@ -25,6 +32,18 @@ REGISTER_FACTORY(UEditorEngine)
 
 namespace
 {
+	void InitializePlayGameData()
+	{
+		//Game::RegisterGameTypes();
+
+		FItemSystem& Items = FItemSystem::Get();
+		Items.ClearItemData();
+		FCleaningToolSystem::Get().ClearToolData();
+		FGameItemDataLoader::LoadFromFile("Asset/Data/Items.json", Items);
+		GGameContext::Get().Reset();
+		Items.ResetRuntimeState();
+	}
+
 	int32 FindComponentIndex(AActor* Actor, UActorComponent* Component)
 	{
 		if (Actor == nullptr || Component == nullptr)
@@ -153,6 +172,23 @@ namespace
 		}
 
 		return BuildSceneComponentPathRecursive(Actor->GetRootComponent(), SceneComponent, OutPath);
+	}
+
+	EGameUIState GameUIStateFromBootMode(const FString& BootMode)
+	{
+		if (BootMode == "StartMenu")
+		{
+			return EGameUIState::StartMenu;
+		}
+		if (BootMode == "InGame")
+		{
+			return EGameUIState::InGame;
+		}
+		if (BootMode == "Ending")
+		{
+			return EGameUIState::Ending;
+		}
+		return EGameUIState::None;
 	}
 
 	USceneComponent* ResolveSceneComponentPath(AActor* Actor, const TArray<int32>& Path)
@@ -298,6 +334,12 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	FSlateApplication::Get().Initialize();
 	ViewportLayout.BuildViewportLayout(static_cast<int32>(Window->GetWidth()), static_cast<int32>(Window->GetHeight()));
 
+	GameUISystem::Get().Init(
+		InWindow->GetHWND(),
+		Renderer.GetFD3DDevice().GetDevice(),
+		Renderer.GetFD3DDevice().GetDeviceContext()
+	);
+
 	// Editor용 렌더 파이프라인 세팅
 	SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
 }
@@ -315,6 +357,7 @@ void UEditorEngine::Shutdown()
 	CloseScene();
 	SelectionManager.Shutdown();
 	MainPanel.Release();
+	GameUISystem::Get().Shutdown();
 	
 	// CloseScene 이후에 ViewportLayout을 내리면 Client 포인터 단절로 인한 역참조를 피할 수 있습니다.
 	ViewportLayout.Shutdown();           // 위젯 트리 해제 (소유권: UEditorEngine)
@@ -348,9 +391,12 @@ void UEditorEngine::WorldTick(float DeltaTime)
 	FEditorViewportClient* FocusedClient = ViewportLayout.GetViewportClient(FocusedIdx);
 	if (UWorld* FocusedWorld = FocusedClient->GetFocusedWorld())
 	{
-		if (FViewportCamera* Cam = FocusedClient->GetCamera())
+		if (FocusedWorld->GetWorldType() == EWorldType::Editor)
 		{
-			FocusedWorld->SetActiveCamera(Cam);
+			if (FViewportCamera* Cam = FocusedClient->GetCamera())
+			{
+				FocusedWorld->SetActiveCamera(Cam);
+			}
 		}
 	}
 
@@ -381,6 +427,7 @@ void UEditorEngine::StartPlaySession()
 	}
 	if (CurrentState == EViewportPlayState::Playing) return;
 
+	FAudioSystem::Get().Init();
 	FAudioSystem::Get().StopAll();
 
 	// 포커스된 뷰포트 클라이언트를 찾고 카메라 상태를 저장한 뒤, 실행 상태를 변경합니다.
@@ -438,9 +485,14 @@ void UEditorEngine::StartPlaySession()
 	FInputRouter::SetCursorVisibility(false);
 	FInputRouter::ResetMouseDelta(2);
 
-	// PIE 진입마다 시작화면부터 (커서/마우스 상태는 SetState 내부에서 처리)
+	const FString CurrentSceneName = MainPanel.GetSceneWidget().GetCurrentSceneName();
+	const FString CurrentScenePath = FPaths::ToString(FPaths::Combine(
+		FSceneSaveManager::GetSceneDirectory(),
+		FPaths::ToWide(CurrentSceneName + ".Scene")));
+
+	InitializePlayGameData();
 	GameUISystem::Get().ResetGameData();
-	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	GameUISystem::Get().SetState(GameUIStateFromBootMode(FSceneSaveManager::GetGameUIBootMode(CurrentScenePath)));
 	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
 
 	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
@@ -504,7 +556,27 @@ void UEditorEngine::StartPlaySession()
 
 	MainPanel.GetPropertyWidget().RestoreSelection(MappedPrimaryActor, MappedSelectedComponent, bPreviousActorSelected);
 
-	PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
+	UCameraComponent* PawnCamera = nullptr;
+	if (APawnActor* Pawn = PIEWorld->FindPawn())
+	{
+		for (UActorComponent* Component : Pawn->GetComponents())
+		{
+			if (UCameraComponent* CameraComponent = Cast<UCameraComponent>(Component))
+			{
+				PawnCamera = CameraComponent;
+				break;
+			}
+		}
+	}
+
+	if (PawnCamera)
+	{
+		PIEWorld->SetActiveCameraComponent(PawnCamera);
+	}
+	else
+	{
+		PIEWorld->SetActiveCamera(FocusedClient->GetCamera());
+	}
 	PIEWorld->BeginPlay();
 }
 
@@ -680,7 +752,7 @@ void UEditorEngine::StopPlaySession()
 	FocusedClient->RestoreCameraSnapshot();
 
 	// PIE 종료 시 게임 UI 상태 초기화 (Ending 화면 등이 에디터에 남지 않도록)
-	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	GameUISystem::Get().SetState(EGameUIState::None);
 	GameUISystem::Get().SetExitPlayCallback(nullptr);
 
 	if (ViewportPIEHandles.empty())

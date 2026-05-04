@@ -8,6 +8,7 @@
 class FWindowsWindow;
 
 class IInputController;
+class IUIInputHandler;
 
 struct FInputRouteContext
 {
@@ -28,6 +29,7 @@ public:
 	void SetEditorWorldController(IInputController* InController) { EditorWorldController = InController; }
 	void SetPIEController(IInputController* InController) { PIEController = InController; }
 	void SetGamePlayerController(IInputController* InController) { GamePlayerController = InController; }
+	void SetUIInputHandler(IUIInputHandler* InHandler) { UIInputHandler = InHandler; }
 
 	void Tick(float DeltaTime);
 	void Tick(float DeltaTime, const FInputRouteContext& Context);
@@ -68,6 +70,7 @@ private:
 	IInputController* EditorWorldController = nullptr;
 	IInputController* PIEController = nullptr;
 	IInputController* GamePlayerController = nullptr;
+	IUIInputHandler* UIInputHandler = nullptr;
 
 	static EWorldType WorldType;
 };

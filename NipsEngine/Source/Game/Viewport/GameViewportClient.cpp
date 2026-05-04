@@ -10,6 +10,50 @@
 
 #include <windows.h>
 
+namespace
+{
+	APawnActor* EnsurePlayerPawn(UWorld* World)
+	{
+		if (World == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (APawnActor* ExistingPawn = World->FindPawn())
+		{
+			ExistingPawn->EnsureDefaultComponents();
+			return ExistingPawn;
+		}
+
+		APawnActor* Pawn = World->SpawnActor<APawnActor>();
+		Pawn->InitDefaultComponents();
+		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())
+		{
+			Pawn->SetActorLocation(PlayerStart->GetActorLocation());
+			Pawn->SetActorRotation(PlayerStart->GetActorRotation());
+		}
+		return Pawn;
+	}
+
+	UCameraComponent* FindPawnCamera(APawnActor* Pawn)
+	{
+		if (Pawn == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Pawn->GetComponents())
+		{
+			if (UCameraComponent* Camera = Cast<UCameraComponent>(Component))
+			{
+				return Camera;
+			}
+		}
+
+		return nullptr;
+	}
+}
+
 FGameViewportClient::~FGameViewportClient()
 {
 	FInputRouter::LockMouse(false);
@@ -24,9 +68,11 @@ void FGameViewportClient::Initialize(FWindowsWindow* InWindow)
 	FreeCamera.SetLocation(FVector(-5.0f, -5.0f, 3.0f));
 	FreeCamera.SetLookAt(FVector::ZeroVector);
 	PlayerController.SetFreeCamera(&FreeCamera);
+	PlayerController.SetWorld(World);
 	PlayerController.SetToggleInputCaptureCallback([this]() { ToggleInteractionMode(); });
 	PlayerController.SetTogglePauseCallback(&GameUISystem::TogglePauseMenuIfInGame);
 	InputRouter.SetGamePlayerController(&PlayerController);
+	InputRouter.SetUIInputHandler(&GameUISystem::Get());
 	InputRouter.SetViewportDim(0.0f, 0.0f, WindowWidth, WindowHeight);
 }
 
@@ -65,8 +111,13 @@ void FGameViewportClient::BuildSceneView(FSceneView& OutView) const
 void FGameViewportClient::SetWorld(UWorld* InWorld)
 {
 	World = InWorld;
+	PlayerController.SetWorld(InWorld);
 	if (World)
 	{
+		APawnActor* Pawn = EnsurePlayerPawn(World);
+		PlayerController.SetPlayer(Pawn);
+		SetCamera(FindPawnCamera(Pawn));
+
 		if (APlayerStartActor* PlayerStart = World->FindPlayerStart())
 		{
 			FreeCamera.SetProjectionType(EViewportProjectionType::Perspective);
@@ -76,7 +127,10 @@ void FGameViewportClient::SetWorld(UWorld* InWorld)
 			GetPlayerController().SetFreeCamera(&FreeCamera);
 		}
 
-		World->SetActiveCamera(&FreeCamera);
+		if (ActiveCamera == nullptr)
+		{
+			World->SetActiveCamera(&FreeCamera);
+		}
 	}
 }
 
@@ -84,6 +138,10 @@ void FGameViewportClient::SetCamera(UCameraComponent* InCamera)
 {
 	ActiveCamera = InCamera;
 	PlayerController.SetCamera(InCamera);
+	if (World)
+	{
+		World->SetActiveCameraComponent(InCamera);
+	}
 	if (ActiveCamera)
 	{
 		ActiveCamera->OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));

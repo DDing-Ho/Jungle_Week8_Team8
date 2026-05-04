@@ -3,8 +3,10 @@
 #include "Game/GameEngine.h"
 #include "Game/UI/GameUISystem.h"
 #include "Game/Viewport/GameViewportClient.h"
+#include "GameFramework/AActor.h"
 #include "Render/Renderer/Renderer.h"
 #include "GameFramework/World.h"
+#include "Math/Vector4.h"
 #include "Runtime/SceneView.h"
 #include "Core/Logging/Stats.h"
 #include "Core/Logging/GPUProfiler.h"
@@ -60,12 +62,25 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 	Renderer.GetEditorLineBatcher().Clear();
 	Collector.SetLineBatcher(&Renderer.GetEditorLineBatcher());
 	Collector.CollectWorld(World, ShowFlags, SceneView.ViewMode, Bus, &SceneView.CameraFrustum);
+	if (AActor* HoveredActor = Viewport->GetPlayerController().GetHoveredPickableActor())
+	{
+		TArray<AActor*> HoveredActors = { HoveredActor };
+		Collector.CollectOutline(HoveredActors, FVector4(1.0f, 0.92f, 0.05f, 1.0f), 5.0f, Bus);
+	}
+	if (AActor* HeldActor = Viewport->GetPlayerController().GetHeldNonCleaningToolActor())
+	{
+		TArray<AActor*> HeldActors = { HeldActor };
+		Collector.CollectOutline(HeldActors, FVector4(1.0f, 0.05f, 0.02f, 1.0f), 5.0f, Bus);
+	}
 
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);
 	Renderer.PresentToBackBuffer(Renderer.GetCurrentSceneSRV());
 
-	GameUISystem::Get().Render(EUIRenderMode::Play);
+	Renderer.RenderToCurrentTarget([](int32 Width, int32 Height)
+	{
+		GameUISystem::Get().RenderToCurrentTarget(EUIRenderMode::Play, Width, Height);
+	});
 }
 
 bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSceneView, FGameViewportClient*& OutViewportClient)

@@ -42,8 +42,9 @@ SOLUTION_CONFIGURATIONS = [
     ("Release", "x86", "Release", "Win32"),
 ]
 
-# Directories to recursively scan for source files
-SCAN_DIRS = ["Source", "ThirdParty"]
+# Directories to recursively scan for source files.
+# RmlUi and FreeType are provided by vcpkg, so only local source and ImGui are compiled here.
+SCAN_DIRS = ["Source", "ThirdParty\\ImGui"]
 
 # Directories to scan for shader files
 SHADER_DIRS = ["Shaders"]
@@ -113,7 +114,8 @@ def scan_files(project_dir: Path) -> dict[str, list[str]]:
                 ext = full.suffix.lower()
 
                 if ext in SOURCE_EXTS:
-                    result["ClCompile"].append(rel_str)
+                    if should_include_source_file(rel_str):
+                        result["ClCompile"].append(rel_str)
                 elif ext in HEADER_EXTS:
                     result["ClInclude"].append(rel_str)
                 elif ext in NATVIS_EXTS:
@@ -143,6 +145,12 @@ def scan_files(project_dir: Path) -> dict[str, list[str]]:
             result["ClCompile"].append(root_file.replace("/", "\\"))
 
     return result
+
+
+def should_include_source_file(rel_path: str) -> bool:
+    """Return true when a source file should be compiled by the main project."""
+    _ = rel_path
+    return True
 
 
 def get_filter(rel_path: str) -> str:
@@ -328,7 +336,9 @@ def generate_vcxproj(files: dict[str, list[str]]):
 
         if is_x64:
             defs += "WITH_LUA=1;"
+            defs += "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED;JPH_OBJECT_STREAM;"
 
+        defs += "RMLUI_FONT_ENGINE_FREETYPE;_CRT_SECURE_NO_WARNINGS;"
         defs += "NOMINMAX;%(PreprocessorDefinitions);"
         ET.SubElement(cl, "PreprocessorDefinitions").text = defs
 
@@ -344,7 +354,7 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(link, "SubSystem").text = "Windows" if is_x64 else "Console"
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
         if is_x64:
-            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;%(AdditionalDependencies)"
+            ET.SubElement(link, "AdditionalDependencies").text = "lua51.lib;Jolt.lib;rmlui.lib;%(AdditionalDependencies)"
 
         if is_game:
             pre_build = ET.SubElement(idg, "PreBuildEvent")
@@ -352,10 +362,22 @@ def generate_vcxproj(files: dict[str, list[str]]):
                 'powershell -NoProfile -ExecutionPolicy Bypass -File "..\\Scripts\\CheckDependencyBoundaries.ps1"'
             )
 
+        if is_x64:
+            runtime_bin = (
+                f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\debug\\bin"
+                if cfg == "Debug"
+                else f"$(ProjectDir)..\\vcpkg_installed\\{VCPKG_TRIPLET}\\bin"
+            )
+            post_build = ET.SubElement(idg, "PostBuildEvent")
+            ET.SubElement(post_build, "Command").text = (
+                f'if exist "{runtime_bin}\\*.dll" xcopy /Y /D "{runtime_bin}\\*.dll" "$(OutDir)"'
+            )
+
     # ClCompile items
     ig = ET.SubElement(proj, "ItemGroup")
     for f in files["ClCompile"]:
         elem = ET.SubElement(ig, "ClCompile", Include=f)
+        ET.SubElement(elem, "ObjectFileName").text = "$(IntDir)%(RelativeDir)"
         add_source_exclusions(elem, f)
 
     # ClInclude items

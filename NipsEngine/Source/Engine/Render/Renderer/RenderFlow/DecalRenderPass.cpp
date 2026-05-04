@@ -98,6 +98,11 @@ bool FDecalRenderPass::DrawCommand(const FRenderPassContext* Context)
                 nullptr,
                 Context,
                 &Cmd.Constants.Decal);
+
+			if (Cmd.MaskSRV)
+			{
+                Context->DeviceContext->PSSetShaderResources(19, 1, &Cmd.MaskSRV);
+			}
         }
 
         SceneLightBinding::BindResources(

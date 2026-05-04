@@ -11,7 +11,7 @@ public:
 	DECLARE_CLASS(UActorComponent, UObject)
 	
 	virtual void BeginPlay();
-	virtual void EndPlay() {};
+	virtual void EndPlay();
 
 	virtual void Activate();
 	virtual void Deactivate();
@@ -24,6 +24,7 @@ public:
 	inline bool IsActive() { return bIsActive; }
 	inline bool IsAutoActivate() { return bAutoActivate; }
 	inline bool IsComponentTickEnabled() const { return bCanEverTick; }
+	bool HasBegunPlay() const { return bHasBegunPlay; }
 
 	void SetOwner(AActor* Actor) { Owner = Actor; }
 	AActor* GetOwner() const { return Owner; }
@@ -68,4 +69,5 @@ public:
     bool bTransient = false;                // 런타임에만 존재, 직렬화 완전 제외
     bool bIsEditorOnly = false;             // 에디터 전용, PIE/Game 렌더 제외
     bool bHiddenInEditor = false;           // 에디터 컴포넌트 창에서 숨김
+    bool bHasBegunPlay = false;
 };

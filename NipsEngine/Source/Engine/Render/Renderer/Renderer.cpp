@@ -31,10 +31,10 @@ void FRenderer::Create(HWND hWindow)
 #if WITH_EDITOR
 	FResourceManager::Get().LoadShader("Shaders/Gizmo.hlsl", "VS", "PS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/Editor.hlsl", "VS", "PS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
+#endif
 	FResourceManager::Get().LoadShader("Shaders/SelectionMask.hlsl", "VS", "PS", PrimitiveInputLayout, ARRAYSIZE(PrimitiveInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/BillboardSelectionMask.hlsl", "VS", "PS", TextureVertexInputLayout, ARRAYSIZE(TextureVertexInputLayout), nullptr);
 	FResourceManager::Get().LoadShader("Shaders/OutlinePostProcess.hlsl", "VS", "PS", nullptr, 0, nullptr);
-#endif
 	FResourceManager::Get().LoadShader("Shaders/UberLit.hlsl", "mainVS", "mainPS", NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout), nullptr);
 	FResourceManager::Get().LoadShader(MakeUberLitShaderCompileKey(EMaterialDomain::Surface, ELightingModel::Gouraud), NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout));
 	FResourceManager::Get().LoadShader(MakeUberLitShaderCompileKey(EMaterialDomain::Surface, ELightingModel::Lambert), NormalVertexInputLayout, ARRAYSIZE(NormalVertexInputLayout));
@@ -324,6 +324,21 @@ void FRenderer::PresentToBackBuffer(const ID3D11ShaderResourceView* FinalSRV)
 	SceneFinalRTV = BackBufferRTV;
 	SceneFinalSRV.Reset();
 	CurrentRenderTargets = BackBufferRenderTargets;
+}
+
+void FRenderer::RenderToCurrentTarget(const std::function<void(int32 Width, int32 Height)>& RenderCallback)
+{
+	if (!RenderCallback)
+		return;
+
+	ID3D11DeviceContext* DeviceContext = Device.GetDeviceContext();
+	if (!DeviceContext)
+		return;
+
+	UINT NumViewports = 1;
+	D3D11_VIEWPORT Viewport = {};
+	DeviceContext->RSGetViewports(&NumViewports, &Viewport);
+	RenderCallback(static_cast<int32>(Viewport.Width), static_cast<int32>(Viewport.Height));
 }
 
 FViewportRenderResource& FRenderer::AcquireViewportResource(uint32 Width, uint32 Height, int32 Index)

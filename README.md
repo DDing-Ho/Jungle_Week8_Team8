@@ -2,22 +2,34 @@
 
 ## Current Dependency Setup
 
-After pulling the latest `main`, run `InstallLuaWithVcpkg.bat` from the repository root.
-The batch file uses `vcpkg.json` in manifest mode and installs the engine dependencies under the project-local `vcpkg_installed/` folder.
+After pulling the latest `main`, run `SetupDependencies.bat` from the repository root.
+The batch file installs project-local vcpkg under `./vcpkg`, uses `vcpkg.json` in manifest mode, and installs engine dependencies under `./vcpkg_installed`.
 
 Current vcpkg dependencies:
 
 - `luajit`: LuaJIT runtime for Lua scripting. This is Lua 5.1 compatible, so avoid Lua 5.4-only syntax/API.
 - `miniaudio`: audio playback and spatial audio backend.
+- `joltphysics`: rigid body physics backend used by `RigidBodyComponent` and `PhysicsHandleComponent`.
+
+Required build environment:
+
+- Visual Studio 2022
+- MSVC v143 x64/x86 build tools
+- MSVC toolset 14.44 or newer
+- Windows 10/11 SDK
 
 Do not install dependencies one by one with commands like `vcpkg install lua`.
 Use the project manifest instead:
 
 ```bat
-InstallLuaWithVcpkg.bat
+SetupDependencies.bat
 ```
 
-The Visual Studio project expects LuaJIT and miniaudio under `vcpkg_installed/x64-windows/`.
+The Visual Studio project expects:
+
+- `vcpkg_installed/x64-windows/include/Jolt/Jolt.h`
+- `vcpkg_installed/x64-windows/debug/lib/Jolt.lib`
+- `vcpkg_installed/x64-windows/lib/Jolt.lib`
 
 Build and test with `x64` configurations. `Debug | x64`, `Release | x64`, and `Game | x64` are the supported paths for the current dependency setup.
 
@@ -51,7 +63,7 @@ Use these physics settings as the baseline:
 - Heavy props that can move but should resist being pushed: blocking shape enabled, `Simulate Physics` enabled, high `Mass`, `Can Be Picked Up` disabled.
 - Small props the player can hold: blocking shape enabled, `Simulate Physics` enabled, lower `Mass`, `Can Be Picked Up` enabled.
 
-`Mass` is used by impulse-based movement when `Simulate Physics` is enabled.
+`Mass` is applied to Jolt dynamic bodies when `Simulate Physics` is enabled.
 Turning `Use Gravity` off only disables gravity; it does not make the object fixed.
 
 ## 실행 준비
@@ -64,14 +76,24 @@ Turning `Use Gravity` off only disables gravity; it does not make the object fix
 
 ### 2. vcpkg 의존성 설치
 
-실행하면 폴더 선택 창이 열립니다. 사용자는 `vcpkg` 폴더를 만들 부모 폴더를 선택할 수 있습니다.
+프로젝트 루트에서 아래 배치 파일을 실행합니다.
 
-- 선택한 폴더 아래 `vcpkg/vcpkg.exe`가 있으면 그대로 사용합니다.
-- 선택한 폴더 아래 `vcpkg/bootstrap-vcpkg.bat`만 있으면 bootstrap을 실행합니다.
-- vcpkg가 없으면 확인 후 선택한 폴더 아래 `vcpkg` 폴더를 만들고 clone/bootstrap합니다.
-- `vcpkg install --triplet x64-windows`는 반드시 프로젝트 루트에서 실행되어 `vcpkg_installed` 폴더가 프로젝트 루트 아래에 생성됩니다.
+```bat
+SetupDependencies.bat
+```
 
-LuaJIT, miniaudio 등 엔진 의존성은 `vcpkg.json` 기준으로 설치됩니다. LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다. `vcpkg install lua`처럼 개별 패키지만 따로 설치하지 말고 프로젝트 루트에서 `vcpkg install --triplet x64-windows`를 실행합니다.
+고정 경로를 사용합니다.
+
+- `./vcpkg`: 없으면 자동으로 clone/bootstrap합니다.
+- `./vcpkg_installed`: vcpkg manifest mode가 생성하는 프로젝트 로컬 의존성 설치 폴더입니다.
+- `./vcpkg.json`: 의존성 목록의 단일 기준입니다.
+
+전역 vcpkg를 사용하지 말고, `vcpkg install lua`처럼 개별 패키지를 따로 설치하지 않습니다.
+LuaJIT, miniaudio, Jolt Physics 등 엔진 의존성은 `vcpkg.json` 기준으로 함께 설치됩니다.
+LuaJIT는 Lua 5.1 계열 호환 런타임이므로 Lua 5.4 전용 문법/API 사용은 피해야 합니다.
+
+`SetupDependencies.bat`는 MSVC toolset 14.44 이상이 설치되어 있는지 먼저 확인합니다.
+Jolt 링크 오류로 `_Thrd_sleep_for`, `__std_search_1` 같은 외부 기호 문제가 발생하면 MSVC v143 x64/x86 build tools를 업데이트하거나 설치한 뒤 `vcpkg_installed` 폴더를 삭제하고 `SetupDependencies.bat`를 다시 실행합니다.
 
 ### 3. 빌드 및 실행
 

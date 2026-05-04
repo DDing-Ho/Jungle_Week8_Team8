@@ -35,6 +35,10 @@ public:
 		OwnedComponents.push_back(Comp);
 		bPrimitiveCacheDirty = true;
 		Comp->OnRegister();
+		if (bHasBegunPlay && !Comp->HasBegunPlay())
+		{
+			Comp->BeginPlay();
+		}
 		return Comp;
 	}
 
@@ -45,6 +49,7 @@ public:
 
 	bool IsActive() const { return bIsActive ; }
 	void SetActive(bool bEnabled) { bIsActive = bEnabled; }
+	bool HasBegunPlay() const { return bHasBegunPlay; }
 
 	bool ShouldTickInEditor() const { return bTickInEditor; }
 	void SetTickInEditor(bool bEnabled)  { bTickInEditor = bEnabled; }
@@ -104,6 +109,7 @@ protected:
 	bool bVisible = true;
 	bool bIsActive = true;
 	bool bTickInEditor = false;
+	bool bHasBegunPlay = false;
 
 	TArray<UActorComponent*> OwnedComponents;
 

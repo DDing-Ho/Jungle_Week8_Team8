@@ -52,7 +52,7 @@ namespace
 		const float ProjectedRadius = (SphereRadius / Dist) * ProjMatrix.M[2][1];
 		const float ScreenCoverage = ProjectedRadius;
 
-		static constexpr float Thresholds[] = { 0.15f, 0.08f, 0.05f, 0.02f };
+		static constexpr float Thresholds[] = { 0.06f, 0.03f, 0.02f, 0.008f };
 		static constexpr int32 ThresholdCount = static_cast<int32>(sizeof(Thresholds) / sizeof(Thresholds[0]));
 
 		const int32 MaxLOD = ValidLODCount - 1;
@@ -116,6 +116,10 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 	if (Primitive->IsEditorOnly() && WorldType != EWorldType::Editor) return;
 
 	EPrimitiveType PrimType = Primitive->GetPrimitiveType();
+	if (PrimType == EPrimitiveType::EPT_Billboard && WorldType != EWorldType::Editor)
+	{
+		return;
+	}
 
 	static const FMaterial EngineDefaultMaterial{};
 
@@ -331,11 +335,13 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 				Cmd.Material = Material;
 				Cmd.Constants.Decal.InvDecalWorld = DecalComp->GetDecalMatrix().GetInverse();
 
+				Cmd.MaskSRV = DecalComp->GetMaskSRV();
+
 				RenderBus.AddCommand(ERenderPass::Decal, Cmd);
 			}
 		}
 
-		if (WorldType == EWorldType::Editor && LineBatcher != nullptr)
+		if (WorldType == EWorldType::Editor && LineBatcher != nullptr && DecalComp->ShouldDrawDebugBounds(ShowFlags.bBoundingVolume))
 		{
 			LineBatcher->AddOBB(DecalOBB, FColor::Green());
 		}

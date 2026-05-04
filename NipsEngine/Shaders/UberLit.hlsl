@@ -182,6 +182,10 @@ static const float3 kPointShadowFaceUp[6] = {
 };
 
 
+// ─────────────────── GameJam ───────────────────
+Texture2D DecalMaskMap : register(t19);
+
+
 float3 GetPointShadowFaceForward(uint FaceIndex)
 {
     return kPointShadowFaceForward[FaceIndex];
@@ -925,6 +929,11 @@ FUberSurfaceData EvaluateProjectedDecal(FUberPSInput Input)
 
     Surface.UV = float2(LocalPos.y + 0.5f, 1.0f - (LocalPos.z + 0.5f));
     Surface.DiffuseSample = DiffuseMap.Sample(SampleState, Surface.UV);
+   
+    //GameJam
+    float MaskValue = DecalMaskMap.Sample(SampleState, Surface.UV).r;
+    Surface.DiffuseSample.a *= MaskValue;
+
     Surface.WorldNormal = ResolveSurfaceWorldNormal(Input, Surface.UV, Surface.WorldNormal);
     Surface.Albedo = BaseColor * Surface.DiffuseSample.rgb;
 

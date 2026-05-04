@@ -6,6 +6,10 @@
 #include "Core/Logger.h"
 #include "Object/ObjectFactory.h"
 
+// GameJam
+#include "Runtime/Engine.h"
+#include <cmath>
+
 DEFINE_CLASS(UDecalComponent, UPrimitiveComponent)
 REGISTER_FACTORY(UDecalComponent)
 
@@ -23,6 +27,8 @@ UDecalComponent::UDecalComponent()
 	Mat->SamplerType = ESamplerType::EST_Linear;
 
     bEnableCull = false;
+
+    InitializeMask(256, 256);
 }
 
 // Material 포인터는 프로퍼티 시스템에 노출되지 않으므로 직접 복사합니다.
@@ -63,6 +69,9 @@ void UDecalComponent::BeginPlay()
 	UPrimitiveComponent::BeginPlay();
 
 	LifeTime = 0.0f;
+
+	//GameJam
+	InitializeMask(256, 256);
 }
 
 void UDecalComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -106,7 +115,20 @@ void UDecalComponent::UpdateWorldAABB() const
 
 bool UDecalComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
-	return false;
+	float TMin = 0.0f, TMax = 0.0f;
+	if (!WorldAABB.IntersectRay(Ray, TMin, TMax))
+		return false;
+
+	const float T = TMin >= 0.0f ? TMin : TMax;
+	if (T < 0.0f)
+		return false;
+
+	OutHitResult.bHit = true;
+	OutHitResult.Distance = T;
+	OutHitResult.Location = Ray.Origin + Ray.Direction * T;
+	OutHitResult.Normal = -Ray.Direction;
+	OutHitResult.HitComponent = this;
+	return true;
 }
 
 FMatrix UDecalComponent::GetDecalMatrix() const
@@ -129,6 +151,12 @@ void UDecalComponent::TickComponent(float DeltaTime)
 	{
 		TickFadeOut();
 	}
+
+	// GameJam
+	if (bMaskDirty)
+    {
+        UpdateMaskTexture();
+    }
 }
 
 void UDecalComponent::TickFadeIn()
@@ -182,4 +210,122 @@ void UDecalComponent::SetFadeOut(float InStartDelay, float InDuration, bool bInD
 	FadeStartDelay = InStartDelay;
 	FadeDuration = InDuration;
 	bDestroyOwnerAfterFade = bInDestroyOwnerAfterFade;
+}
+
+void UDecalComponent::InitializeMask(uint32 InWidth, uint32 InHeight)
+{
+    MaskWidth = InWidth;
+    MaskHeight = InHeight;
+
+	MaskPixels.assign(MaskWidth * MaskHeight, 255);
+
+	D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = MaskWidth;
+    desc.Height = MaskHeight;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8_UNORM; // 0~255를 0.0~1.0으로 매핑
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DYNAMIC; // CPU에서 쓰기 위해 Dynamic
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // CPU에서 GPU로 복사 허용
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem = MaskPixels.data();
+    initData.SysMemPitch = MaskWidth;
+
+	auto device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+    if (!device)
+        return;
+
+    device->CreateTexture2D(&desc, &initData, MaskTexture.GetAddressOf());
+    device->CreateShaderResourceView(MaskTexture.Get(), nullptr, MaskSRV.GetAddressOf());
+}
+
+void UDecalComponent::PaintMask(FVector2 UV, float Radius, uint8 Value)
+{
+    int32 CenterX = static_cast<int32>(UV.X * MaskWidth);
+    int32 CenterY = static_cast<int32>(UV.Y * MaskHeight);
+    int32 PixelRadius = static_cast<int32>(Radius * MaskWidth);
+
+	int32 StartX = MathUtil::Clamp(CenterX - PixelRadius, 0, (int32)MaskWidth - 1);
+	int32 EndX = MathUtil::Clamp(CenterX + PixelRadius, 0, (int32)MaskWidth - 1);
+	int32 StartY = MathUtil::Clamp(CenterY - PixelRadius, 0, (int32)MaskHeight - 1);
+    int32 EndY = MathUtil::Clamp(CenterY + PixelRadius, 0, (int32)MaskHeight - 1);
+
+	int32 RadiusSq = PixelRadius * PixelRadius;
+
+	for (int32 y = StartY; y <= EndY; y++)
+	{
+		for (int32 x = StartX; x <= EndX; x++)
+		{
+            int32 DiffX = x - CenterX;
+            int32 DiffY = y - CenterY;
+            int32 DistSq = (DiffX * DiffX) + (DiffY * DiffY);
+
+			if (DistSq <= RadiusSq)
+			{
+                int32 CurrentValue = MaskPixels[y * MaskWidth + x];
+                int32 NewValue = CurrentValue - Value;
+
+				MaskPixels[y * MaskWidth + x] = static_cast<uint8>(NewValue < 0 ? 0 : NewValue);
+
+                bMaskDirty = true;
+			}
+		}
+	}
+}
+
+bool UDecalComponent::WorldPosToDecalUV(const FVector& WorldPos, FVector2& OutUV) const
+{
+    FMatrix InvDecal = GetDecalMatrix();
+    InvDecal = InvDecal.GetInverse();
+    const FVector Local = InvDecal.TransformPosition(WorldPos);
+
+    if (std::abs(Local.X) > 0.5f || std::abs(Local.Y) > 0.5f || std::abs(Local.Z) > 0.5f)
+        return false;
+
+    OutUV.X = Local.Y + 0.5f;
+    OutUV.Y = 1.0f - (Local.Z + 0.5f);
+    return true;
+}
+
+float UDecalComponent::GetCleanPercentage() const
+{
+    if (MaskPixels.empty())
+        return 0.0f;
+
+    uint64 TotalZero = 0;
+    for (uint8 Pixel : MaskPixels)
+    {
+        if (Pixel == 0)
+            ++TotalZero;
+    }
+    return static_cast<float>(TotalZero) / static_cast<float>(MaskPixels.size());
+}
+
+void UDecalComponent::UpdateMaskTexture()
+{
+    if (!bMaskDirty || !MaskTexture)
+        return;
+
+	auto context = GEngine->GetRenderer().GetFD3DDevice().GetDeviceContext();
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+	if (!context)
+        return;
+
+	if (SUCCEEDED(context->Map(MaskTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
+	{
+        uint8_t* dest = static_cast<uint8_t*>(mappedResource.pData);
+        const uint8_t* src = MaskPixels.data();
+
+		for (uint32 i = 0; i < MaskHeight; i++)
+		{
+            memcpy(dest + (i * mappedResource.RowPitch), src + (i * MaskWidth), MaskWidth);
+		}
+
+		context->Unmap(MaskTexture.Get(), 0);
+        bMaskDirty = false;
+	}
 }

@@ -3,13 +3,19 @@
 #if WITH_LUA
 #include "GameFramework/AActor.h"
 #include "Component/PrimitiveComponent.h"
+#include "Component/DecalComponent.h"
 #include "Math/Vector.h"
+#include "Math/Vector2.h"
 #include "Object/Object.h"
 #include "Core/CollisionTypes.h"
 #include "Core/Logger.h"
 #include "Audio/AudioSystem.h"
 #include "Engine/Input/InputRouter.h"
 #include "Game/UI/GameUISystem.h"
+#include "Game/Systems/GameContext.h"
+#include "Game/Systems/CleaningToolSystem.h"
+#include "Game/Systems/ItemSystem.h"
+#include "Scripting/LuaScriptSystem.h"
 
 void RegisterLuaBindings(sol::state& Lua)
 {
@@ -71,7 +77,8 @@ void RegisterLuaBindings(sol::state& Lua)
 	// -------------------------------------------------------
 	Lua.set_function("SetUIState", [](const std::string& StateName)
 	{
-		if      (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
+		if      (StateName == "None")      GameUISystem::Get().SetState(EGameUIState::None);
+		else if (StateName == "StartMenu") GameUISystem::Get().SetState(EGameUIState::StartMenu);
 		else if (StateName == "Prologue")  GameUISystem::Get().SetState(EGameUIState::Prologue);
 		else if (StateName == "InGame")    GameUISystem::Get().SetState(EGameUIState::InGame);
 		else if (StateName == "Ending")    GameUISystem::Get().SetState(EGameUIState::Ending);
@@ -130,6 +137,75 @@ void RegisterLuaBindings(sol::state& Lua)
 		return GameUISystem::Get().IsDialogueActive();
 	});
 
+	// 아이템 상호작용
+	Lua.set_function("PlaceItemInKeepBox", [](const std::string& ItemId)
+	{
+		return FItemSystem::Get().PlaceItemInDecisionBox(ItemId, EItemDecisionBoxType::KeepBox);
+	});
+
+	Lua.set_function("PlaceItemInDiscardBox", [](const std::string& ItemId)
+	{
+		return FItemSystem::Get().PlaceItemInDecisionBox(ItemId, EItemDecisionBoxType::DiscardBox);
+	});
+
+	Lua.set_function("ClassifyItem", [](const std::string& ItemId, const std::string& Disposition)
+	{
+		if (Disposition == "Kept")
+		{
+			return FItemSystem::Get().ClassifyItem(ItemId, EGameItemDisposition::Kept);
+		}
+
+		if (Disposition == "Discarded")
+		{
+			return FItemSystem::Get().ClassifyItem(ItemId, EGameItemDisposition::Discarded);
+		}
+
+		return false;
+	});
+
+	Lua.set_function("GetItemDisplayName", [](const std::string& ItemId)
+	{
+		const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
+		return ItemData ? ItemData->DisplayName : FString();
+	});
+
+	Lua.set_function("GetItemDescription", [](const std::string& ItemId)
+	{
+		return FItemSystem::Get().GetDescriptionForCurrentState(ItemId);
+	});
+
+	Lua.set_function("GetResolvedItemCount", []()
+	{
+		return static_cast<int32>(GGameContext::Get().GetResolvedItemCount());
+	});
+
+	Lua.set_function("SelectCleaningTool", [](const std::string& ToolId)
+	{
+		return FCleaningToolSystem::Get().SelectTool(ToolId);
+	});
+
+	Lua.set_function("RegisterCleaningToolActor", [](AActor* Actor, const std::string& ToolId)
+	{
+		if (!Actor || ToolId.empty())
+		{
+			UE_LOG("[CleaningTool] RegisterCleaningToolActor failed. actor=%s toolId=%s",
+				Actor ? Actor->GetFName().ToString().c_str() : "null",
+				ToolId.c_str());
+			return false;
+		}
+
+		const FString ActorName = Actor->GetFName().ToString();
+		const FString Key = "CleaningTool:" + ActorName;
+		const bool bRegistered = FLuaScriptSystem::Get().SetStringGameStateValue(Key, ToolId);
+		UE_LOG("[CleaningTool] Registered actor=%s key=%s toolId=%s result=%d",
+			ActorName.c_str(),
+			Key.c_str(),
+			ToolId.c_str(),
+			bRegistered ? 1 : 0);
+		return bRegistered;
+	});
+
+
 	// 키 입력 (Windows Virtual Key Code)
 	// 자주 쓰는 상수를 Lua 전역으로 노출
 	Lua.set("KEY_SPACE",  0x20);
@@ -138,13 +214,25 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set("KEY_TAB",    0x09);
 	Lua.set("KEY_ENTER",  0x0D);
 
+	// 마우스 입력
+    Lua.set("KEY_LEFT_MOUSE", 0x01);
+    Lua.set("KEY_RIGHT_MOUSE", 0x02);
+
 	Lua.set_function("GetKeyDown", [](int VK)
 	{
+		if (GameUISystem::Get().WantsMouseCursor()) return false;
 		return FInputRouter::GetKeyDown(VK);
+	});
+
+	Lua.set_function("GetKey", [](int VK)
+	{
+		if (GameUISystem::Get().WantsMouseCursor()) return false;
+		return FInputRouter::GetKey(VK);
 	});
 
 	Lua.set_function("GetKeyUp", [](int VK)
 	{
+		if (GameUISystem::Get().WantsMouseCursor()) return false;
 		return FInputRouter::GetKeyUp(VK);
 	});
 
@@ -156,7 +244,41 @@ void RegisterLuaBindings(sol::state& Lua)
 		"Normal", &FHitResult::Normal,
 		"FaceIndex", &FHitResult::FaceIndex,
 		"bHit", &FHitResult::bHit,
-		"IsValid", &FHitResult::IsValid
+		"IsValid", &FHitResult::IsValid,
+		"GetDecalComponent", [](FHitResult& Hit) -> UDecalComponent*
+		{
+        if (!Hit.bHit || !Hit.HitComponent) return nullptr;
+
+        // 1. 직접 맞은 게 데칼이면 바로 반환
+        if (auto Decal = Cast<UDecalComponent>(Hit.HitComponent))
+            return Decal;
+
+        // 2. 맞은 컴포넌트의 액터를 가져옴
+        AActor* Owner = Hit.HitComponent->GetOwner();
+        if (!Owner) return nullptr;
+
+        // 3. 액터가 가진 모든 컴포넌트를 순회하며 데칼을 찾음
+        // 엔진 내부의 컴포넌트 리스트 접근 방식(예: Owner->GetComponents())에 따라 수정하세요.
+        for (auto* Comp : Owner->GetComponents()) 
+        {
+            if (auto* DecalComp = Cast<UDecalComponent>(Comp))
+            {
+                return DecalComp;
+            }
+        }
+
+        return nullptr;		}
+	);
+
+	Lua.new_usertype<UDecalComponent>(
+		"UDecalComponent",
+		"GetCleanPercentage", &UDecalComponent::GetCleanPercentage,
+		"PaintAtWorldPos", [](UDecalComponent& Decal, const FVector& WorldPos, float Radius, int Value)
+		{
+			FVector2 UV;
+			if (Decal.WorldPosToDecalUV(WorldPos, UV))
+				Decal.PaintMask(UV, Radius, static_cast<uint8>(Value));
+		}
 	);
 }
 #endif

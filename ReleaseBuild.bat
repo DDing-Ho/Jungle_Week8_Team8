@@ -5,6 +5,7 @@ set SOLUTION_DIR=%~dp0
 set PROJECT_DIR=%SOLUTION_DIR%NipsEngine
 set BUILD_OUTPUT=%PROJECT_DIR%\Bin\Release
 set RELEASE_DIR=%SOLUTION_DIR%ReleaseBuild
+set VCPKG_BIN=%SOLUTION_DIR%vcpkg_installed\x64-windows\bin
 
 :: VS Developer 환경 로드 (msbuild PATH 등록)
 set VSWHERE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -43,6 +44,8 @@ echo [3/3] Copying files...
 :: 실행 파일 (루트에)
 copy "%BUILD_OUTPUT%\NipsEngine.exe" "%RELEASE_DIR%\" >nul
 
+if exist "%VCPKG_BIN%\*.dll" xcopy "%VCPKG_BIN%\*.dll" "%RELEASE_DIR%\" /y /d /q >nul
+
 :: ImGui 레이아웃 (도킹 설정 포함)
 if exist "%PROJECT_DIR%\imgui.ini" copy "%PROJECT_DIR%\imgui.ini" "%RELEASE_DIR%\" >nul
 
@@ -67,6 +70,7 @@ echo ============================================
 echo.
 echo  ReleaseBuild/
 echo    NipsEngine.exe
+echo    *.dll
 echo    imgui.ini
 echo    Shaders/
 echo    Asset/Scene/

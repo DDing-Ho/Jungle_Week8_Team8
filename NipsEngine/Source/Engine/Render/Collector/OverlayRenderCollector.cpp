@@ -6,6 +6,7 @@
 #include "Component/BillboardComponent.h"
 #include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/CapsuleComponent.h"
+#include "Component/Collision/CylinderComponent.h"
 #include "Component/Collision/ShapeComponent.h"
 #include "Component/Collision/SphereComponent.h"
 #include "Component/GizmoComponent.h"
@@ -26,6 +27,8 @@
 #include "Render/Resource/Material.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Spatial/WorldSpatialIndex.h"
+
+#include <algorithm>
 
 namespace
 {
@@ -166,6 +169,24 @@ namespace
 				ShapeColor);
 			return true;
 		}
+		case ECollisionType::Cylinder:
+		{
+			const UCylinderComponent* CylinderComponent = Cast<UCylinderComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+			if (CylinderComponent == nullptr)
+			{
+				return true;
+			}
+
+			LineBatcher->AddCylinder(
+				CylinderComponent->GetWorldLocation(),
+				std::fabs(CylinderComponent->GetCylinderHalfHeight()),
+				std::fabs(CylinderComponent->GetCylinderRadius()),
+				CylinderComponent->GetUpVector(),
+				CylinderComponent->GetRightVector(),
+				CylinderComponent->GetForwardVector(),
+				ShapeColor);
+			return true;
+		}
 		default:
 			return true;
 		}
@@ -226,6 +247,8 @@ void FOverlayRenderCollector::CollectSelection(
 		PostProcessCmd.Material = FResourceManager::Get().GetMaterial("OutlineMaterial");
 
 		UMaterial* Material = Cast<UMaterial>(PostProcessCmd.Material);
+		Material->SetVector4("OutlineColor", FVector4(1.0f, 0.5f, 0.0f, 1.0f));
+		Material->SetFloat("OutlineThicknessPixels", 5.0f);
 		Material->SetVector2("OutlineViewportSize", RenderBus.GetViewportSize());
 		Material->SetVector2("OutlineViewportOrigin", RenderBus.GetViewportOrigin());
 		Material->DepthStencilType = EDepthStencilType::Default;
@@ -234,6 +257,124 @@ void FOverlayRenderCollector::CollectSelection(
 
 		RenderBus.AddCommand(ERenderPass::PostProcessOutline, PostProcessCmd);
 	}
+}
+
+void FOverlayRenderCollector::CollectOutline(
+	const TArray<AActor*>& Actors,
+	const FVector4& OutlineColor,
+	float OutlineThicknessPixels,
+	FRenderBus& RenderBus)
+{
+	if (MeshBufferManager == nullptr)
+	{
+		return;
+	}
+
+	bool bHasSelectionMask = false;
+	std::unordered_set<AActor*> SeenActors;
+
+	for (AActor* Actor : Actors)
+	{
+		if (Actor == nullptr || !SeenActors.insert(Actor).second || !Actor->IsVisible())
+		{
+			continue;
+		}
+
+		for (UPrimitiveComponent* PrimitiveComponent : Actor->GetPrimitiveComponents())
+		{
+			if (PrimitiveComponent == nullptr || !PrimitiveComponent->IsVisible() || !PrimitiveComponent->SupportsOutline())
+			{
+				continue;
+			}
+
+			if (PrimitiveComponent->IsEditorOnly())
+			{
+				UWorld* World = Actor->GetFocusedWorld();
+				if (World && World->GetWorldType() != EWorldType::Editor)
+				{
+					continue;
+				}
+			}
+
+			if (Cast<UShapeComponent>(PrimitiveComponent) != nullptr)
+			{
+				continue;
+			}
+
+			FMeshBuffer* MeshBuffer = nullptr;
+			if (PrimitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_StaticMesh)
+			{
+				UStaticMeshComponent* StaticMeshComp = static_cast<UStaticMeshComponent*>(PrimitiveComponent);
+				MeshBuffer = MeshBufferManager->GetStaticMeshBuffer(StaticMeshComp->GetStaticMesh());
+			}
+			else
+			{
+				MeshBuffer = &MeshBufferManager->GetMeshBuffer(PrimitiveComponent->GetPrimitiveType());
+			}
+
+			if (MeshBuffer == nullptr || !MeshBuffer->IsValid())
+			{
+				continue;
+			}
+
+			FRenderCommand MaskCmd = {};
+			MaskCmd.Type = PrimitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_Billboard
+				? ERenderCommandType::BillboardSelectionMask
+				: ERenderCommandType::SelectionMask;
+			MaskCmd.MeshBuffer = MeshBuffer;
+			MaskCmd.PerObjectConstants = FPerObjectConstants(PrimitiveComponent->GetWorldMatrix());
+			MaskCmd.SectionIndexStart = 0;
+			MaskCmd.SectionIndexCount = MeshBuffer->GetIndexBuffer().GetIndexCount();
+
+			if (PrimitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_SubUV)
+			{
+				MaskCmd.PerObjectConstants.Model = MakeViewSubUVSelectionMatrix(
+					static_cast<USubUVComponent*>(PrimitiveComponent),
+					RenderBus);
+			}
+			else if (PrimitiveComponent->GetPrimitiveType() == EPrimitiveType::EPT_Billboard)
+			{
+				const UBillboardComponent* BillboardComponent = static_cast<const UBillboardComponent*>(PrimitiveComponent);
+				MaskCmd.PerObjectConstants.Model = UBillboardComponent::MakeBillboardWorldMatrix(
+					BillboardComponent->GetWorldLocation(),
+					FVector(0.01f, BillboardComponent->GetWidth(), BillboardComponent->GetHeight()),
+					RenderBus.GetCameraForward(),
+					RenderBus.GetCameraRight(),
+					RenderBus.GetCameraUp());
+				MaskCmd.Constants.Billboard.Texture = static_cast<UBillboardComponent*>(PrimitiveComponent)->GetTexture();
+			}
+
+			RenderBus.AddCommand(ERenderPass::SelectionMask, MaskCmd);
+			bHasSelectionMask = true;
+		}
+	}
+
+	if (!bHasSelectionMask)
+	{
+		return;
+	}
+
+	FRenderCommand PostProcessCmd = {};
+	PostProcessCmd.Type = ERenderCommandType::PostProcessOutline;
+	PostProcessCmd.Material = FResourceManager::Get().GetMaterial("OutlineMaterial");
+	if (PostProcessCmd.Material == nullptr)
+	{
+		return;
+	}
+
+	PostProcessCmd.Material->SetVector4("OutlineColor", OutlineColor);
+	PostProcessCmd.Material->SetFloat("OutlineThicknessPixels", std::max(1.0f, OutlineThicknessPixels));
+	PostProcessCmd.Material->SetVector2("OutlineViewportSize", RenderBus.GetViewportSize());
+	PostProcessCmd.Material->SetVector2("OutlineViewportOrigin", RenderBus.GetViewportOrigin());
+
+	if (UMaterial* Material = Cast<UMaterial>(PostProcessCmd.Material))
+	{
+		Material->DepthStencilType = EDepthStencilType::Default;
+		Material->RasterizerType = ERasterizerType::SolidBackCull;
+		Material->BlendType = EBlendType::AlphaBlend;
+	}
+
+	RenderBus.AddCommand(ERenderPass::PostProcessOutline, PostProcessCmd);
 }
 
 void FOverlayRenderCollector::CollectDebugBounds(
