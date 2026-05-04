@@ -14,6 +14,15 @@ enum class EGameHeldObjectType
 	CleaningTool
 };
 
+enum class EGameMissionType
+{
+	PickCleaningTool,
+	KeepImportantItem,
+	DiscardTrash,
+	CleanDust,
+	Count
+};
+
 struct FHeldObjectInfo
 {
 	AActor* Actor = nullptr;
@@ -42,9 +51,18 @@ public:
 	const TArray<UDecalComponent*>& GetMapDecals() const { return MapDecals; }
 	int32 GetInitialDecalCount() const { return InitialDecalCount; }
 	int32 GetRemainingDecalCount() const;
+	const TArray<AActor*>& GetMapCleanlinessItemActors() const { return MapCleanlinessItemActors; }
+	int32 GetInitialCleanlinessItemCount() const { return InitialCleanlinessItemCount; }
+	int32 GetRemainingCleanlinessItemCount() const;
 
 	void SetCurrentTool(const FString& ToolId);
 	const FString& GetCurrentToolId() const { return CurrentToolId; }
+
+	bool IsMissionCompleted(EGameMissionType MissionType) const;
+	bool MarkMissionCompleted(EGameMissionType MissionType);
+	bool MarkTrashDiscardedForMission();
+	int GetCompletedMissionCount() const;
+	int GetMissionBonusScore() const;
 
 	void SetCurrentInspectedItem(const FString& ItemId);
 	void ClearCurrentInspectedItem();
@@ -87,10 +105,13 @@ private:
 	GGameContext() = default;
 
 	void BroadcastChanged();
+	bool CompleteMissionInternal(EGameMissionType MissionType);
 
 	float CleanProgress = 0.0f;
 	TArray<UDecalComponent*> MapDecals;
 	int32 InitialDecalCount = 0;
+	TArray<AActor*> MapCleanlinessItemActors;
+	int32 InitialCleanlinessItemCount = 0;
 	FString CurrentToolId;
 	FString CurrentInspectedItemId;
 	FHeldObjectInfo HeldObjectInfo;
@@ -99,4 +120,8 @@ private:
 	TSet<FString> KeptItemIds;
 	TSet<FString> DiscardedItemIds;
 	TSet<FString> UnlockedStoryFlags;
+	bool bMissionPickCleaningToolCompleted = false;
+	bool bMissionKeepImportantItemCompleted = false;
+	bool bMissionDiscardTrashCompleted = false;
+	bool bMissionCleanDustCompleted = false;
 };

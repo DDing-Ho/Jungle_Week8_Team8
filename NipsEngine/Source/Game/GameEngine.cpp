@@ -142,10 +142,10 @@ void UGameEngine::StartMainGame()
 	}
 
 	GameUISystem::Get().ResetGameData();
-	GGameContext::Get().RegisterMapDecals(GetWorld());
-	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 	GameUISystem::Get().SetState(EGameUIState::InGame);
 	BeginPlay();
+	GGameContext::Get().RegisterMapDecals(GetWorld());
+	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 }
 
 void UGameEngine::ExitToTitle()
@@ -162,6 +162,7 @@ void UGameEngine::ExitToTitle()
 	}
 
 	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	BeginPlay();
 }
 
 void UGameEngine::Tick(float DeltaTime)

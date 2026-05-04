@@ -116,7 +116,8 @@ bool FItemSystem::PlaceItemInDecisionBox(const FString& ItemId, EItemDecisionBox
 
 bool FItemSystem::InspectItem(const FString& ItemId)
 {
-	if (!FindItemData(ItemId))
+	const FGameItemData* ItemData = FindItemData(ItemId);
+	if (!ItemData || !ItemData->bCanInspect)
 	{
 		return false;
 	}

@@ -168,10 +168,24 @@ void URigidBodyComponent::SetVelocity(const FVector& InVelocity)
         return;
     }
 
+    const FVector PreviousVelocity = Velocity;
     Velocity = InVelocity;
     if (Velocity.Z > 0.0f)
     {
         bGrounded = false;
+    }
+
+    if (bDropSoundPending)
+    {
+        if (Velocity.Z < -0.15f)
+        {
+            bDropSoundObservedFalling = true;
+        }
+
+        if (bDropSoundObservedFalling && PreviousVelocity.Z < -0.15f && Velocity.Z > -0.08f)
+        {
+            TryPlayPendingDropSound();
+        }
     }
 
     FJoltPhysicsSystem::Get().SetBodyLinearVelocity(this, Velocity);
@@ -208,6 +222,10 @@ void URigidBodyComponent::NotifyBlockingPushOut(const FVector& PushDelta)
     {
         bGrounded = true;
         bGroundPushOutSinceLastTick = true;
+        if (bDropSoundPending)
+        {
+            TryPlayPendingDropSound();
+        }
         if (Velocity.Z < 0.0f)
         {
             Velocity.Z = 0.0f;
@@ -279,6 +297,31 @@ void URigidBodyComponent::PlayDropSound() const
     }
 }
 
+void URigidBodyComponent::QueueDropSound(const FString& SoundPath)
+{
+    if (SoundPath.empty())
+    {
+        return;
+    }
+
+    PendingDropSoundPath = SoundPath;
+    bDropSoundPending = true;
+    bDropSoundObservedFalling = Velocity.Z < -0.15f;
+}
+
+void URigidBodyComponent::TryPlayPendingDropSound()
+{
+    if (!bDropSoundPending || PendingDropSoundPath.empty())
+    {
+        return;
+    }
+
+    FAudioSystem::Get().PlayAtLocation(PendingDropSoundPath, GetPhysicsLocation(), 1.0f, false, 0.5f, 8.0f);
+    PendingDropSoundPath.clear();
+    bDropSoundPending = false;
+    bDropSoundObservedFalling = false;
+}
+
 void URigidBodyComponent::TickComponent(float DeltaTime)
 {
     if (FJoltPhysicsSystem::Get().IsBodyManaged(this))
@@ -317,6 +360,10 @@ void URigidBodyComponent::TickComponent(float DeltaTime)
     {
         Velocity = FVector::ZeroVector;
         AngularVelocity = FVector::ZeroVector;
+        if (bDropSoundPending && bDropSoundObservedFalling)
+        {
+            TryPlayPendingDropSound();
+        }
         return;
     }
 

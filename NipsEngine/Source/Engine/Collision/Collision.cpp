@@ -17,7 +17,14 @@ namespace
     {
         const FMatrix& WorldMatrix = Box->GetWorldMatrix();
         const FVector Extent = Box->GetBoxExtent();
-        return FOBB(Box->GetWorldLocation(), FVector(MathUtil::Abs(Extent.X), MathUtil::Abs(Extent.Y), MathUtil::Abs(Extent.Z)), WorldMatrix.GetRotationMatrix());
+        const FVector Scale = Box->GetWorldScale();
+        return FOBB(
+            Box->GetWorldLocation(),
+            FVector(
+                MathUtil::Abs(Extent.X) * MathUtil::Abs(Scale.X),
+                MathUtil::Abs(Extent.Y) * MathUtil::Abs(Scale.Y),
+                MathUtil::Abs(Extent.Z) * MathUtil::Abs(Scale.Z)),
+            WorldMatrix.GetRotationMatrix());
     }
 
     float GetSphereWorldRadius(const USphereComponent* Sphere)
