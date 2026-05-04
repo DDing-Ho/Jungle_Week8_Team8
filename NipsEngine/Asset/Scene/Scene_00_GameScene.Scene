@@ -6,9 +6,9 @@
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-12.494985, -10.567869, 13.903956],
+    "Location" : [-5.112283, 0.583409, 5.956297],
     "NearClip" : 0.100000,
-    "Rotation" : [-30.989258, 24.380360, 55.499512]
+    "Rotation" : [10.393109, -22.880585, -154.745834]
   },
   "Primitives" : {
     "11356" : {
@@ -766,7 +766,97 @@
       "Type" : "ULuaScriptComponent",
       "UseDefaultScriptPath" : false
     },
-    "26091" : {
+    "25944" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 844,
+      "ScriptPath" : "Asset/Scripts/Sponge.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "25945" : {
+      "BlockComponent" : true,
+      "BoxExtent" : [0.500000, 0.500000, 0.500000],
+      "DebugBoundsVisibility" : 0,
+      "DrawOnlyIfSelected" : false,
+      "EditorOnly" : false,
+      "EnableCull" : false,
+      "EnableTick" : true,
+      "GenerateOverlapEvents" : false,
+      "HiddenInEditor" : false,
+      "LineThickness" : 1.000000,
+      "Location" : [0.874971, 1.851532, 0.000001],
+      "ParentUUID" : 597,
+      "Rotation" : [0.000000, 0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "ShapeColor" : [0.874510, 0.584314, 0.615686, 1.000000],
+      "Type" : "UBoxComponent",
+      "Visible" : true
+    },
+    "25946" : {
+      "AngularDamping" : 1.500000,
+      "AngularVelocity" : [0.000000, 0.000000, 0.000000],
+      "BodyType" : 1,
+      "CanBePickedUp" : true,
+      "DropSoundPath" : "",
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "GravityScale" : 1.000000,
+      "HiddenInEditor" : false,
+      "LinearDamping" : 1.500000,
+      "Mass" : 1.000000,
+      "MaxAngularSpeed" : 180.000000,
+      "MaxSpeed" : 50.000000,
+      "OwnerRootUUID" : 597,
+      "PickupSoundPath" : "",
+      "SimulatePhysics" : true,
+      "SleepSpeed" : 0.030000,
+      "Type" : "URigidBodyComponent",
+      "UpdatedComponentUUID" : 0,
+      "UseGravity" : true,
+      "Velocity" : [0.000000, 0.000000, 0.000000]
+    },
+    "25947" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 597,
+      "ScriptPath" : "Asset/Scripts/Shell.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "26094" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 2655,
+      "ScriptPath" : "Asset/Scripts/DiscardBox.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "26095" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 2652,
+      "ScriptPath" : "Asset/Scripts/KeepBox.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "26700" : {
       "ActorActive" : true,
       "ActorClass" : "ASceneActor",
       "ActorTickInEditor" : false,
@@ -779,7 +869,7 @@
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "USceneComponent"
     },
-    "26092" : {
+    "26701" : {
       "BlockComponent" : false,
       "DebugBoundsVisibility" : 0,
       "EditorOnly" : true,
@@ -789,7 +879,7 @@
       "Height" : 1.000000,
       "HiddenInEditor" : true,
       "Location" : [0.000000, 0.000000, 0.000000],
-      "ParentUUID" : 26091,
+      "ParentUUID" : 26700,
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Texture Path" : "Asset/Texture/Icons/EmptyActor.PNG",
@@ -797,7 +887,7 @@
       "Visible" : true,
       "Width" : 1.000000
     },
-    "26094" : {
+    "26702" : {
       "AffectedByAudioZones" : false,
       "AudioBus" : 1,
       "AudioRangeVisibility" : 0,
@@ -809,7 +899,7 @@
       "MaxDistance" : 8.000000,
       "MinDistance" : 1.000000,
       "OutsideRangeBehavior" : 0,
-      "ParentUUID" : 26091,
+      "ParentUUID" : 26700,
       "PlaylistEnabled" : true,
       "PlaylistPathA" : "Asset/Audio/Rain - Hans Zimmer (128k).wav",
       "PlaylistPathB" : "Asset/Audio/Joi - Hans Zimmer (128k).wav",
@@ -856,7 +946,7 @@
       "MaxDistance" : 8.000000,
       "MinDistance" : 1.000000,
       "OutsideRangeBehavior" : 0,
-      "ParentUUID" : 26091,
+      "ParentUUID" : 26700,
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "SoundPath" : "Asset/Audio/405561__inspectorj__wind-realistic-a.wav",
@@ -1975,7 +2065,7 @@
     "9131" : {
       "AngularDamping" : 1.500000,
       "AngularVelocity" : [0.000000, 0.000000, 0.000000],
-      "BodyType" : 0,
+      "BodyType" : 1,
       "CanBePickedUp" : true,
       "DropSoundPath" : "",
       "EditorOnly" : false,
@@ -1992,7 +2082,7 @@
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
       "UpdatedComponentUUID" : 0,
-      "UseGravity" : false,
+      "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
     "928" : {

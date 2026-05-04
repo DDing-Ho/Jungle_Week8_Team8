@@ -16,35 +16,45 @@ FEndingResult FEndingSystem::EvaluateEnding() const
 	const GGameContext& Context = GGameContext::Get();
 	const FItemSystem& ItemSystem = FItemSystem::Get();
 
-	for (const FGameItemData& ItemData : ItemSystem.GetAllItemData())
-	{
-		if (ItemData.bRequiredForSuccessEnding && !Context.HasKeptItem(ItemData.ItemId))
-		{
-			Result.MissingRequiredItemIds.push_back(ItemData.ItemId);
-		}
-	}
-
 	for (const FString& ItemId : Context.GetKeptItemIds())
 	{
 		const FGameItemData* ItemData = ItemSystem.FindItemData(ItemId);
-		if (ItemData && ItemData->ItemType == EGameItemType::DummyItem)
+		if (!ItemData)
 		{
-			Result.KeptFailureItemIds.push_back(ItemId);
+			continue;
+		}
+
+		switch (ItemData->EndingRole)
+		{
+		case EGameItemEndingRole::Bad:
+			Result.KeptBadItemIds.push_back(ItemId);
+			break;
+
+		case EGameItemEndingRole::Good:
+			Result.KeptGoodItemIds.push_back(ItemId);
+			break;
+
+		case EGameItemEndingRole::Normal:
+			Result.KeptNormalItemIds.push_back(ItemId);
+			break;
+
+		case EGameItemEndingRole::None:
+		default:
+			break;
 		}
 	}
 
-	Result.bIsSuccess = Result.MissingRequiredItemIds.empty() && Result.KeptFailureItemIds.empty();
-	if (Result.bIsSuccess)
+	if (!Result.KeptBadItemIds.empty())
 	{
-		Result.EndingId = "Ending_Success";
+		Result.EndingId = "Ending_Bad";
 	}
-	else if (!Result.KeptFailureItemIds.empty())
+	else if (!Result.KeptGoodItemIds.empty())
 	{
-		Result.EndingId = "Ending_Failed_DummyItem";
+		Result.EndingId = "Ending_Good";
 	}
 	else
 	{
-		Result.EndingId = "Ending_Failed_MissingRequiredItem";
+		Result.EndingId = "Ending_Normal";
 	}
 
 	return Result;

@@ -110,6 +110,26 @@ namespace
 		return EGameItemType::StoryItem;
 	}
 
+	EGameItemEndingRole ParseEndingRole(const FString& RoleName)
+	{
+		if (RoleName == "Bad")
+		{
+			return EGameItemEndingRole::Bad;
+		}
+
+		if (RoleName == "Normal")
+		{
+			return EGameItemEndingRole::Normal;
+		}
+
+		if (RoleName == "Good")
+		{
+			return EGameItemEndingRole::Good;
+		}
+
+		return EGameItemEndingRole::None;
+	}
+
 	TArray<FString> ReadStringArray(const json::JSON& Node, const char* Key)
 	{
 		TArray<FString> Values;
@@ -167,12 +187,12 @@ namespace
 		ItemData.ItemId = GetStringField(Node, "id");
 		ItemData.DisplayName = GetStringField(Node, "name");
 		ItemData.ItemType = ParseItemType(GetStringField(Node, "type"));
+		ItemData.EndingRole = ParseEndingRole(GetStringField(Node, "endingRole"));
 		ItemData.DescriptionWhenFound = ReadFoundDescription(Node);
 		ItemData.DescriptionWhenKept = GetStringField(Node, "keptDesc");
 		ItemData.DescriptionWhenDiscarded = GetStringField(Node, "discardedDesc");
 		ItemData.IconPath = GetStringField(Node, "iconPath");
 		ItemData.bCanClassify = GetBoolField(Node, "canClassify", true);
-		ItemData.bRequiredForSuccessEnding = GetBoolField(Node, "requiredForSuccessEnding", false);
 		ItemData.StoryFlags = ReadStringArray(Node, "storyFlags");
 		return ItemData;
 	}
