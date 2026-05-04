@@ -78,9 +78,6 @@ void APawnActor::InitDefaultComponents()
 
 void APawnActor::EnsureDefaultComponents()
 {
-	const UWorld* World = GetFocusedWorld();
-	const bool bRuntimeWorld = World && (World->GetWorldType() == EWorldType::PIE || World->GetWorldType() == EWorldType::Game);
-
 	USceneComponent* SceneRoot = GetRootComponent();
 	if (SceneRoot == nullptr)
 	{
@@ -141,10 +138,9 @@ void APawnActor::EnsureDefaultComponents()
 		Camera->AttachToComponent(SceneRoot);
 		Camera->SetRelativeLocation(FVector(0.0f, 0.0f, 1.55f));
 	}
-	else if (bRuntimeWorld && Camera->GetRelativeLocation().Z < 0.5f)
+	else if (Camera->GetParent() == nullptr)
 	{
-		const FVector ExistingLocation = Camera->GetRelativeLocation();
-		Camera->SetRelativeLocation(FVector(ExistingLocation.X, ExistingLocation.Y, 1.55f));
+		Camera->AttachToComponent(SceneRoot);
 	}
 
 	if (PhysicsHandle == nullptr)
