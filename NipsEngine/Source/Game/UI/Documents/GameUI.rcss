@@ -871,7 +871,9 @@ body {
 }
 
 #ending-visual-frame {
-    position: relative;
+    position: absolute;
+    left: 5%;
+    top: 20%;
     width: 90%; 
     height: 60%;
     background-color: rgba(0, 0, 0, 170);
