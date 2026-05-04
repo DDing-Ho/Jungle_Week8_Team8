@@ -71,9 +71,11 @@
 	</div>
 
 	<div id="title-intro-layer">
-		<img id="title-intro-icon" src="Asset/Texture/GameTitleIcon.png" />
+		<img id="title-intro-icon" src="Asset/Texture/EngineLogoIcon.png" />
 	</div>
 
 	<div id="screen-fade-layer"></div>
+
+	<img id="game-cursor" src="Asset/Texture/CursorDefault.png" />
 </body>
 </rml>

@@ -29,7 +29,6 @@
 #include "RmlUi/Core/StringUtilities.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -169,6 +168,7 @@ namespace
 	};
 
 	constexpr size_t TitleButtonCount = sizeof(TitleButtonIds) / sizeof(TitleButtonIds[0]);
+
 }
 
 GameUISystem& GameUISystem::Get()
@@ -321,8 +321,6 @@ void GameUISystem::SetState(EGameUIState NewState)
 
 	CurrentState = NewState;
 	SetPauseMenuOpen(false);
-	if (CurrentState != EGameUIState::StartMenu)
-		HoveredTitleButtonId.clear();
 }
 
 bool GameUISystem::WantsMouseCursor() const
@@ -333,6 +331,11 @@ bool GameUISystem::WantsMouseCursor() const
 		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
 		   DialoguePanel::IsActive();
+}
+
+bool GameUISystem::WantsCustomCursor() const
+{
+	return WantsMouseCursor();
 }
 
 void GameUISystem::SetPauseMenuOpen(bool bOpen)
@@ -465,6 +468,8 @@ bool GameUISystem::OnUIMouseMove(float X, float Y)
 	if (!bRmlUiInitialized || !RmlContext)
 		return false;
 
+	CustomCursorX = X;
+	CustomCursorY = Y;
 	RmlContext->ProcessMouseMove(static_cast<int>(X), static_cast<int>(Y), 0);
 	return WantsMouseCursor();
 }
@@ -590,8 +595,6 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
 	TickTitleTransitions(DeltaTime);
-	if (CurrentState == EGameUIState::StartMenu)
-		TitleButtonBlinkElapsed += std::max(0.0f, DeltaTime);
 
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
 
@@ -616,7 +619,12 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("ending-panel", bShowEnding);
 	SetElementVisible("the-end", bShowTheEnd);
 	UpdateTitleTransitionElements();
-	UpdateTitleMenuButtonEffects();
+
+	const bool bShowCustomCursor = WantsCustomCursor();
+	SetElementVisible("game-cursor", bShowCustomCursor);
+	SetElementProperty("game-cursor", "left", FormatPixels(CustomCursorX));
+	SetElementProperty("game-cursor", "top", FormatPixels(CustomCursorY));
+	SetElementAttribute("game-cursor", "src", bTitleButtonHovered ? "Asset/Texture/CursorHovered.png" : "Asset/Texture/CursorDefault.png");
 
 	constexpr float TitleBackgroundAspect = 2760.0f / 1504.0f;
 	float TitleBackgroundWidth = static_cast<float>(Width);
@@ -693,8 +701,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 void GameUISystem::ResetTitleIntro()
 {
 	TitleIntroElapsed = 0.0f;
-	TitleButtonBlinkElapsed = 0.0f;
-	HoveredTitleButtonId.clear();
+	bTitleButtonHovered = false;
 	bStartGameTransitionActive = false;
 	StartGameTransitionElapsed = 0.0f;
 	bStartGameTransitionReady = false;
@@ -733,19 +740,6 @@ void GameUISystem::UpdateTitleTransitionElements()
 
 	SetElementVisible("screen-fade-layer", bStartGameTransitionActive);
 	SetElementProperty("screen-fade-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, StartFadeAlpha));
-}
-
-void GameUISystem::UpdateTitleMenuButtonEffects()
-{
-	const bool bCanBlink = CurrentState == EGameUIState::StartMenu && !bStartGameTransitionActive && !HoveredTitleButtonId.empty();
-	const float Blink = (std::sin(TitleButtonBlinkElapsed * 18.0f) + 1.0f) * 0.5f;
-	const std::string HoverOpacity = FormatOpacity(0.42f + Blink * 0.58f);
-
-	for (const char* ButtonId : TitleButtonIds)
-	{
-		const bool bHovered = bCanBlink && HoveredTitleButtonId == ButtonId;
-		SetElementProperty(ButtonId, "opacity", bHovered ? HoverOpacity : "1.000");
-	}
 }
 
 void GameUISystem::FinishStartGameTransition()
@@ -819,15 +813,15 @@ void GameUISystem::BindRmlUiEvents()
 		TitleButtonHoverEnterListeners.emplace_back(std::make_unique<FRmlUiClickListener>([ButtonId]()
 		{
 			GameUISystem& UI = GameUISystem::Get();
-			UI.HoveredTitleButtonId = ButtonId;
-			UI.TitleButtonBlinkElapsed = 0.0f;
+			UI.bTitleButtonHovered = true;
+			UI.SetElementProperty(ButtonId, "opacity", "0.82");
 		}));
 
 		TitleButtonHoverLeaveListeners.emplace_back(std::make_unique<FRmlUiClickListener>([ButtonId]()
 		{
 			GameUISystem& UI = GameUISystem::Get();
-			if (UI.HoveredTitleButtonId == ButtonId)
-				UI.HoveredTitleButtonId.clear();
+			UI.bTitleButtonHovered = false;
+			UI.SetElementProperty(ButtonId, "opacity", "1.0");
 		}));
 
 		if (Rml::Element* Element = RmlDocument->GetElementById(ButtonId))

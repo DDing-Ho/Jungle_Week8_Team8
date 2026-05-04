@@ -103,6 +103,7 @@ public:
 
     void BeginFrame();
     void EndFrame();
+    void PresentStartupFrame();
 
     // 단일 Viewport 개선 중 임시 함수
     // 입력 RenderTarget 에 대한 BeginFrame 설정 수행

@@ -92,6 +92,7 @@ public:
     void SetPauseMenuOpen(bool bOpen);
     bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
     bool WantsMouseCursor() const;
+    bool WantsCustomCursor() const;
 
     // 게임 데이터 초기화 (Retry 시 호출)
     void ResetGameData();
@@ -140,7 +141,6 @@ private:
     void ResetTitleIntro();
     void TickTitleTransitions(float DeltaTime);
     void UpdateTitleTransitionElements();
-    void UpdateTitleMenuButtonEffects();
     void FinishStartGameTransition();
     bool CreateGameDocument();
     void BindRmlUiEvents();
@@ -167,8 +167,9 @@ private:
     double LastRmlUpdateTime = 0.0;
 
     float TitleIntroElapsed = 0.0f;
-    float TitleButtonBlinkElapsed = 0.0f;
-    std::string HoveredTitleButtonId;
+    float CustomCursorX = 0.0f;
+    float CustomCursorY = 0.0f;
+    bool bTitleButtonHovered = false;
     bool bStartGameTransitionActive = false;
     float StartGameTransitionElapsed = 0.0f;
     bool bStartGameTransitionReady = false;

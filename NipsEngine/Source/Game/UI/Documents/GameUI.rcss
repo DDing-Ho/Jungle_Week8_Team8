@@ -27,10 +27,10 @@ body {
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 360px;
+	width: 960px;
 	height: auto;
-	margin-left: -180px;
-	margin-top: -135px;
+	margin-left: -480px;
+	margin-top: -180px;
 }
 
 #screen-fade-layer {
@@ -85,6 +85,15 @@ body {
 
 .title-menu-button:hover {
 	opacity: 0.82;
+}
+
+#game-cursor {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 32px;
+	height: 32px;
+	pointer-events: none;
 }
 
 #hud-panel {
