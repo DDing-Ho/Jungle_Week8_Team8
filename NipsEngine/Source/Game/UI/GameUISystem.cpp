@@ -9,6 +9,7 @@
 #include "Game/UI/RmlUi/RmlUiSystemInterface.h"
 #include "Game/UI/StartMenuPanel.h"
 
+#include "Core/Paths.h"
 #include "Render/Common/RenderTypes.h"
 
 #include <Windows.h>
@@ -208,7 +209,9 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 	}
 	bRmlUiInitialized = true;
 
-	Rml::LoadFontFace("C:/Windows/Fonts/malgun.ttf", true);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicRegular.ttf"), true);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicBold.ttf"), false);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicLight.ttf"), false);
 
 	RmlContext = Rml::CreateContext("GameUI", Rml::Vector2i(1280, 720));
 	if (!RmlContext || !CreateGameDocument())
