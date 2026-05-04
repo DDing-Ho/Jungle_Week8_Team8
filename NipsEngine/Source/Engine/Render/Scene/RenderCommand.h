@@ -142,6 +142,9 @@ struct FStaticMeshConstants
 struct FDecalConstants
 {
 	FMatrix InvDecalWorld = FMatrix::Identity;
+	float MaskInfluence = 1.0f;
+	float WhiteOverride = 0.0f;
+	float Padding[2] = { 0.0f, 0.0f };
 };
 
 constexpr uint32 MaxFogLayerCount = 32;
