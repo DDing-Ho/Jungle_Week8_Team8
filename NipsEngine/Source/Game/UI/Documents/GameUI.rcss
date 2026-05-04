@@ -677,10 +677,25 @@ body {
 
 #the-end {
 	position: absolute;
-	top: 47%;
+	top: 40%;
 	left: 0px;
 	width: 100%;
 	text-align: center;
 	font-size: 44px;
 	color: rgba(220, 210, 190, 0);
+}
+
+#ending-buttons {
+	display: none;
+	position: absolute;
+	top: 55%;
+	left: 0px;
+	width: 100%;
+	text-align: center;
+}
+
+#save-score-button, #exit-to-main-button {
+	display: inline-block;
+	position: static;
+	margin: 0px 10px;
 }

@@ -284,6 +284,18 @@ void GameUISystem::Shutdown()
 			Element->RemoveEventListener("click", CreditsCloseClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 			Element->RemoveEventListener("click", PauseTitleClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
+			Element->RemoveEventListener("click", SaveScoreClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("exit-to-main-button"))
+			Element->RemoveEventListener("click", ExitToMainClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-menu-close"))
+			Element->RemoveEventListener("click", DebugMenuCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-bad"))
+			Element->RemoveEventListener("click", DebugJumpBadClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-normal"))
+			Element->RemoveEventListener("click", DebugJumpNormalClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-good"))
+			Element->RemoveEventListener("click", DebugJumpGoodClickListener.get());
 		for (size_t Index = 0; Index < TitleButtonHoverEnterListeners.size() && Index < TitleButtonCount; ++Index)
 		{
 			if (Rml::Element* Element = RmlDocument->GetElementById(TitleButtonIds[Index]))
@@ -322,6 +334,12 @@ void GameUISystem::Shutdown()
 	CreditsOpenClickListener.reset();
 	CreditsCloseClickListener.reset();
 	PauseTitleClickListener.reset();
+	SaveScoreClickListener.reset();
+	ExitToMainClickListener.reset();
+	DebugMenuCloseClickListener.reset();
+	DebugJumpBadClickListener.reset();
+	DebugJumpNormalClickListener.reset();
+	DebugJumpGoodClickListener.reset();
 	TitleButtonHoverEnterListeners.clear();
 	TitleButtonHoverLeaveListeners.clear();
 
@@ -539,6 +557,31 @@ void GameUISystem::RequestExitToTitle()
 		SetState(EGameUIState::StartMenu);
 		ResetGameData();
 	}
+}
+
+void GameUISystem::RequestSaveScore()
+{
+	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
+	FPaths::CreateDir(SavesDir);
+
+	const std::wstring ScorePath = FPaths::Combine(SavesDir, L"Scores.txt");
+	std::ofstream File(FPaths::ToUtf8(ScorePath), std::ios::app);
+	if (!File.is_open())
+		return;
+
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+
+	char DateBuf[64];
+	std::snprintf(DateBuf, sizeof(DateBuf), "%04d-%02d-%02d %02d:%02d:%02d",
+		st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+	File << "[" << DateBuf << "] "
+		 << "Progress: " << static_cast<int>(CleanProgress * 100.0f) << "%, "
+		 << "Time: " << FormatTime(ElapsedTime) << ", "
+		 << "Items: " << ItemCount << "\n";
+	
+	File.close();
 }
 
 void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
@@ -833,7 +876,10 @@ bool GameUISystem::OnUIKeyDown(int VK)
 {
 	if (VK == VK_OEM_3 && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) // Debug: Ctrl + Backtick key (`)
 	{
-		SetState(EGameUIState::Ending);
+		if (bDebugMenuOpen)
+			CloseDebugMenu();
+		else
+			OpenDebugMenu();
 		return true;
 	}
 
@@ -979,6 +1025,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
 	const bool bShowTheEnd = bShowEnding && EndingPanel::ShouldShowTheEnd();
+	const bool bShowEndingButtons = bShowTheEnd && EndingPanel::GetFadeAlpha() >= 0.8f;
 	const bool bShowItemInspect = bShowHud && bItemInspectOpen;
 	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && !bShowItemInspect && InteractionHintType != EInteractionHintType::None;
 
@@ -992,9 +1039,11 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("interaction-hint", bShowInteractionHint);
 	SetElementVisible("pause-layer", bShowPause);
 	SetElementVisible("item-inspect-panel", bShowItemInspect);
+	SetElementVisible("debug-menu-layer", bDebugMenuOpen);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
 	SetElementVisible("the-end", bShowTheEnd);
+	SetElementVisible("ending-buttons", bShowEndingButtons);
 	UpdateTitleTransitionElements();
 
 	const bool bShowCustomCursor = WantsCustomCursor();
@@ -1249,6 +1298,42 @@ void GameUISystem::BindRmlUiEvents()
 		GameUISystem::Get().RequestExitToTitle();
 	});
 
+	SaveScoreClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().RequestSaveScore();
+	});
+
+	ExitToMainClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().RequestExitToTitle();
+	});
+
+	DebugMenuCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+	});
+
+	DebugJumpBadClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Bad);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	DebugJumpNormalClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Normal);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	DebugJumpGoodClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Good);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
 	if (Rml::Element* Element = RmlDocument->GetElementById("start-button"))
 		Element->AddEventListener("click", StartClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("retry-button"))
@@ -1269,6 +1354,18 @@ void GameUISystem::BindRmlUiEvents()
 		Element->AddEventListener("click", CreditsCloseClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 		Element->AddEventListener("click", PauseTitleClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
+		Element->AddEventListener("click", SaveScoreClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("exit-to-main-button"))
+		Element->AddEventListener("click", ExitToMainClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-menu-close"))
+		Element->AddEventListener("click", DebugMenuCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-bad"))
+		Element->AddEventListener("click", DebugJumpBadClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-normal"))
+		Element->AddEventListener("click", DebugJumpNormalClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-good"))
+		Element->AddEventListener("click", DebugJumpGoodClickListener.get());
 
 	for (const char* ButtonId : TitleButtonIds)
 	{

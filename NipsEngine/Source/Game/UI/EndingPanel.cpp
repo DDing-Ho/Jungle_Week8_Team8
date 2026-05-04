@@ -23,13 +23,6 @@ void EndingPanel::Tick(float DeltaTime)
 
 	bShowTheEnd = true;
 	FadeTimer += std::max(0.0f, DeltaTime);
-
-	constexpr float ExitAfter = 3.5f;
-	if (!bExitCalled && FadeTimer >= ExitAfter)
-	{
-		bExitCalled = true;
-		GameUISystem::Get().RequestExitPlay();
-	}
 }
 
 bool EndingPanel::ShouldShowTheEnd()

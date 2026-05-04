@@ -132,6 +132,10 @@
 
 	<div id="ending-panel">
 		<div id="the-end">THE END</div>
+		<div id="ending-buttons">
+			<div id="save-score-button" class="pause-button">Save Score</div>
+			<div id="exit-to-main-button" class="pause-button">Exit to Main Menu</div>
+		</div>
 	</div>
 
 	<div id="debug-menu-layer">

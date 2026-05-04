@@ -32,6 +32,14 @@ enum class EGameUIState
     Ending,      // 엔딩
 };
 
+enum class EEndingType
+{
+    None,
+    Good,
+    Normal,
+    Bad,
+};
+
 // -------------------------------------------------------
 // 렌더 모드
 //   Preview : 에디터 편집 모드 - 더미 데이터, 버튼 동작 안 함
@@ -126,6 +134,12 @@ public:
     bool IsDialogueActive() const;
 
     // -------------------------------------------------------
+    // 엔딩 타입
+    // -------------------------------------------------------
+    void SetEndingType(EEndingType Type) { CurrentEndingType = Type; }
+    EEndingType GetEndingType() const { return CurrentEndingType; }
+
+    // -------------------------------------------------------
     // PIE / 플레이 종료 콜백
     //   에디터: StartPlaySession 에서 StopPlaySession 바인딩
     //   게임 빌드: 콜백이 없으면 윈도우 종료 요청
@@ -133,6 +147,7 @@ public:
     void SetExitPlayCallback(std::function<void()> Callback);
     void RequestExitPlay();   // EndingPanel 에서 호출
     void RequestExitToTitle();
+    void RequestSaveScore();
 
     void SetStartGameCallback(std::function<void()> Callback);
     void RequestStartGame();
@@ -198,6 +213,8 @@ private:
     std::unique_ptr<FRmlUiClickListener> CreditsOpenClickListener;
     std::unique_ptr<FRmlUiClickListener> CreditsCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> PauseTitleClickListener;
+    std::unique_ptr<FRmlUiClickListener> SaveScoreClickListener;
+    std::unique_ptr<FRmlUiClickListener> ExitToMainClickListener;
     std::unique_ptr<FRmlUiClickListener> DebugMenuCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> DebugJumpBadClickListener;
     std::unique_ptr<FRmlUiClickListener> DebugJumpNormalClickListener;
@@ -218,6 +235,7 @@ private:
     bool bSettingsOpen = false;
     bool bCreditsOpen = false;
     bool bDebugMenuOpen = false;
+    EEndingType CurrentEndingType = EEndingType::None;
     ESettingsSlider ActiveSettingsSlider = ESettingsSlider::None;
     float MouseSensitivityScale = 1.0f;
     float BgmVolume = 1.0f;
