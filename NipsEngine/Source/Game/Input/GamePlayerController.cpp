@@ -369,6 +369,22 @@ void FGamePlayerController::SetFreeCamera(FViewportCamera* InCamera)
 	SyncFreeCameraAngles();
 }
 
+AActor* FGamePlayerController::GetHeldNonCleaningToolActor() const
+{
+	if (PhysicsHandle == nullptr || !PhysicsHandle->IsHolding())
+	{
+		return nullptr;
+	}
+
+	if (!GGameContext::Get().GetCurrentToolId().empty())
+	{
+		return nullptr;
+	}
+
+	URigidBodyComponent* HeldBody = PhysicsHandle->GetHeldBody();
+	return HeldBody ? HeldBody->GetOwner() : nullptr;
+}
+
 void FGamePlayerController::InitializeFreeCameraFromSnapshot(const FCameraSnapshot& Snapshot)
 {
 	if (!FreeCamera)

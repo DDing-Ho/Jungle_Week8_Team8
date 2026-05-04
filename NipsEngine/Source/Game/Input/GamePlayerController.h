@@ -59,6 +59,7 @@ public:
 	void SetTogglePauseCallback(std::function<void()> Callback) { OnRequestTogglePause = std::move(Callback); }
 	void ClearTogglePauseCallback() { OnRequestTogglePause = nullptr; }
 	AActor* GetHoveredPickableActor() const { return HoveredPickableActor; }
+	AActor* GetHeldNonCleaningToolActor() const;
 
 	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 

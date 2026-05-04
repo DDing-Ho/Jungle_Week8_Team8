@@ -216,7 +216,7 @@ void UPhysicsHandleComponent::PostEditProperty(const char* PropertyName)
 {
 	UActorComponent::PostEditProperty(PropertyName);
 	ClampEditableValues();
-
+	  
 	if (PropertyName != nullptr)
 	{
 		if (std::strcmp(PropertyName, "Hold Distance") == 0)
