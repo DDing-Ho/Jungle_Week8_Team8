@@ -49,6 +49,18 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+	case WM_ERASEBKGND:
+		return 1;
+	case WM_PAINT:
+	{
+		PAINTSTRUCT Paint = {};
+		HDC DC = BeginPaint(hWnd, &Paint);
+		RECT ClientRect = {};
+		GetClientRect(hWnd, &ClientRect);
+		FillRect(DC, &ClientRect, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+		EndPaint(hWnd, &Paint);
+		return 0;
+	}
 	case WM_MOUSEMOVE:
 	{
 		const int32 MX = GET_X_LPARAM(lParam);
@@ -128,7 +140,11 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 
 	WCHAR WindowClass[] = L"JungleWindowClass";
 	WCHAR Title[] = L"Game Tech Lab";
-	WNDCLASSW WndClass = { 0, StaticWndProc, 0, 0, 0, 0, 0, 0, 0, WindowClass };
+	WNDCLASSW WndClass = {};
+	WndClass.lpfnWndProc = StaticWndProc;
+	WndClass.hInstance = HInstance;
+	WndClass.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+	WndClass.lpszClassName = WindowClass;
 
 	RegisterClassW(&WndClass);
 

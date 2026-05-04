@@ -99,6 +99,7 @@ void FGameViewportClient::Tick(float DeltaTime)
 	RouteContext.bControlLocked = bUIWantsMouse;
 	RouteContext.bInputActive = bInputActive && !bUIWantsMouse;
 	RouteContext.bHasActiveCamera = ActiveCamera != nullptr;
+	RouteContext.bUseCustomCursor = GameUISystem::Get().WantsCustomCursor();
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
 

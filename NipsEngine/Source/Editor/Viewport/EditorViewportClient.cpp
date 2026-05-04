@@ -228,6 +228,7 @@ void FEditorViewportClient::Tick(float DeltaTime)
 	RouteContext.bControlLocked = bControlLocked || bUIWantsMouse;
 	RouteContext.bInputActive = !bUIWantsMouse;
 	RouteContext.bHasActiveCamera = bHasCamera;
+	RouteContext.bUseCustomCursor = GameUISystem::Get().WantsCustomCursor();
 	InputRouter.Tick(DeltaTime, RouteContext);
 }
 

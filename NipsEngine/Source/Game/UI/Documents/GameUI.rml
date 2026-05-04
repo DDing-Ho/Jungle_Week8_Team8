@@ -32,8 +32,30 @@
 	<div id="crosshair-dot"></div>
 
 	<div id="interaction-hint">
-		<span id="interaction-key">E</span>
-		<span id="interaction-hint-text"></span>
+		<span id="interaction-secondary-key" class="interaction-key">
+			<img class="interaction-key-bg" src="Asset/Texture/InteractionKeyCap.png" />
+			<span id="interaction-secondary-key-label" class="interaction-key-label">Q</span>
+		</span>
+		<span id="interaction-secondary-text" class="interaction-hint-text">살펴보기</span>
+		<span id="interaction-key" class="interaction-key">
+			<img class="interaction-key-bg" src="Asset/Texture/InteractionKeyCap.png" />
+			<span id="interaction-key-label" class="interaction-key-label">E</span>
+		</span>
+		<span id="interaction-hint-text" class="interaction-hint-text"></span>
+	</div>
+
+	<div id="item-inspect-panel">
+		<div id="item-inspect-content">
+			<div id="item-inspect-image-frame">
+				<img id="item-inspect-image" />
+				<div id="item-inspect-image-placeholder"></div>
+			</div>
+			<div id="item-inspect-text">
+				<div id="item-inspect-title"></div>
+				<div id="item-inspect-separator"></div>
+				<div id="item-inspect-desc"></div>
+			</div>
+		</div>
 	</div>
 
 	<div id="pause-layer">
@@ -56,5 +78,13 @@
 		<div id="dialogue-text"></div>
 		<div id="dialogue-hint">[SPACE] &gt;</div>
 	</div>
+
+	<div id="title-intro-layer">
+		<img id="title-intro-icon" src="Asset/Texture/EngineLogoIcon.png" />
+	</div>
+
+	<div id="screen-fade-layer"></div>
+
+	<img id="game-cursor" src="Asset/Texture/CursorDefault.png" />
 </body>
 </rml>

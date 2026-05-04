@@ -323,7 +323,7 @@ void FInputRouter::TickCursorCapture(const FInputRouteContext& Context)
 	{
 		if (Context.bControlLocked)
 		{
-			IS.SetCursorVisibility(true);
+			IS.SetCursorVisibility(!Context.bUseCustomCursor);
 			IS.LockMouse(false);
 		}
 		else
@@ -338,7 +338,7 @@ void FInputRouter::TickCursorCapture(const FInputRouteContext& Context)
 	{
 		if (Context.bControlLocked || !Context.bInputActive || !Context.Window || !Context.Window->GetHWND())
 		{
-			IS.SetCursorVisibility(true);
+			IS.SetCursorVisibility(!Context.bUseCustomCursor);
 			IS.LockMouse(false);
 			IS.ResetMouseDelta();
 			return;
@@ -475,9 +475,7 @@ void FInputRouter::TickMouseInput(const FInputRouteContext& Context)
 
 	if (UIInputHandler && (WorldType == EWorldType::Game || WorldType == EWorldType::PIE))
 	{
-		bool bUIConsumed = false;
-		if (IS.MouseMoved())
-			bUIConsumed |= UIInputHandler->OnUIMouseMove(LocalX, LocalY);
+		bool bUIConsumed = UIInputHandler->OnUIMouseMove(LocalX, LocalY);
 		if (IS.GetKeyDown(VK_LBUTTON))
 			bUIConsumed |= UIInputHandler->OnUIMouseButtonDown(0, LocalX, LocalY);
 		if (IS.GetKeyUp(VK_LBUTTON))

@@ -484,9 +484,6 @@ void UEditorEngine::StartPlaySession()
 		}
 	}
 
-	FInputRouter::SetCursorVisibility(false);
-	FInputRouter::ResetMouseDelta(2);
-
 	const FString CurrentSceneName = MainPanel.GetSceneWidget().GetCurrentSceneName();
 	const FString CurrentScenePath = FPaths::ToString(FPaths::Combine(
 		FSceneSaveManager::GetSceneDirectory(),
@@ -497,6 +494,8 @@ void UEditorEngine::StartPlaySession()
 	GameUISystem::Get().SetState(GameUIStateFromBootMode(FSceneSaveManager::GetGameUIBootMode(CurrentScenePath)));
 	GameUISystem::Get().SetExitPlayCallback([this]() { StopPlaySession(); });
 	GameUISystem::Get().SetStartGameCallback([this]() { StartMainGamePIE(); });
+	FInputRouter::SetCursorVisibility(GameUISystem::Get().WantsMouseCursor());
+	FInputRouter::ResetMouseDelta(2);
 
 	const TArray<AActor*> EditorActors = FocusedWorld->GetActors();
 	const TArray<AActor*> PIEActors = PIEWorld->GetActors();

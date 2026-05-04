@@ -53,6 +53,12 @@ namespace
 		return Name;
 	}
 
+	const FName& ActionInspect()
+	{
+		static const FName Name("Inspect");
+		return Name;
+	}
+
 	// 새 Axis를 추가하려면:
 	// 1. 여기에 이름 함수를 하나 더 만듭니다. 예: AxisMoveForward() -> "MoveForward"
 	// 2. SetupDefaultInputMappings()에서 키와 Scale을 AddAxisMapping으로 연결합니다.
@@ -471,6 +477,11 @@ void FGamePlayerController::OnKeyPressed(int VK)
     {
         TogglePickup();
     }
+
+	if (InputMapping.IsActionKey(ActionInspect(), VK))
+	{
+		TryInspectHoveredItem();
+	}
 }
 
 void FGamePlayerController::OnKeyDown(int VK)
@@ -637,6 +648,7 @@ void FGamePlayerController::SetupDefaultInputMappings()
     InputMapping.AddActionMapping(ActionToggleInputCapture(), VK_F4);
     InputMapping.AddActionMapping(ActionTogglePause(), 'P');
     InputMapping.AddActionMapping(ActionPickup(), 'E');
+    InputMapping.AddActionMapping(ActionInspect(), 'Q');
 
     // Axis Mapping: 여러 키를 하나의 연속 값으로 합칩니다.
     // 예를 들어 W는 MoveForward에 +1, S는 -1을 더합니다.
@@ -861,6 +873,50 @@ void FGamePlayerController::TogglePickup()
     }
 }
 
+void FGamePlayerController::TryInspectHoveredItem()
+{
+	if (!World || !IsInputEnabled())
+	{
+		return;
+	}
+
+	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+	if (Handle == nullptr || !Handle->IsHolding())
+	{
+		return;
+	}
+
+	URigidBodyComponent* HeldBody = Handle->GetHeldBody();
+	AActor* HeldActor = HeldBody ? HeldBody->GetOwner() : nullptr;
+	if (HeldActor == nullptr || !FindCleaningToolIdFromActor(HeldActor, false).empty())
+	{
+		return;
+	}
+
+	const FString ItemId = FindItemIdFromActor(HeldActor);
+	if (ItemId.empty())
+	{
+		return;
+	}
+
+	if (!FItemSystem::Get().InspectItem(ItemId))
+	{
+		return;
+	}
+
+	const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
+	if (ItemData == nullptr)
+	{
+		return;
+	}
+
+	const FString Description = FItemSystem::Get().GetDescriptionForCurrentState(ItemId);
+	GameUISystem::Get().ShowItemInspect(
+		ItemData->DisplayName.c_str(),
+		Description.c_str(),
+		ItemData->IconPath.c_str());
+}
+
 UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
 {
     RefreshPawnComponents();
@@ -942,10 +998,18 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 
 	if (Handle->IsHolding())
 	{
-		if (!GGameContext::Get().GetCurrentToolId().empty())
+		EInteractionHintType HintType = EInteractionHintType::Drop;
+		if (URigidBodyComponent* HeldBody = Handle->GetHeldBody())
 		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Clean);
+			if (AActor* HeldActor = HeldBody->GetOwner())
+			{
+				if (GGameContext::Get().GetCurrentToolId().empty() && !FindItemIdFromActor(HeldActor).empty())
+				{
+					HintType = EInteractionHintType::DropWithInspect;
+				}
+			}
 		}
+		GameUISystem::Get().SetInteractionHint(HintType);
 		return;
 	}
 
@@ -959,16 +1023,7 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 	if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
 	{
 		HoveredPickableActor = Body->GetOwner();
-		const bool bIsCleaningTool = !FindCleaningToolIdFromActor(HoveredPickableActor, false).empty();
-		const bool bIsItem = !FindItemIdFromActor(HoveredPickableActor).empty();
-		if (!bIsCleaningTool && bIsItem)
-		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Inspect);
-		}
-		else
-		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
-		}
+		GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
 	}
 }
 

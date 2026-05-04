@@ -9,6 +9,7 @@
 #include "Game/UI/RmlUi/RmlUiSystemInterface.h"
 #include "Game/UI/StartMenuPanel.h"
 
+#include "Core/Paths.h"
 #include "Render/Common/RenderTypes.h"
 
 #include <Windows.h>
@@ -109,6 +110,27 @@ namespace
 		return Buffer;
 	}
 
+	std::string FormatOpacity(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.3f", std::clamp(Value, 0.0f, 1.0f));
+		return Buffer;
+	}
+
+	std::string FormatAlphaColor(float Red, float Green, float Blue, float Alpha)
+	{
+		char Buffer[64] = {};
+		std::snprintf(
+			Buffer,
+			sizeof(Buffer),
+			"rgba(%d, %d, %d, %d)",
+			static_cast<int>(std::clamp(Red, 0.0f, 255.0f)),
+			static_cast<int>(std::clamp(Green, 0.0f, 255.0f)),
+			static_cast<int>(std::clamp(Blue, 0.0f, 255.0f)),
+			static_cast<int>(std::clamp(Alpha, 0.0f, 1.0f) * 255.0f));
+		return Buffer;
+	}
+
 	std::string LoadTextResource(int ResourceId)
 	{
 		HMODULE Module = GetModuleHandleW(nullptr);
@@ -137,6 +159,17 @@ namespace
 			Position += Value.length();
 		}
 	}
+
+	constexpr const char* TitleButtonIds[] =
+	{
+		"start-button",
+		"settings-button",
+		"credits-button",
+		"exit-button",
+	};
+
+	constexpr size_t TitleButtonCount = sizeof(TitleButtonIds) / sizeof(TitleButtonIds[0]);
+
 }
 
 GameUISystem& GameUISystem::Get()
@@ -176,7 +209,9 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 	}
 	bRmlUiInitialized = true;
 
-	Rml::LoadFontFace("C:/Windows/Fonts/malgun.ttf", true);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicRegular.ttf"), true);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicBold.ttf"), false);
+	Rml::LoadFontFace(FPaths::ToAbsoluteString(L"Asset/Font/NEXONLv1GothicLight.ttf"), false);
 
 	RmlContext = Rml::CreateContext("GameUI", Rml::Vector2i(1280, 720));
 	if (!RmlContext || !CreateGameDocument())
@@ -200,6 +235,16 @@ void GameUISystem::Shutdown()
 			Element->RemoveEventListener("click", ExitClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("pause-exit-button"))
 			Element->RemoveEventListener("click", ExitClickListener.get());
+		for (size_t Index = 0; Index < TitleButtonHoverEnterListeners.size() && Index < TitleButtonCount; ++Index)
+		{
+			if (Rml::Element* Element = RmlDocument->GetElementById(TitleButtonIds[Index]))
+				Element->RemoveEventListener("mouseover", TitleButtonHoverEnterListeners[Index].get());
+		}
+		for (size_t Index = 0; Index < TitleButtonHoverLeaveListeners.size() && Index < TitleButtonCount; ++Index)
+		{
+			if (Rml::Element* Element = RmlDocument->GetElementById(TitleButtonIds[Index]))
+				Element->RemoveEventListener("mouseout", TitleButtonHoverLeaveListeners[Index].get());
+		}
 	}
 
 	if (RmlDocument && RmlContext)
@@ -223,6 +268,8 @@ void GameUISystem::Shutdown()
 	StartClickListener.reset();
 	RetryClickListener.reset();
 	ExitClickListener.reset();
+	TitleButtonHoverEnterListeners.clear();
+	TitleButtonHoverLeaveListeners.clear();
 
 	RmlRenderInterface.reset();
 	RmlSystemInterface.reset();
@@ -272,6 +319,8 @@ void GameUISystem::SetState(EGameUIState NewState)
 {
 	if (NewState == EGameUIState::Ending)
 		EndingPanel::Reset();
+	if (NewState == EGameUIState::StartMenu && CurrentState != EGameUIState::StartMenu)
+		ResetTitleIntro();
 
 	CurrentState = NewState;
 	SetPauseMenuOpen(false);
@@ -282,8 +331,14 @@ bool GameUISystem::WantsMouseCursor() const
 	return CurrentState == EGameUIState::StartMenu ||
 		   CurrentState == EGameUIState::Prologue ||
 		   CurrentState == EGameUIState::Ending ||
+		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
 		   DialoguePanel::IsActive();
+}
+
+bool GameUISystem::WantsCustomCursor() const
+{
+	return WantsMouseCursor();
 }
 
 void GameUISystem::SetPauseMenuOpen(bool bOpen)
@@ -309,6 +364,7 @@ void GameUISystem::ResetGameData()
 	CurrentItemName.clear();
 	CurrentItemDesc.clear();
 	InteractionHintType = EInteractionHintType::None;
+	HideItemInspect();
 }
 
 void GameUISystem::SetProgress(float InProgress)
@@ -325,6 +381,22 @@ void GameUISystem::SetCurrentItem(const char* Name, const char* Desc)
 void GameUISystem::SetInteractionHint(EInteractionHintType Type)
 {
 	InteractionHintType = Type;
+}
+
+void GameUISystem::ShowItemInspect(const char* Name, const char* Desc, const char* IconPath)
+{
+	InspectItemName = Name ? Name : "";
+	InspectItemDesc = Desc ? Desc : "";
+	InspectItemIconPath = IconPath ? IconPath : "";
+	bItemInspectOpen = true;
+}
+
+void GameUISystem::HideItemInspect()
+{
+	bItemInspectOpen = false;
+	InspectItemName.clear();
+	InspectItemDesc.clear();
+	InspectItemIconPath.clear();
 }
 
 void GameUISystem::SetItemCount(int Count)
@@ -377,6 +449,17 @@ void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
 
 void GameUISystem::RequestStartGame()
 {
+	if (bStartGameTransitionActive)
+		return;
+
+	if (CurrentState == EGameUIState::StartMenu)
+	{
+		bStartGameTransitionActive = true;
+		StartGameTransitionElapsed = 0.0f;
+		bStartGameTransitionReady = false;
+		return;
+	}
+
 	if (StartGameCallback)
 		StartGameCallback();
 	else
@@ -388,6 +471,8 @@ bool GameUISystem::OnUIMouseMove(float X, float Y)
 	if (!bRmlUiInitialized || !RmlContext)
 		return false;
 
+	CustomCursorX = X;
+	CustomCursorY = Y;
 	RmlContext->ProcessMouseMove(static_cast<int>(X), static_cast<int>(Y), 0);
 	return WantsMouseCursor();
 }
@@ -438,6 +523,13 @@ bool GameUISystem::OnUIKeyDown(int VK)
 		return true;
 	}
 
+	if (bItemInspectOpen)
+	{
+		if (VK == VK_ESCAPE || VK == 'Q')
+			HideItemInspect();
+		return true;
+	}
+
 	return false;
 }
 
@@ -451,6 +543,9 @@ bool GameUISystem::OnUIKeyUp(int VK)
 		RmlContext->ProcessKeyUp(Key, 0);
 
 	if (CurrentState == EGameUIState::StartMenu)
+		return true;
+
+	if (bItemInspectOpen)
 		return true;
 
 	if (VK == VK_SPACE && DialoguePanel::AdvanceOrSkip())
@@ -502,6 +597,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	DialoguePanel::Tick(DeltaTime, Mode);
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
+	TickTitleTransitions(DeltaTime);
 
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
 
@@ -512,7 +608,8 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
 	const bool bShowTheEnd = bShowEnding && EndingPanel::ShouldShowTheEnd();
-	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && InteractionHintType != EInteractionHintType::None;
+	const bool bShowItemInspect = bShowHud && bItemInspectOpen;
+	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && !bShowItemInspect && InteractionHintType != EInteractionHintType::None;
 
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("hud-panel", bShowHud);
@@ -520,9 +617,17 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
 	SetElementVisible("interaction-hint", bShowInteractionHint);
 	SetElementVisible("pause-layer", bShowPause);
+	SetElementVisible("item-inspect-panel", bShowItemInspect);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
 	SetElementVisible("the-end", bShowTheEnd);
+	UpdateTitleTransitionElements();
+
+	const bool bShowCustomCursor = WantsCustomCursor();
+	SetElementVisible("game-cursor", bShowCustomCursor);
+	SetElementProperty("game-cursor", "left", FormatPixels(CustomCursorX));
+	SetElementProperty("game-cursor", "top", FormatPixels(CustomCursorY));
+	SetElementAttribute("game-cursor", "src", bTitleButtonHovered ? "Asset/Texture/CursorHovered.png" : "Asset/Texture/CursorDefault.png");
 
 	constexpr float TitleBackgroundAspect = 2760.0f / 1504.0f;
 	float TitleBackgroundWidth = static_cast<float>(Width);
@@ -558,21 +663,38 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
 
+	const bool bShowInspectHint = InteractionHintType == EInteractionHintType::DropWithInspect;
+	SetElementProperty("interaction-secondary-key", "display", bShowInspectHint ? "inline-block" : "none");
+	SetElementProperty("interaction-secondary-text", "display", bShowInspectHint ? "inline-block" : "none");
 	switch (InteractionHintType)
 	{
 	case EInteractionHintType::Pickup:
-		SetElementText("interaction-hint-text", "잡기");
+		SetElementText("interaction-secondary-key-label", "Q");
+		SetElementText("interaction-secondary-text", "살펴보기");
+		SetElementText("interaction-key-label", "E");
+		SetElementText("interaction-hint-text", "들기");
 		break;
-	case EInteractionHintType::Clean:
+	case EInteractionHintType::Drop:
+	case EInteractionHintType::DropWithInspect:
+		SetElementText("interaction-secondary-key-label", "Q");
+		SetElementText("interaction-secondary-text", "살펴보기");
+		SetElementText("interaction-key-label", "E");
 		SetElementText("interaction-hint-text", "놓기");
 		break;
-	case EInteractionHintType::Inspect:
-		SetElementText("interaction-hint-text", "살펴보기");
-		break;
 	default:
+		SetElementText("interaction-secondary-key-label", "");
+		SetElementText("interaction-secondary-text", "");
+		SetElementText("interaction-key-label", "");
 		SetElementText("interaction-hint-text", "");
 		break;
 	}
+
+	SetElementText("item-inspect-title", InspectItemName.empty() ? "Item" : InspectItemName);
+	SetElementText("item-inspect-desc", InspectItemDesc);
+	SetElementVisible("item-inspect-image", !InspectItemIconPath.empty());
+	SetElementVisible("item-inspect-image-placeholder", InspectItemIconPath.empty());
+	if (!InspectItemIconPath.empty())
+		SetElementAttribute("item-inspect-image", "src", InspectItemIconPath);
 
 	SetElementText("dialogue-speaker", DialoguePanel::GetSpeaker());
 	SetElementText("dialogue-text", DialoguePanel::GetVisibleText());
@@ -580,6 +702,80 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	const int Alpha = static_cast<int>(EndingPanel::GetFadeAlpha() * 255.0f);
 	SetElementProperty("the-end", "color", "rgba(220, 210, 190, " + std::to_string(Alpha) + ")");
+
+	if (bStartGameTransitionReady)
+		FinishStartGameTransition();
+}
+
+void GameUISystem::ResetTitleIntro()
+{
+	TitleIntroElapsed = 0.0f;
+	bTitleButtonHovered = false;
+	bStartGameTransitionActive = false;
+	StartGameTransitionElapsed = 0.0f;
+	bStartGameTransitionReady = false;
+}
+
+void GameUISystem::TickTitleTransitions(float DeltaTime)
+{
+	if (CurrentState == EGameUIState::StartMenu)
+		TitleIntroElapsed += std::max(0.0f, DeltaTime);
+
+	if (!bStartGameTransitionActive)
+		return;
+
+	constexpr float TransitionDuration = 1.5f;
+	StartGameTransitionElapsed += std::max(0.0f, DeltaTime);
+	if (StartGameTransitionElapsed >= TransitionDuration)
+		bStartGameTransitionReady = true;
+}
+
+void GameUISystem::UpdateTitleTransitionElements()
+{
+	const bool bInStartMenu = CurrentState == EGameUIState::StartMenu;
+
+	constexpr float IntroFadeInDuration = 1.0f;
+	constexpr float IntroHoldDuration = 3.0f;
+	constexpr float IntroFadeOutDuration = 1.0f;
+	constexpr float IntroFadeOutStart = IntroFadeInDuration + IntroHoldDuration;
+	constexpr float IntroTotalDuration = IntroFadeOutStart + IntroFadeOutDuration;
+
+	float IntroIconAlpha = 1.0f;
+	if (TitleIntroElapsed < IntroFadeInDuration)
+	{
+		IntroIconAlpha = TitleIntroElapsed / IntroFadeInDuration;
+	}
+	else if (TitleIntroElapsed >= IntroFadeOutStart)
+	{
+		IntroIconAlpha = 1.0f - ((TitleIntroElapsed - IntroFadeOutStart) / IntroFadeOutDuration);
+	}
+	IntroIconAlpha = bInStartMenu ? std::clamp(IntroIconAlpha, 0.0f, 1.0f) : 0.0f;
+
+	const float IntroLayerAlpha = bInStartMenu && TitleIntroElapsed >= IntroFadeOutStart ? IntroIconAlpha : (bInStartMenu ? 1.0f : 0.0f);
+	const bool bShowIntro = bInStartMenu && TitleIntroElapsed < IntroTotalDuration && !bStartGameTransitionActive;
+
+	constexpr float StartFadeDuration = 1.0f;
+	const float StartFadeAlpha = bStartGameTransitionActive ? std::clamp(StartGameTransitionElapsed / StartFadeDuration, 0.0f, 1.0f) : 0.0f;
+
+	SetElementVisible("title-intro-layer", bShowIntro);
+	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
+	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
+
+	SetElementVisible("screen-fade-layer", bStartGameTransitionActive);
+	SetElementProperty("screen-fade-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, StartFadeAlpha));
+}
+
+void GameUISystem::FinishStartGameTransition()
+{
+	bStartGameTransitionReady = false;
+
+	if (StartGameCallback)
+		StartGameCallback();
+	else
+		SetState(EGameUIState::InGame);
+
+	bStartGameTransitionActive = false;
+	StartGameTransitionElapsed = 0.0f;
 }
 
 bool GameUISystem::CreateGameDocument()
@@ -634,6 +830,29 @@ void GameUISystem::BindRmlUiEvents()
 		Element->AddEventListener("click", ExitClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("pause-exit-button"))
 		Element->AddEventListener("click", ExitClickListener.get());
+
+	for (const char* ButtonId : TitleButtonIds)
+	{
+		TitleButtonHoverEnterListeners.emplace_back(std::make_unique<FRmlUiClickListener>([ButtonId]()
+		{
+			GameUISystem& UI = GameUISystem::Get();
+			UI.bTitleButtonHovered = true;
+			UI.SetElementProperty(ButtonId, "opacity", "0.82");
+		}));
+
+		TitleButtonHoverLeaveListeners.emplace_back(std::make_unique<FRmlUiClickListener>([ButtonId]()
+		{
+			GameUISystem& UI = GameUISystem::Get();
+			UI.bTitleButtonHovered = false;
+			UI.SetElementProperty(ButtonId, "opacity", "1.0");
+		}));
+
+		if (Rml::Element* Element = RmlDocument->GetElementById(ButtonId))
+		{
+			Element->AddEventListener("mouseover", TitleButtonHoverEnterListeners.back().get());
+			Element->AddEventListener("mouseout", TitleButtonHoverLeaveListeners.back().get());
+		}
+	}
 }
 
 void GameUISystem::SetElementVisible(const char* Id, bool bVisible)
@@ -657,4 +876,13 @@ void GameUISystem::SetElementProperty(const char* Id, const char* Property, cons
 
 	if (Rml::Element* Element = RmlDocument->GetElementById(Id))
 		Element->SetProperty(Property, Value);
+}
+
+void GameUISystem::SetElementAttribute(const char* Id, const char* Attribute, const std::string& Value)
+{
+	if (!RmlDocument)
+		return;
+
+	if (Rml::Element* Element = RmlDocument->GetElementById(Id))
+		Element->SetAttribute(Attribute, Value);
 }

@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "Engine/Input/IUIInputHandler.h"
 
@@ -46,8 +47,8 @@ enum class EInteractionHintType
 {
     None,
     Pickup,
-    Clean,
-    Inspect,
+    Drop,
+    DropWithInspect,
 };
 
 // -------------------------------------------------------
@@ -83,12 +84,15 @@ public:
     void SetProgress(float InProgress);             // 0.0 ~ 1.0
     void SetCurrentItem(const char* Name, const char* Desc);
     void SetInteractionHint(EInteractionHintType Type);
+    void ShowItemInspect(const char* Name, const char* Desc, const char* IconPath);
+    void HideItemInspect();
 
     // 일시정지 메뉴
     static void TogglePauseMenuIfInGame();
     void SetPauseMenuOpen(bool bOpen);
     bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
     bool WantsMouseCursor() const;
+    bool WantsCustomCursor() const;
 
     // 게임 데이터 초기화 (Retry 시 호출)
     void ResetGameData();
@@ -134,11 +138,16 @@ private:
 
     void RenderCurrentPanel(EUIRenderMode Mode);
     void UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height);
+    void ResetTitleIntro();
+    void TickTitleTransitions(float DeltaTime);
+    void UpdateTitleTransitionElements();
+    void FinishStartGameTransition();
     bool CreateGameDocument();
     void BindRmlUiEvents();
     void SetElementVisible(const char* Id, bool bVisible);
     void SetElementText(const char* Id, const std::string& Text);
     void SetElementProperty(const char* Id, const char* Property, const std::string& Value);
+    void SetElementAttribute(const char* Id, const char* Attribute, const std::string& Value);
     // 상태에 따라 커서/마우스 잠금을 자동으로 맞춤
 
     EGameUIState CurrentState        = EGameUIState::None;
@@ -153,7 +162,17 @@ private:
     std::unique_ptr<FRmlUiClickListener> StartClickListener;
     std::unique_ptr<FRmlUiClickListener> RetryClickListener;
     std::unique_ptr<FRmlUiClickListener> ExitClickListener;
+    std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverEnterListeners;
+    std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverLeaveListeners;
     double LastRmlUpdateTime = 0.0;
+
+    float TitleIntroElapsed = 0.0f;
+    float CustomCursorX = 0.0f;
+    float CustomCursorY = 0.0f;
+    bool bTitleButtonHovered = false;
+    bool bStartGameTransitionActive = false;
+    float StartGameTransitionElapsed = 0.0f;
+    bool bStartGameTransitionReady = false;
 
     // 게임 데이터
     float       CleanProgress    = 0.f;
@@ -162,6 +181,10 @@ private:
     std::string CurrentItemName;
     std::string CurrentItemDesc;
     EInteractionHintType InteractionHintType = EInteractionHintType::None;
+    bool bItemInspectOpen = false;
+    std::string InspectItemName;
+    std::string InspectItemDesc;
+    std::string InspectItemIconPath;
 
     std::function<void()> ExitPlayCallback;
     std::function<void()> StartGameCallback;

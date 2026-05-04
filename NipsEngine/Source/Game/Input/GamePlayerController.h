@@ -75,6 +75,7 @@ private:
     void StartCleaningLoopSound(const struct FCleaningToolData& ToolData);
     void StopCleaningLoopSound();
     void TogglePickup();
+    void TryInspectHoveredItem();
     UPhysicsHandleComponent* GetPhysicsHandle();
     UCharacterMovementComponent* GetCharacterMovement();
     void DestroyPhysicsHandle();
