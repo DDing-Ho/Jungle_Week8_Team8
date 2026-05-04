@@ -977,6 +977,27 @@ bool FAudioSystem::IsHandleActive(FAudioHandle Handle) const
 #endif
 }
 
+bool FAudioSystem::IsAtEnd(FAudioHandle Handle) const
+{
+#if NIPS_WITH_MINIAUDIO
+	if (!Impl->bInitialized || !Handle.IsValid())
+	{
+		return false;
+	}
+
+	auto It = Impl->ActiveSounds.find(Handle.Id);
+	if (It == Impl->ActiveSounds.end() || !It->second.Sound)
+	{
+		return false;
+	}
+
+	return ma_sound_at_end(It->second.Sound.get()) == MA_TRUE;
+#else
+	(void)Handle;
+	return false;
+#endif
+}
+
 void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 {
 #if NIPS_WITH_MINIAUDIO

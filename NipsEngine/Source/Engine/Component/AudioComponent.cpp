@@ -57,6 +57,9 @@ void UAudioComponent::Serialize(FArchive& Ar)
 {
 	USceneComponent::Serialize(Ar);
 	Ar << "SoundPath" << SoundPath;
+	Ar << "PlaylistEnabled" << bPlaylistEnabled;
+	Ar << "PlaylistPathA" << PlaylistPathA;
+	Ar << "PlaylistPathB" << PlaylistPathB;
 	Ar << "StartBehavior" << StartBehavior;
 	Ar << "Loop" << bLoop;
 	Ar << "Spatial" << bSpatial;
@@ -82,6 +85,9 @@ void UAudioComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
 	static const char* AudioRangeVisibilityNames[] = { "Use Global", "Force Show", "Force Hide" };
 
 	OutProps.push_back({ "Sound Path", EPropertyType::String, &SoundPath });
+	OutProps.push_back({ "Playlist Enabled", EPropertyType::Bool, &bPlaylistEnabled });
+	OutProps.push_back({ "Playlist Path A", EPropertyType::String, &PlaylistPathA });
+	OutProps.push_back({ "Playlist Path B", EPropertyType::String, &PlaylistPathB });
 	OutProps.push_back({ "Audio Bus", EPropertyType::Enum, &AudioBus, 0.0f, 0.0f, 0.0f, AudioBusNames, 3 });
 	OutProps.push_back({ "Volume", EPropertyType::Float, &Volume, 0.0f, 2.0f, 0.01f });
 	OutProps.push_back({ "Loop", EPropertyType::Bool, &bLoop });
@@ -103,7 +109,11 @@ void UAudioComponent::PostEditProperty(const char* PropertyName)
 {
 	USceneComponent::PostEditProperty(PropertyName);
 
-	if (PropertyName && strcmp(PropertyName, "Sound Path") == 0)
+	if (PropertyName &&
+		(strcmp(PropertyName, "Sound Path") == 0 ||
+		 strcmp(PropertyName, "Playlist Enabled") == 0 ||
+		 strcmp(PropertyName, "Playlist Path A") == 0 ||
+		 strcmp(PropertyName, "Playlist Path B") == 0))
 	{
 		Stop();
 		StopPreview();
@@ -120,25 +130,32 @@ void UAudioComponent::PostEditProperty(const char* PropertyName)
 	if (PlaybackHandle.IsValid())
 	{
 		FAudioSystem::Get().SetVolume(PlaybackHandle, Volume);
-		FAudioSystem::Get().SetLooping(PlaybackHandle, bLoop);
+		FAudioSystem::Get().SetLooping(PlaybackHandle, IsPlaylistActive() ? false : bLoop);
 		FAudioSystem::Get().SetAffectedByAudioZones(PlaybackHandle, bAffectedByAudioZones);
 	}
 	if (PreviewPlaybackHandle.IsValid())
 	{
 		FAudioSystem::Get().SetVolume(PreviewPlaybackHandle, Volume);
-		FAudioSystem::Get().SetLooping(PreviewPlaybackHandle, bLoop);
+		FAudioSystem::Get().SetLooping(PreviewPlaybackHandle, IsPlaylistActive() ? false : bLoop);
 	}
 }
 
 FAudioHandle UAudioComponent::Play()
 {
-	if (SoundPath.empty())
+	PlaylistTrackIndex = 0;
+	return PlayCurrentTrack();
+}
+
+FAudioHandle UAudioComponent::PlayCurrentTrack()
+{
+	const FString PlaybackPath = GetCurrentPlaybackPath();
+	if (PlaybackPath.empty())
 	{
 		return {};
 	}
 
 	Stop();
-	PlaybackHandle = FAudioSystem::Get().Play(SoundPath, MakePlayParams());
+	PlaybackHandle = FAudioSystem::Get().Play(PlaybackPath, MakePlayParams());
 	bPausedByOutsideRange = false;
 	bStoppedByOutsideRange = false;
 	bStartedByStartBehavior = PlaybackHandle.IsValid();
@@ -169,6 +186,12 @@ void UAudioComponent::Restart()
 {
 	bPausedByOutsideRange = false;
 	bStoppedByOutsideRange = false;
+	if (IsPlaylistActive())
+	{
+		Play();
+		return;
+	}
+
 	if (PlaybackHandle.IsValid())
 	{
 		FAudioSystem::Get().Restart(PlaybackHandle);
@@ -219,18 +242,19 @@ float UAudioComponent::GetDuration() const
 		}
 	}
 
-	return FAudioSystem::Get().GetSoundDuration(SoundPath);
+	return FAudioSystem::Get().GetSoundDuration(GetCurrentPlaybackPath());
 }
 
 FAudioHandle UAudioComponent::PlayPreview()
 {
-	if (SoundPath.empty())
+	const FString PreviewPath = GetCurrentPlaybackPath();
+	if (PreviewPath.empty())
 	{
 		return {};
 	}
 
 	StopPreview();
-	PreviewPlaybackHandle = FAudioSystem::Get().Play2D(SoundPath, Volume, bLoop);
+	PreviewPlaybackHandle = FAudioSystem::Get().Play2D(PreviewPath, Volume, IsPlaylistActive() ? false : bLoop);
 	return PreviewPlaybackHandle;
 }
 
@@ -304,7 +328,7 @@ float UAudioComponent::GetPreviewDuration() const
 		}
 	}
 
-	return FAudioSystem::Get().GetSoundDuration(SoundPath);
+	return FAudioSystem::Get().GetSoundDuration(GetCurrentPlaybackPath());
 }
 
 void UAudioComponent::TickComponent(float DeltaTime)
@@ -356,6 +380,19 @@ void UAudioComponent::TickComponent(float DeltaTime)
 
 	if (!FAudioSystem::Get().IsPlaying(PlaybackHandle))
 	{
+		const bool bHandleActive = FAudioSystem::Get().IsHandleActive(PlaybackHandle);
+		const bool bTrackEnded = !bHandleActive || FAudioSystem::Get().IsAtEnd(PlaybackHandle);
+		if (IsPlaylistActive() && bTrackEnded)
+		{
+			const int32 TrackCount = GetPlaylistTrackCount();
+			if (TrackCount > 0)
+			{
+				PlaylistTrackIndex = (PlaylistTrackIndex + 1) % TrackCount;
+				PlayCurrentTrack();
+				return;
+			}
+		}
+
 		PlaybackHandle = {};
 		bPausedByOutsideRange = false;
 		return;
@@ -370,7 +407,7 @@ void UAudioComponent::TickComponent(float DeltaTime)
 FAudioPlayParams UAudioComponent::MakePlayParams() const
 {
 	FAudioPlayParams Params;
-	Params.bLoop = bLoop;
+	Params.bLoop = IsPlaylistActive() ? false : bLoop;
 	Params.bSpatial = bSpatial;
 	Params.bAffectedByAudioZones = bAffectedByAudioZones;
 	Params.Bus = static_cast<EAudioBus>(AudioBus);
@@ -424,7 +461,7 @@ EAudioStartBehavior UAudioComponent::GetStartBehavior() const
 
 bool UAudioComponent::ShouldAutoStart() const
 {
-	if (bStartedByStartBehavior || SoundPath.empty())
+	if (bStartedByStartBehavior || !HasPlayableSound())
 	{
 		return false;
 	}
@@ -436,4 +473,48 @@ bool UAudioComponent::ShouldAutoStart() const
 	}
 
 	return !IsListenerOutsideMaxDistance();
+}
+
+bool UAudioComponent::IsPlaylistActive() const
+{
+	return bPlaylistEnabled && GetPlaylistTrackCount() > 0;
+}
+
+bool UAudioComponent::HasPlayableSound() const
+{
+	return !GetCurrentPlaybackPath().empty();
+}
+
+int32 UAudioComponent::GetPlaylistTrackCount() const
+{
+	int32 Count = 0;
+	if (!PlaylistPathA.empty())
+	{
+		++Count;
+	}
+	if (!PlaylistPathB.empty())
+	{
+		++Count;
+	}
+	return Count;
+}
+
+FString UAudioComponent::GetPlaylistTrackPath(int32 TrackIndex) const
+{
+	const bool bHasA = !PlaylistPathA.empty();
+	const bool bHasB = !PlaylistPathB.empty();
+	if (bHasA && bHasB)
+	{
+		return (TrackIndex % 2) == 0 ? PlaylistPathA : PlaylistPathB;
+	}
+	return bHasA ? PlaylistPathA : PlaylistPathB;
+}
+
+FString UAudioComponent::GetCurrentPlaybackPath() const
+{
+	if (IsPlaylistActive())
+	{
+		return GetPlaylistTrackPath(PlaylistTrackIndex);
+	}
+	return SoundPath;
 }

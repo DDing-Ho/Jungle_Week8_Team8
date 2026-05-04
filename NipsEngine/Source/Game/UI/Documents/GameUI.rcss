@@ -206,15 +206,15 @@ body {
 }
 
 .interaction-hint-text {
-    display: inline-block;
-    padding: 4px 18px 8px 10px;
+	display: inline-block;
+	padding: 4px 18px 8px 10px;
 	font-size: 28px;
 	font-weight: bold;
-    color: #f5f0e6;
+	color: #f5f0e6;
 	font-effect: outline(2px #000000);
 	
 	position: relative;
-    top: 6px;
+	top: 6px;
 }
 
 #interaction-secondary-text {

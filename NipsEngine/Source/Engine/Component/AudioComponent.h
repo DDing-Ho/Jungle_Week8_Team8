@@ -63,8 +63,17 @@ private:
 	EAudioOutsideBehavior GetOutsideRangeBehavior() const;
 	EAudioStartBehavior GetStartBehavior() const;
 	bool ShouldAutoStart() const;
+	bool IsPlaylistActive() const;
+	bool HasPlayableSound() const;
+	int32 GetPlaylistTrackCount() const;
+	FString GetPlaylistTrackPath(int32 TrackIndex) const;
+	FString GetCurrentPlaybackPath() const;
+	FAudioHandle PlayCurrentTrack();
 
 	FString SoundPath;
+	bool bPlaylistEnabled = false;
+	FString PlaylistPathA;
+	FString PlaylistPathB;
 	int32 StartBehavior = static_cast<int32>(EAudioStartBehavior::OnBeginPlay);
 	bool bLoop = false;
 	bool bSpatial = true;
@@ -78,6 +87,7 @@ private:
 	bool bPausedByOutsideRange = false;
 	bool bStoppedByOutsideRange = false;
 	bool bStartedByStartBehavior = false;
+	int32 PlaylistTrackIndex = 0;
 	FAudioHandle PlaybackHandle;
 	FAudioHandle PreviewPlaybackHandle;
 };
