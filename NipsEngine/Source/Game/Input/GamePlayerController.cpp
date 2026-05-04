@@ -9,6 +9,7 @@
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/SceneComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/SubUVComponent.h"
 #include "Core/Logger.h"
 #include "Engine/Input/InputSystem.h"
 #include "Engine/Runtime/SceneView.h"
@@ -881,6 +882,14 @@ bool FGamePlayerController::TryBeginCleaningUse()
 	}
 	FCleaningToolAnimator::Get().BeginUse(*ToolData);
 	StartCleaningLoopSound(*ToolData);
+	for (USubUVComponent* SubUV : CleaningToolSubUVs)
+	{
+		if (IsLiveObjectPointer(SubUV))
+		{
+			SubUV->Play();
+			SubUV->SetVisibility(true);
+		}
+	}
 	UE_LOG("[CleaningTool] BeginUse started: toolId=%s amplitude=%.3f speed=%.3f.",
 		   CurrentToolId.c_str(),
 		   ToolData->UseBobAmplitude,
@@ -898,6 +907,13 @@ void FGamePlayerController::EndCleaningUse()
 	bIsCleaningUseHeld = false;
 	FCleaningToolAnimator::Get().EndUse();
 	StopCleaningLoopSound();
+	for (USubUVComponent* SubUV : CleaningToolSubUVs)
+	{
+		if (IsLiveObjectPointer(SubUV))
+		{
+			SubUV->SetVisibility(false);
+		}
+	}
 }
 
 void FGamePlayerController::StartCleaningLoopSound(const FCleaningToolData& ToolData)
@@ -1459,11 +1475,40 @@ bool FGamePlayerController::BeginCleaningToolViewModel(const FCleaningToolData& 
 		Primitive->SetVisibility(false);
 	}
 
+	CleaningToolSubUVs.clear();
+	CleaningToolSubUVOriginalParents.clear();
+	for (UActorComponent* Comp : HeldActor->GetComponents())
+	{
+		USubUVComponent* SubUV = Cast<USubUVComponent>(Comp);
+		if (!SubUV)
+		{
+			continue;
+		}
+		CleaningToolSubUVOriginalParents.push_back(SubUV->GetParent());
+		SubUV->SetParent(CleaningToolViewModel);
+		SubUV->SetVisibility(false);
+		CleaningToolSubUVs.push_back(SubUV);
+	}
+
 	return true;
 }
 
 void FGamePlayerController::EndCleaningToolViewModel()
 {
+	for (size_t i = 0; i < CleaningToolSubUVs.size(); ++i)
+	{
+		USubUVComponent* SubUV = CleaningToolSubUVs[i];
+		if (!IsLiveObjectPointer(SubUV))
+		{
+			continue;
+		}
+		SubUV->SetVisibility(false);
+		USceneComponent* OrigParent = i < CleaningToolSubUVOriginalParents.size() ? CleaningToolSubUVOriginalParents[i] : nullptr;
+		SubUV->SetParent(IsLiveObjectPointer(OrigParent) ? OrigParent : nullptr);
+	}
+	CleaningToolSubUVs.clear();
+	CleaningToolSubUVOriginalParents.clear();
+
 	for (size_t Index = 0; Index < HiddenCleaningToolPrimitives.size(); ++Index)
 	{
 		UPrimitiveComponent* Primitive = HiddenCleaningToolPrimitives[Index];

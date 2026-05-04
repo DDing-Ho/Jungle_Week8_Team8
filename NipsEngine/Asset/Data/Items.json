@@ -159,7 +159,7 @@
       "cleaningPower": 0.5,
       "cleaningRadius": 0.3,
       "holdDistance": 1.4,
-      "holdCameraLocalOffset": [0.0, 0.1, -0.1],
+      "holdCameraLocalOffset": [0.0, 0.2, -0.2],
       "useStrokeCameraLocalDirection": [0.0, -1.0, 1.0],
       "handleCameraLocalDirection": [0.0, 1.0, 1.0],
       "viewModelLocalRotationDegrees": [10.0, -10.0, 0.0],

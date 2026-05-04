@@ -49,6 +49,7 @@ public:
     void PaintMask(FVector2 UV, float Radius, uint8 Value);
 	void UpdateMaskTexture();
 	ID3D11ShaderResourceView* GetMaskSRV() const { return MaskSRV.Get(); }
+	bool IsCleanCompleteEffectActive() const { return bCleanCompleteFlashActive || (bCleanCompleteFlashPlayed && FadeStartDelay + FadeDuration > 0.0f); }
     float GetCleanPercentage() const;
     bool WorldPosToDecalUV(const FVector& WorldPos, FVector2& OutUV) const;
     bool IsPixelCleanAt(FVector2 UV) const;
@@ -59,6 +60,8 @@ protected:
 private:
 	void TickFadeIn();
 	void TickFadeOut();
+	void StartCleanCompleteFlash(float CleanAlpha);
+	void TickCleanCompleteFlash(float DeltaTime);
 
 private:
 	TArray<UMaterialInterface*> Materials;
@@ -72,6 +75,9 @@ private:
 	bool bDestroyOwnerAfterFade = false;
 
 	float LifeTime = 0.0f;
+	float CleanCompleteFlashTime = 0.0f;
+	bool bCleanCompleteFlashActive = false;
+	bool bCleanCompleteFlashPlayed = false;
 
 
 	// GameJam
