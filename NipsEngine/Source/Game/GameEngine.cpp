@@ -162,6 +162,7 @@ void UGameEngine::ExitToTitle()
 	}
 
 	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+	BeginPlay();
 }
 
 void UGameEngine::Tick(float DeltaTime)

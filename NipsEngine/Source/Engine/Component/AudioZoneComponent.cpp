@@ -1,4 +1,4 @@
-#include "Component/AudioZoneComponent.h"
+﻿#include "Component/AudioZoneComponent.h"
 
 #include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/AActor.h"
@@ -57,7 +57,7 @@ void UAudioZoneComponent::Serialize(FArchive& Ar)
 	Ar << "SFXVolume" << SFXVolume;
 	Ar << "MusicVolume" << MusicVolume;
 	Ar << "AmbientVolume" << AmbientVolume;
-	Ar << "ExteriorMasterVolume" << ExteriorMasterVolume;
+	Ar << "ExteriorMasterVolume" << ExteriorMasterVolume;   
 	Ar << "ExteriorSFXVolume" << ExteriorSFXVolume;
 	Ar << "ExteriorMusicVolume" << ExteriorMusicVolume;
 	Ar << "ExteriorAmbientVolume" << ExteriorAmbientVolume;
