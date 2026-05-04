@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 23628,
+  "NextUUID" : 24482,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-20.235418, -7.693748, 7.886611],
+    "Location" : [-19.402018, -8.325604, 5.836682],
     "NearClip" : 0.100000,
-    "Rotation" : [-0.812195, 1.733624, 25.107960]
+    "Rotation" : [-1.968170, 7.357113, 15.021954]
   },
   "Primitives" : {
     "11356" : {
@@ -123,7 +123,7 @@
       "EditorOnly" : false,
       "EnableTick" : true,
       "HiddenInEditor" : false,
-      "Location" : [-16.705181, -5.753105, 4.559879],
+      "Location" : [-16.705181, -5.753105, 3.551066],
       "Rotation" : [0.000000, 0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "USceneComponent"
@@ -134,7 +134,7 @@
       "FOV" : 1.047198,
       "FarClip" : 1000.000000,
       "HiddenInEditor" : false,
-      "Location" : [0.000000, 0.000000, 4.573929],
+      "Location" : [0.000000, 0.000000, 2.290221],
       "NearClip" : 0.100000,
       "ParentUUID" : 13179,
       "Rotation" : [0.000000, 0.000000, 0.000000],
@@ -667,7 +667,7 @@
     },
     "22229" : {
       "BlockComponent" : true,
-      "CapsuleHalfHeight" : 3.950000,
+      "CapsuleHalfHeight" : 3.000000,
       "CapsuleRadius" : 0.280000,
       "DebugBoundsVisibility" : 0,
       "DrawOnlyIfSelected" : false,
@@ -715,6 +715,7 @@
       "EditorOnly" : false,
       "EnableTick" : true,
       "GravityScale" : 1.000000,
+      "GroundProbeDistance" : 0.000000,
       "GroundStickVelocity" : -0.500000,
       "HiddenInEditor" : false,
       "MaxFallSpeed" : 18.000000,
