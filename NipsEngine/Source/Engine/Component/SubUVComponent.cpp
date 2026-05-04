@@ -42,6 +42,11 @@ void USubUVComponent::Serialize(FArchive& Ar)
 	Ar << "Height" << Height;
 	Ar << "PlayRate" << PlayRate;
 	Ar << "bLoop" << bLoop;
+
+	if (Ar.IsLoading())
+	{
+		SetParticle(ParticleName);
+	}
 }
 
 bool USubUVComponent::TryGetActiveCamera(const FViewportCamera*& OutCamera) const
