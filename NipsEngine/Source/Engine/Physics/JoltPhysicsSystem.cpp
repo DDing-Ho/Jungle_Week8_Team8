@@ -401,7 +401,6 @@ struct FJoltPhysicsSystem::FImpl
 	std::vector<JPH::BodyID> BodyIDs;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> RigidBodies;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> DynamicBodies;
-	std::unordered_map<uint32, FString> BodyDebugNames;
 };
 
 FJoltPhysicsSystem& FJoltPhysicsSystem::Get()
@@ -529,7 +528,6 @@ void FJoltPhysicsSystem::ClearWorld()
 	Impl->BodyIDs.clear();
 	Impl->RigidBodies.clear();
 	Impl->DynamicBodies.clear();
-	Impl->BodyDebugNames.clear();
 }
 
 void FJoltPhysicsSystem::RebuildWorld(UWorld* World)
@@ -596,12 +594,6 @@ void FJoltPhysicsSystem::RegisterStaticBody(UPrimitiveComponent* ShapeComponent)
 	if (!BodyID.IsInvalid())
 	{
 		Impl->BodyIDs.push_back(BodyID);
-		const AActor* Owner = ShapeComponent->GetOwner();
-		Impl->BodyDebugNames[BodyID.GetIndexAndSequenceNumber()] =
-			FString("Static:") +
-			(Owner ? Owner->GetName() : FString("None")) +
-			FString("/") +
-			ShapeComponent->GetName();
 	}
 }
 
@@ -662,11 +654,6 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 	Body->SetJoltBodyHandle(BodyID.GetIndexAndSequenceNumber());
 	Impl->BodyIDs.push_back(BodyID);
 	Impl->RigidBodies[Body] = BodyID;
-	Impl->BodyDebugNames[BodyID.GetIndexAndSequenceNumber()] =
-		FString("Rigid:") +
-		(Body->GetOwner() ? Body->GetOwner()->GetName() : FString("None")) +
-		FString("/") +
-		Body->GetName();
 	if (!bStaticBody)
 	{
 		Impl->DynamicBodies[Body] = BodyID;
@@ -760,12 +747,6 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 {
 	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
 	{
-		UE_LOG("[PickupDebug] MoveKinematicBody failed precheck: body=%p impl=%d managed=%d dynamic=%d target=(%.3f, %.3f, %.3f)",
-			Body,
-			Impl != nullptr ? 1 : 0,
-			(Impl != nullptr && Body != nullptr && Impl->DynamicBodies.find(Body) != Impl->DynamicBodies.end()) ? 1 : 0,
-			(Body != nullptr && Body->IsDynamicBody()) ? 1 : 0,
-			InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z);
 		return false;
 	}
 
@@ -840,25 +821,6 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 
 			if (bHasBlockingHit)
 			{
-				const FVector HitAxis = ToEngineVector(BlockingHit.mPenetrationAxis);
-				const uint32 HitBodyRaw = BlockingHit.mBodyID2.GetIndexAndSequenceNumber();
-				const auto HitNameIt = Impl->BodyDebugNames.find(HitBodyRaw);
-				const FString HitName = HitNameIt != Impl->BodyDebugNames.end() ? HitNameIt->second : FString("Unknown");
-				UE_LOG("[PickupDebug] MoveKinematicBody cast hit: actor=%s body=%p hits=%d current=(%.3f, %.3f, %.3f) target=(%.3f, %.3f, %.3f) delta=(%.3f, %.3f, %.3f) fraction=%.4f depth=%.4f axis=(%.3f, %.3f, %.3f)",
-					Body->GetOwner() ? Body->GetOwner()->GetName().c_str() : "None",
-					Body,
-					static_cast<int32>(Collector.mHits.size()),
-					CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z,
-					InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z,
-					RequestedDelta.X, RequestedDelta.Y, RequestedDelta.Z,
-					BlockingHit.mFraction,
-					BlockingHit.mPenetrationDepth,
-					HitAxis.X, HitAxis.Y, HitAxis.Z);
-				UE_LOG("[PickupDebug] MoveKinematicBody hit target: hitBodyRaw=%u hitName=%s subShape1=%u subShape2=%u",
-					HitBodyRaw,
-					HitName.c_str(),
-					BlockingHit.mSubShapeID1.GetValue(),
-					BlockingHit.mSubShapeID2.GetValue());
 				const JPH::Vec3 LocalExtent = Shape->GetLocalBounds().GetExtent();
 				const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
 				const float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
@@ -888,12 +850,6 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 		BodyID,
 		ToJoltPosition(InOutTargetLocation),
 		ToJoltQuat(TargetRotation),
-		MoveDeltaTime);
-	UE_LOG("[PickupDebug] MoveKinematicBody move: actor=%s body=%p current=(%.3f, %.3f, %.3f) finalTarget=(%.3f, %.3f, %.3f) dt=%.4f",
-		Body->GetOwner() ? Body->GetOwner()->GetName().c_str() : "None",
-		Body,
-		CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z,
-		InOutTargetLocation.X, InOutTargetLocation.Y, InOutTargetLocation.Z,
 		MoveDeltaTime);
 	return true;
 }
