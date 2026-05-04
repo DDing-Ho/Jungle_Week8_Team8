@@ -1,0 +1,60 @@
+<rml>
+<head>
+	<title>Game UI</title>
+	<style>
+{{GAME_UI_RCSS}}
+	</style>
+</head>
+<body>
+	<div id="start-menu">
+		<img id="title-background" src="Asset/Texture/TitleBackground.png" />
+		<div id="game-title">
+			<img id="title-image" src="Asset/Texture/Title.png" />
+		</div>
+		<div id="title-menu">
+			<div class="title-menu-row"><img id="start-button" class="title-menu-button" src="Asset/Texture/TitleStartButton.png" /></div>
+			<div class="title-menu-row"><img id="settings-button" class="title-menu-button" src="Asset/Texture/TitleSettingsButton.png" /></div>
+			<div class="title-menu-row"><img id="credits-button" class="title-menu-button" src="Asset/Texture/TitleCreditsButton.png" /></div>
+			<div class="title-menu-row"><img id="exit-button" class="title-menu-button" src="Asset/Texture/TitleExitButton.png" /></div>
+		</div>
+	</div>
+
+	<div id="hud-panel">
+		<div id="progress-track"></div>
+		<div id="progress-fill"></div>
+		<div id="progress-value">0%</div>
+	</div>
+
+	<div id="item-status">
+		<div id="current-item-name">No item</div>
+	</div>
+
+	<div id="crosshair-dot"></div>
+
+	<div id="interaction-hint">
+		<span id="interaction-key">E</span>
+		<span id="interaction-hint-text"></span>
+	</div>
+
+	<div id="pause-layer">
+		<div id="pause-panel">
+			<div id="pause-title">[MENU]</div>
+			<div class="stat-row">Items: <span id="pause-item-count" class="stat-value">0</span></div>
+			<div class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
+			<div class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
+			<div id="retry-button" class="pause-button">RETRY</div>
+			<div id="pause-exit-button" class="pause-button">EXIT</div>
+		</div>
+	</div>
+
+	<div id="ending-panel">
+		<div id="the-end">THE END</div>
+	</div>
+
+	<div id="dialogue-panel">
+		<div id="dialogue-speaker"></div>
+		<div id="dialogue-text"></div>
+		<div id="dialogue-hint">[SPACE] &gt;</div>
+	</div>
+</body>
+</rml>

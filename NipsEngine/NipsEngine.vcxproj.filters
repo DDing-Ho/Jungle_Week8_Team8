@@ -160,6 +160,9 @@
     <Filter Include="Source\Game\UI">
       <UniqueIdentifier>{24b0520d-f070-bb4e-e2fa-92d953623ce5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Game\UI\Documents">
+      <UniqueIdentifier>{5ec07487-68e6-0e99-97c1-014f5c7d2c1c}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Game\UI\RmlUi">
       <UniqueIdentifier>{521f5ca5-d885-3663-120c-479fd46a0e23}</UniqueIdentifier>
     </Filter>
@@ -1607,6 +1610,9 @@
     <ClInclude Include="Source\Game\UI\StartMenuPanel.h">
       <Filter>Source\Game\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiDocumentsResource.h">
+      <Filter>Source\Game\UI\RmlUi</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.h">
       <Filter>Source\Game\UI\RmlUi</Filter>
     </ClInclude>
@@ -1640,5 +1646,18 @@
     <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h">
       <Filter>ThirdParty\ImGui</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Source\Game\UI\Documents\GameUI.rcss">
+      <Filter>Source\Game\UI\Documents</Filter>
+    </None>
+    <None Include="Source\Game\UI\Documents\GameUI.rml">
+      <Filter>Source\Game\UI\Documents</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Source\Game\UI\RmlUi\RmlUiDocuments.rc">
+      <Filter>Source\Game\UI\RmlUi</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

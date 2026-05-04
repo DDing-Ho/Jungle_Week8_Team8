@@ -1087,6 +1087,7 @@
     <ClInclude Include="Source\Game\UI\HUDPanel.h" />
     <ClInclude Include="Source\Game\UI\PauseMenuPanel.h" />
     <ClInclude Include="Source\Game\UI\StartMenuPanel.h" />
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiDocumentsResource.h" />
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.h" />
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.h" />
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h" />
@@ -1255,6 +1256,13 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Game|x64'">true</ExcludedFromBuild>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Source\Game\UI\RmlUi\RmlUiDocuments.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Source\Game\UI\Documents\GameUI.rcss" />
+    <None Include="Source\Game\UI\Documents\GameUI.rml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

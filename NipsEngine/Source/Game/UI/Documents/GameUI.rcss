@@ -1,0 +1,276 @@
+body {
+	width: 100%;
+	height: 100%;
+	margin: 0px;
+	font-family: "Malgun Gothic";
+	font-weight: bold;
+	color: #ffffff;
+}
+
+#start-menu, #pause-layer, #ending-panel {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#start-menu {
+	background-color: rgba(9, 10, 16, 255);
+}
+
+#title-background {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: auto;
+}
+
+#game-title {
+	position: absolute;
+	left: 0px;
+	top: 8%;
+	width: 100%;
+	height: 24%;
+	text-align: center;
+}
+
+#title-image {
+	width: 66%;
+	height: auto;
+}
+
+#title-menu {
+	position: absolute;
+	left: 0px;
+	top: 54%;
+	width: 100%;
+	text-align: center;
+}
+
+.title-menu-row {
+	display: block;
+	width: 100%;
+	height: 56px;
+	margin-bottom: 10px;
+	text-align: center;
+}
+
+.title-menu-button {
+	display: block;
+	width: auto;
+	height: 46px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.title-menu-button:hover {
+	opacity: 0.82;
+}
+
+#hud-panel {
+	position: absolute;
+	left: 30%;
+	top: 40px;
+	width: 40%;
+	height: 28px;
+}
+
+#progress-track {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 28px;
+	background-color: rgba(26, 26, 26, 210);
+	border-width: 1px;
+	border-color: rgba(80, 80, 80, 180);
+}
+
+#progress-fill {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	height: 28px;
+	background-color: rgb(64, 191, 255);
+}
+
+#progress-value {
+	position: absolute;
+	left: 0px;
+	top: 5px;
+	width: 100%;
+	text-align: center;
+	font-size: 16px;
+	color: #ffffff;
+}
+
+#item-status {
+	position: absolute;
+	right: 36px;
+	top: 34px;
+	width: 260px;
+	padding: 12px;
+	background-color: rgba(13, 15, 20, 185);
+	border-width: 1px;
+	border-color: rgba(110, 130, 150, 150);
+}
+
+#current-item-name {
+	font-size: 17px;
+	color: #ffe08a;
+}
+
+#current-item-desc {
+	margin-top: 6px;
+	font-size: 14px;
+	color: #d6d6d6;
+}
+
+#crosshair-dot {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 4px;
+	height: 4px;
+	margin-left: -3px;
+	margin-top: -3px;
+	background-color: rgba(255, 255, 255, 235);
+	border-width: 1px;
+	border-color: rgba(82, 82, 82, 190);
+	border-radius: 3px;
+}
+
+#interaction-hint {
+	position: absolute;
+	left: 0px;
+	bottom: 18%;
+	width: 100%;
+	text-align: center;
+}
+
+#interaction-key {
+	display: inline-block;
+	width: 34px;
+	height: 30px;
+	padding-top: 4px;
+	margin-right: 10px;
+	text-align: center;
+	font-size: 20px;
+	font-weight: bold;
+	color: #17120d;
+	background-color: rgba(255, 255, 255, 240);
+	border-width: 1px;
+	border-color: rgba(255, 255, 255, 255);
+}
+
+#interaction-hint-text {
+	display: inline-block;
+	padding: 8px 18px;
+	font-size: 20px;
+	font-weight: 900;
+	color: #f5f0e6;
+	background-color: rgba(15, 13, 10, 185);
+	border-width: 1px;
+	border-color: rgba(230, 205, 150, 155);
+}
+
+#pause-layer {
+	background-color: rgba(0, 0, 0, 150);
+}
+
+#pause-panel {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 320px;
+	height: 320px;
+	margin-left: -160px;
+	margin-top: -160px;
+	padding: 24px;
+	background-color: rgba(20, 20, 22, 245);
+	border-width: 1px;
+	border-color: rgba(130, 130, 145, 180);
+}
+
+#pause-title {
+	width: 100%;
+	text-align: center;
+	font-size: 24px;
+	color: #ffffff;
+}
+
+.stat-row {
+	margin-top: 16px;
+	font-size: 16px;
+	color: #dcdcdc;
+}
+
+.stat-value {
+	color: #9bd2ff;
+}
+
+.pause-button {
+	width: 100%;
+	height: 40px;
+	margin-top: 16px;
+	padding-top: 8px;
+	text-align: center;
+	font-size: 18px;
+	color: #ededed;
+	background-color: rgba(38, 40, 45, 255);
+	border-width: 1px;
+	border-color: rgba(115, 120, 130, 200);
+}
+
+.pause-button:hover {
+	background-color: rgba(58, 64, 74, 255);
+	color: #ffdc64;
+}
+
+#dialogue-panel {
+	position: absolute;
+	left: 10%;
+	bottom: 20px;
+	width: 80%;
+	height: 118px;
+	padding: 14px;
+	background-color: rgba(15, 15, 20, 220);
+	border-width: 1px;
+	border-color: rgba(100, 100, 120, 180);
+}
+
+#dialogue-speaker {
+	font-size: 18px;
+	color: #ffd264;
+}
+
+#dialogue-text {
+	margin-top: 8px;
+	font-size: 17px;
+	line-height: 22px;
+	color: #e6e6e6;
+}
+
+#dialogue-hint {
+	position: absolute;
+	right: 16px;
+	bottom: 12px;
+	font-size: 14px;
+	color: rgba(180, 180, 180, 220);
+}
+
+#ending-panel {
+	background-color: rgba(8, 8, 12, 230);
+}
+
+#the-end {
+	position: absolute;
+	top: 47%;
+	left: 0px;
+	width: 100%;
+	text-align: center;
+	font-size: 44px;
+	color: rgba(220, 210, 190, 0);
+}

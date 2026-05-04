@@ -93,6 +93,8 @@ public:
 	FName GetEditorWorldHandle() const;
 
 private:
+	void StartMainGamePIE();
+
 	FSelectionManager SelectionManager;
 	FEditorMainPanel  MainPanel;
 	FEditorViewportLayout ViewportLayout;
