@@ -145,7 +145,7 @@ body {
 
 .settings-value {
 	position: absolute;
-	right: 0px;
+	right: -20px;
 	top: 9px;
 	width: 58px;
 	text-align: right;
@@ -640,6 +640,40 @@ body {
 #ending-panel {
 	background-color: rgba(8, 8, 12, 230);
 }
+
+#debug-menu-layer {
+	display: none;
+	background-color: rgba(0, 0, 0, 160);
+	z-index: 50;
+}
+
+#debug-menu-panel {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 360px;
+	height: 360px;
+	margin-left: -180px;
+	margin-top: -180px;
+	background-color: rgba(30, 10, 10, 245);
+	border-width: 2px;
+	border-color: rgba(200, 50, 50, 180);
+}
+
+#debug-menu-title {
+	position: absolute;
+	left: 0px;
+	top: 24px;
+	width: 100%;
+	text-align: center;
+	font-size: 22px;
+	color: #ff8888;
+}
+
+#debug-jump-bad { top: 80px; }
+#debug-jump-normal { top: 138px; }
+#debug-jump-good { top: 196px; }
+#debug-menu-close { top: 274px; }
 
 #the-end {
 	position: absolute;

@@ -99,6 +99,10 @@ public:
     void SetExitToTitleCallback(std::function<void()> Callback);
     void ClearExitToTitleCallback() { ExitToTitleCallback = nullptr; }
 
+    // 설정 저장 및 로드
+    void LoadSettings();
+    void SaveSettings();
+
     // 게임 데이터 초기화 (Retry 시 호출)
     void ResetGameData();
 
@@ -152,6 +156,8 @@ private:
     void CloseSettings();
     void OpenCredits();
     void CloseCredits();
+    void OpenDebugMenu();
+    void CloseDebugMenu();
     void ApplySettings();
     void UpdateSettingsElements();
     enum class ESettingsSlider
@@ -192,6 +198,10 @@ private:
     std::unique_ptr<FRmlUiClickListener> CreditsOpenClickListener;
     std::unique_ptr<FRmlUiClickListener> CreditsCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> PauseTitleClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugMenuCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpBadClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpNormalClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpGoodClickListener;
     std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverEnterListeners;
     std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverLeaveListeners;
     double LastRmlUpdateTime = 0.0;
@@ -207,6 +217,7 @@ private:
     bool bStartGameTransitionReady = false;
     bool bSettingsOpen = false;
     bool bCreditsOpen = false;
+    bool bDebugMenuOpen = false;
     ESettingsSlider ActiveSettingsSlider = ESettingsSlider::None;
     float MouseSensitivityScale = 1.0f;
     float BgmVolume = 1.0f;

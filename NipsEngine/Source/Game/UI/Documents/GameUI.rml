@@ -134,6 +134,16 @@
 		<div id="the-end">THE END</div>
 	</div>
 
+	<div id="debug-menu-layer">
+		<div id="debug-menu-panel">
+			<div id="debug-menu-title">DEBUG: JUMP TO ENDING</div>
+			<div id="debug-jump-bad" class="pause-button">Bad Ending</div>
+			<div id="debug-jump-normal" class="pause-button">Normal Ending</div>
+			<div id="debug-jump-good" class="pause-button">Good Ending</div>
+			<div id="debug-menu-close" class="pause-button">Cancel</div>
+		</div>
+	</div>
+
 	<div id="dialogue-panel">
 		<div id="dialogue-speaker"></div>
 		<div id="dialogue-text"></div>

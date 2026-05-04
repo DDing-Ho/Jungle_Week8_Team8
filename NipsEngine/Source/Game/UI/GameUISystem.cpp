@@ -34,7 +34,10 @@
 #include <cmath>
 #include <cstdio>
 #include <functional>
+#include <fstream>
+#include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -218,6 +221,8 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 
 	if (bRmlUiInitialized)
 		return;
+
+	LoadSettings();
 
 	D3DContext = Context;
 	RmlSystemInterface = std::make_unique<FRmlUiSystemInterface>();
@@ -566,12 +571,6 @@ void GameUISystem::OpenSettings()
 	bCreditsOpen = false;
 }
 
-void GameUISystem::CloseSettings()
-{
-	bSettingsOpen = false;
-	EndSettingsSliderDrag();
-}
-
 void GameUISystem::OpenCredits()
 {
 	bCreditsOpen = true;
@@ -583,6 +582,26 @@ void GameUISystem::CloseCredits()
 	bCreditsOpen = false;
 }
 
+void GameUISystem::OpenDebugMenu()
+{
+	bDebugMenuOpen = true;
+	bSettingsOpen = false;
+	bCreditsOpen = false;
+	bPauseMenuOpen = false;
+}
+
+void GameUISystem::CloseDebugMenu()
+{
+	bDebugMenuOpen = false;
+}
+
+void GameUISystem::CloseSettings()
+{
+	bSettingsOpen = false;
+	EndSettingsSliderDrag();
+	SaveSettings();
+}
+
 void GameUISystem::ApplySettings()
 {
 	if (MouseSensitivityChangedCallback)
@@ -592,6 +611,48 @@ void GameUISystem::ApplySettings()
 
 	FAudioSystem::Get().SetBusVolume(EAudioBus::Music, BgmVolume);
 	FAudioSystem::Get().SetBusVolume(EAudioBus::SFX, SfxVolume);
+}
+
+void GameUISystem::LoadSettings()
+{
+	const std::wstring SettingsPath = FPaths::Combine(FPaths::SettingsDir(), L"Game.ini");
+	std::ifstream File(FPaths::ToUtf8(SettingsPath));
+	if (!File.is_open())
+		return;
+
+	std::string Line;
+	while (std::getline(File, Line))
+	{
+		std::istringstream Is(Line);
+		std::string Key;
+		if (std::getline(Is, Key, '='))
+		{
+			std::string Value;
+			if (std::getline(Is, Value))
+			{
+				if (Key == "MouseSensitivity") MouseSensitivityScale = std::stof(Value);
+				else if (Key == "BgmVolume") BgmVolume = std::stof(Value);
+				else if (Key == "SfxVolume") SfxVolume = std::stof(Value);
+			}
+		}
+	}
+
+	ApplySettings();
+}
+
+void GameUISystem::SaveSettings()
+{
+	const std::wstring SettingsDir = FPaths::SettingsDir();
+	FPaths::CreateDir(SettingsDir);
+
+	const std::wstring SettingsPath = FPaths::Combine(SettingsDir, L"Game.ini");
+	std::ofstream File(FPaths::ToUtf8(SettingsPath));
+	if (!File.is_open())
+		return;
+
+	File << "MouseSensitivity=" << MouseSensitivityScale << "\n";
+	File << "BgmVolume=" << BgmVolume << "\n";
+	File << "SfxVolume=" << SfxVolume << "\n";
 }
 
 void GameUISystem::UpdateSettingsElements()
@@ -770,6 +831,12 @@ bool GameUISystem::OnUIMouseButtonUp(int Button, float X, float Y)
 
 bool GameUISystem::OnUIKeyDown(int VK)
 {
+	if (VK == VK_OEM_3 && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) // Debug: Ctrl + Backtick key (`)
+	{
+		SetState(EGameUIState::Ending);
+		return true;
+	}
+
 	if (!bRmlUiInitialized || !RmlContext)
 		return false;
 
