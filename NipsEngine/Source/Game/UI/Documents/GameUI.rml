@@ -131,6 +131,9 @@
 	</div>
 
 	<div id="ending-panel">
+		<div id="ending-visual-frame">
+			<img id="ending-visual-image" src="Asset/Texture/TitleBackground.png" />
+		</div>
 		<div id="the-end">THE END</div>
 		<div id="ending-buttons">
 			<div id="save-score-button" class="pause-button">Save Score</div>

@@ -176,8 +176,8 @@ void UDecalComponent::TickComponent(float DeltaTime)
 		{
 			DecalColor.A = CleanAlpha;
 
-			// 95% 이상 청소되면 자동 페이드 아웃 및 파괴 시퀀스 시작
-			if (CachedCleanPercentage > 0.95f)
+			// 85% 이상 청소되면 자동 페이드 아웃 및 파괴 시퀀스 시작
+			if (CachedCleanPercentage > 0.85f)
 			{
 				SetFadeOut(0.0f, 1.0f, true);
 			}

@@ -641,6 +641,28 @@ body {
 	background-color: rgba(8, 8, 12, 230);
 }
 
+#ending-visual-frame {
+	position: absolute;
+	left: 5%; 
+    width: 90%; 
+    top: 40px; 
+    bottom: 160px;
+	margin-left: -380px;
+	background-color: rgba(0, 0, 0, 170);
+	border-width: 1px;
+	border-color: rgba(220, 210, 190, 90);
+	overflow: hidden;
+}
+
+#ending-visual-image {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100x;
+	height: 100px;
+	object-fit: cover;
+}
+
 #debug-menu-layer {
 	display: none;
 	background-color: rgba(0, 0, 0, 160);
