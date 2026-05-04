@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 41615,
+  "NextUUID" : 42483,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [10.709423, -1.069189, 5.615912],
+    "Location" : [-27.081438, -3.743393, 5.464131],
     "NearClip" : 0.100000,
-    "Rotation" : [15.057868, 20.319670, -37.766144]
+    "Rotation" : [-0.027252, -0.248749, -6.252686]
   },
   "Primitives" : {
     "11356" : {
@@ -727,7 +727,7 @@
       "MaxWalkSpeed" : 3.500000,
       "OwnerRootUUID" : 13179,
       "RigidBodyUUID" : 22230,
-      "SprintFootstepStepDistanceScale" : 1.500000,
+      "SprintFootstepStepDistanceScale" : 1.600000,
       "SprintFootstepVolumeScale" : 2.000000,
       "Type" : "UCharacterMovementComponent",
       "UpdateOnlyIfRendered" : false,
