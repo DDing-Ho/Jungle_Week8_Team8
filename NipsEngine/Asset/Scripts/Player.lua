@@ -5,7 +5,7 @@
 -- Log(message): writes to the editor console
 -- StartCoroutine(function() ... end), wait(seconds): coroutine helpers
 
-local CLEAN_RADIUS   = 0.08   -- 마스크 UV 반지름 (0~1 기준)
+local CLEAN_RADIUS   = 0.09   -- 마스크 UV 반지름 (0~1 기준)
 local CLEAN_STRENGTH = 60     -- 지울 강도 (uint8, 클수록 빠르게 지워짐)
 local REACH_DISTANCE = 300.0  -- 레이캐스트 최대 거리
 
@@ -43,7 +43,7 @@ function Tick(owner, deltaTime)
     end
 
     -- 마우스 왼쪽 클릭 / 홀딩 중일 때 청소
-    if GetKey(KEY_RIGHT_MOUSE) then
+    if GetKey(KEY_LEFT_MOUSE) then
         decal:PaintAtWorldPos(hit.Location, CLEAN_RADIUS, CLEAN_STRENGTH)
 
         local pct = decal:GetCleanPercentage()

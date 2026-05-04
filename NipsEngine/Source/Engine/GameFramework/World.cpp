@@ -1,4 +1,5 @@
 ﻿#include "GameFramework/World.h"
+#include <algorithm>
 #include "Collision/CollisionSystem.h"
 #include "Component/CameraComponent.h"
 #include "Component/Light/LightComponent.h"
@@ -274,6 +275,44 @@ bool UWorld::LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& Out
 	}
 
 	return bFoundHit;
+}
+
+bool UWorld::LineTraceMulti(const FRay& Ray, float MaxDistance, TArray<FHitResult>& OutHits, const AActor* IgnoredActor)
+{
+    OutHits.clear();
+
+    if (MaxDistance <= 0.0f)
+        return false;
+
+    FWorldSpatialIndex::FPrimitiveRayQueryScratch Scratch;
+    TArray<UPrimitiveComponent*> Candidates;
+    TArray<float> BroadHitTs;
+    SpatialIndex.RayQueryPrimitives(Ray, Candidates, BroadHitTs, Scratch);
+
+    for (UPrimitiveComponent* Candidate : Candidates)
+    {
+        if (Candidate == nullptr || Candidate->GetOwner() == IgnoredActor)
+            continue;
+        if (WorldType != EWorldType::Editor && Candidate->GetPrimitiveType() == EPrimitiveType::EPT_Billboard)
+            continue;
+        if (WorldType != EWorldType::Editor && Candidate->IsEditorOnly())
+            continue;
+
+        FHitResult CandidateHit;
+        if (!Candidate->Raycast(Ray, CandidateHit) || !CandidateHit.IsValid())
+            continue;
+        if (CandidateHit.Distance < 0.0f || CandidateHit.Distance > MaxDistance)
+            continue;
+
+        OutHits.push_back(CandidateHit);
+    }
+
+    std::sort(OutHits.begin(), OutHits.end(), [](const FHitResult& A, const FHitResult& B)
+    {
+        return A.Distance < B.Distance;
+    });
+
+    return !OutHits.empty();
 }
 
 FLightHandle UWorld::RegisterLight(ULightComponentBase* Comp)

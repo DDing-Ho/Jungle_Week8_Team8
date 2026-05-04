@@ -14,6 +14,10 @@ struct FCameraState
 	float FarZ = 1000.0f;
 	float OrthoWidth = 10.0f;
 	bool bIsOrthogonal = false;
+
+	// GameJam
+    float Width = 1920;
+    float Height = 1080;
 };
 
 class UCameraComponent : public USceneComponent
@@ -45,6 +49,10 @@ public:
 	float GetFarPlane() const { return CameraState.FarZ; }
 	float GetOrthoWidth() const { return CameraState.OrthoWidth; }
 	bool IsOrthogonal() const { return CameraState.bIsOrthogonal; }
+
+	// GameJam
+    float GetWidth() const { return CameraState.Width; }
+    float GetHeight() const { return CameraState.Height; }
 
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight);
 

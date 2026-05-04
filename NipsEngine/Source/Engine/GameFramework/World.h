@@ -111,6 +111,7 @@ public:
     void SetActiveCamera(FViewportCamera* InCamera) { ActiveCamera = InCamera; ActiveCameraComponent = nullptr; }
 	void SetActiveCameraComponent(UCameraComponent* InCamera) { ActiveCameraComponent = InCamera; ActiveCamera = nullptr; }
 	FViewportCamera* GetActiveCamera() const { return ActiveCamera; }
+    UCameraComponent* GetActiveCameraComponent() const { return ActiveCameraComponent; }
 
     /** @brief Access the world-level primitive AABB/BVH manager. */
     FWorldSpatialIndex& GetSpatialIndex() { return SpatialIndex; }
@@ -119,6 +120,7 @@ public:
     const FWorldSpatialIndex& GetSpatialIndex() const { return SpatialIndex; }
 
     bool LineTraceSingle(const FRay& Ray, float MaxDistance, FHitResult& OutHit, const AActor* IgnoredActor = nullptr);
+    bool LineTraceMulti(const FRay& Ray, float MaxDistance, TArray<FHitResult>& OutHits, const AActor* IgnoredActor = nullptr);
 
 	EWorldType GetWorldType() const { return WorldType; }
 	void SetWorldType(EWorldType InWorldType) { WorldType = InWorldType; }

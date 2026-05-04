@@ -62,6 +62,10 @@ void UCameraComponent::OnResize(int32 Width, int32 Height)
 {
 	if (Width > 0 && Height > 0)
 	{
+		// GameJam
+        CameraState.Width = static_cast<float>(Width);
+        CameraState.Height = static_cast<float>(Height);
+
 		CameraState.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
 	}
 }

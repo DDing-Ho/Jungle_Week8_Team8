@@ -1,4 +1,5 @@
 ﻿#include "DecalComponent.h"
+#include "Geometry/AABB.h"
 
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -106,29 +107,34 @@ void UDecalComponent::PostEditProperty(const char* PropertyName)
 
 void UDecalComponent::UpdateWorldAABB() const
 {
-	// 월드 공간에서의 AABB 계산
-	FVector WorldLocation = GetWorldLocation();
-	FVector HalfSize = DecalSize * 0.5f;
-	WorldAABB.Min = WorldLocation - HalfSize;
-	WorldAABB.Max = WorldLocation + HalfSize;
+    // 로컬 단위 박스를 데칼 행렬(Scale*WorldTM)로 변환해 회전이 반영된 월드 AABB를 얻습니다.
+    const FAABB LocalBox(FVector(-0.5f, -0.5f, -0.5f), FVector(0.5f, 0.5f, 0.5f));
+    WorldAABB = FAABB::TransformAABB(LocalBox, GetDecalMatrix());
 }
 
 bool UDecalComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
-	float TMin = 0.0f, TMax = 0.0f;
-	if (!WorldAABB.IntersectRay(Ray, TMin, TMax))
-		return false;
+    // 레이를 데칼 로컬 공간으로 변환해 OBB 교차를 단위 박스 AABB 테스트로 처리합니다.
+    // T 파라미터는 선형 변환 하에서 보존되므로 결과 T가 곧 월드 공간 거리입니다.
+    const FMatrix InvDecalMat = GetDecalMatrix().GetInverse();
+    const FVector LocalOrigin = InvDecalMat.TransformPosition(Ray.Origin);
+    const FVector LocalDir    = InvDecalMat.TransformVector(Ray.Direction);
 
-	const float T = TMin >= 0.0f ? TMin : TMax;
-	if (T < 0.0f)
-		return false;
+    const FAABB UnitBox(FVector(-0.5f, -0.5f, -0.5f), FVector(0.5f, 0.5f, 0.5f));
+    float TMin = 0.0f, TMax = 0.0f;
+    if (!UnitBox.IntersectRay(FRay(LocalOrigin, LocalDir), TMin, TMax))
+        return false;
 
-	OutHitResult.bHit = true;
-	OutHitResult.Distance = T;
-	OutHitResult.Location = Ray.Origin + Ray.Direction * T;
-	OutHitResult.Normal = -Ray.Direction;
-	OutHitResult.HitComponent = this;
-	return true;
+    const float T = TMin >= 0.0f ? TMin : TMax;
+    if (T < 0.0f)
+        return false;
+
+    OutHitResult.bHit = true;
+    OutHitResult.Distance = T;
+    OutHitResult.Location = Ray.Origin + Ray.Direction * T;
+    OutHitResult.Normal = -Ray.Direction;
+    OutHitResult.HitComponent = this;
+    return true;
 }
 
 FMatrix UDecalComponent::GetDecalMatrix() const
@@ -265,6 +271,13 @@ void UDecalComponent::PaintMask(FVector2 UV, float Radius, uint8 Value)
 
 			if (DistSq <= RadiusSq)
 			{
+                float Distance = std::sqrt(DistSq);
+				float NormalizedDistance = Distance / PixelRadius;
+                float Falloff = 1.0f - NormalizedDistance;
+				Falloff = std::pow(Falloff, 2.0f);
+
+				int32 AppliedValue = static_cast<int32>(Value * Falloff + 0.5f);
+
                 int32 CurrentValue = MaskPixels[y * MaskWidth + x];
                 int32 NewValue = CurrentValue - Value;
 
@@ -302,6 +315,33 @@ float UDecalComponent::GetCleanPercentage() const
             ++TotalZero;
     }
     return static_cast<float>(TotalZero) / static_cast<float>(MaskPixels.size());
+}
+
+bool UDecalComponent::IsPixelCleanAt(FVector2 UV) const
+{
+    if (MaskPixels.empty())
+        return false;
+
+    const int32 CX = static_cast<int32>(UV.X * MaskWidth);
+    const int32 CY = static_cast<int32>(UV.Y * MaskHeight);
+    if (CX < 0 || CX >= (int32)MaskWidth || CY < 0 || CY >= (int32)MaskHeight)
+        return true;
+
+    // 중심 주변 3x3 픽셀 평균으로 판단해 경계 노이즈를 줄입니다.
+    int32 Sum = 0, Count = 0;
+    for (int32 DY = -1; DY <= 1; ++DY)
+    {
+        for (int32 DX = -1; DX <= 1; ++DX)
+        {
+            const int32 X = CX + DX, Y = CY + DY;
+            if (X < 0 || X >= (int32)MaskWidth || Y < 0 || Y >= (int32)MaskHeight)
+                continue;
+            Sum += MaskPixels[Y * MaskWidth + X];
+            ++Count;
+        }
+    }
+    constexpr int32 CleanThreshold = 10;
+    return Count > 0 && (Sum / Count) <= CleanThreshold;
 }
 
 void UDecalComponent::UpdateMaskTexture()

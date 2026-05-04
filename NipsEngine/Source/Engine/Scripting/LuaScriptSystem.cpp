@@ -3,7 +3,8 @@
 #include "Component/LuaScriptComponent.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
-#include "Engine/Viewport/ViewportCamera.h"
+#include "Component/CameraComponent.h"
+#include "Component/DecalComponent.h"
 #include "Scripting/LuaBindings.h"
 #include "Core/Logger.h"
 
@@ -245,15 +246,30 @@ void FLuaScriptSystem::BindCoroutineAPI(ULuaScriptComponent* Component, FScriptS
 		const AActor* Owner = Component->GetOwner();
 		UWorld* World = Owner ? Owner->GetFocusedWorld() : nullptr;
 		if (!World) return Hit;
-		FViewportCamera* Cam = World->GetActiveCamera();
+		UCameraComponent* Cam = World->GetActiveCameraComponent();
 		if (!Cam) return Hit;
 
-		float W = static_cast<float>(Cam->GetWidth());
-		float H = static_cast<float>(Cam->GetHeight());
+		float W = Cam->GetWidth();
+		float H = Cam->GetHeight();
 		FRay Ray = Cam->DeprojectScreenToWorld(W * 0.5f, H * 0.5f, W, H);
 
-		World->LineTraceSingle(Ray, MaxDistance, Hit, Owner);
-		return Hit;
+		TArray<FHitResult> Hits;
+		if (!World->LineTraceMulti(Ray, MaxDistance, Hits, Owner))
+			return Hit;
+
+		// 거리 순으로 순회하며, 히트 지점의 픽셀이 아직 남아있는 가장 가까운 데칼을 반환합니다.
+		for (const FHitResult& H : Hits)
+		{
+			UDecalComponent* Decal = Cast<UDecalComponent>(H.HitComponent);
+			if (!Decal) continue;
+			FVector2 HitUV;
+			if (!Decal->WorldPosToDecalUV(H.Location, HitUV)) continue;
+			if (!Decal->IsPixelCleanAt(HitUV))
+				return H;
+		}
+
+		// 데칼이 없으면 가장 가까운 히트를 반환합니다.
+		return Hits[0];
 	});
 }
 
