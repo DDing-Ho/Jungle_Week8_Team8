@@ -30,7 +30,7 @@
       "keptDesc": "포장이 뜯어진 초콜릿 바는 마음이 걸려 보관하기로 했다.",
       "discardedDesc": "뜯어져 있는 초콜릿은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Book_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/chocolate_ItemDetail.png",
       "endingRole": "Bad",
       "storyFlags": [
         "found_chocolate"
@@ -48,7 +48,7 @@
       "keptDesc": "빈 약병을 따로 보관하기로 했다.",
       "discardedDesc": "빈 약병은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Book_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/Medicine_ItemDetail.png",
       "endingRole": "Bad",
       "storyFlags": [
         "found_medicine_bottle"
@@ -69,7 +69,7 @@
       "keptDesc": "조개 껍데기를 따로 보관하기로 했다.",
       "discardedDesc": "조개 껍데기는 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Book_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/Shell_ItemDetail.png",
       "endingRole": "Good",
       "storyFlags": [
         "found_shell"
@@ -88,7 +88,7 @@
       "keptDesc": "지구본을 따로 보관하기로 했다.",
       "discardedDesc": "지구본은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Book_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/Globe_ItemDetail.png",
       "endingRole": "Normal",
       "storyFlags": [
         "found_globe"
@@ -107,7 +107,7 @@
       "keptDesc": "어린아이의 그림을 따로 보관하기로 했다.",
       "discardedDesc": "어린아이의 그림은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
-      "iconPath": "Asset/Texture/ItemDetail/Book_ItemDetail.png",
+      "iconPath": "Asset/Texture/ItemDetail/Painting_ItemDetail.png",
       "endingRole": "Normal",
       "storyFlags": [
         "found_painting"
@@ -125,6 +125,7 @@
       "keptDesc": "신발을 따로 보관하기로 했다.",
       "discardedDesc": "신발은 버릴 물건 상자 안으로 들어갔다.",
       "canClassify": true,
+      "iconPath": "Asset/Texture/ItemDetail/Shoes_ItemDetail.png",
       "endingRole": "Normal",
       "storyFlags": [
         "found_shoes"
