@@ -5,7 +5,6 @@
 -- Log(message): writes to the editor console
 -- StartCoroutine(function() ... end), wait(seconds): coroutine helpers
 
-local CLEAN_RADIUS   = 0.8   -- 브러시 반지름 (월드 단위, 데칼 크기와 무관하게 동일한 크기로 지워짐)
 local CLEAN_STRENGTH = 100     -- 지울 강도 (uint8, 클수록 빠르게 지워짐)
 local REACH_DISTANCE = 300.0  -- 레이캐스트 최대 거리
 
@@ -41,9 +40,13 @@ function Tick(owner, deltaTime)
         return
     end
 
-    -- 마우스 왼쪽 클릭 / 홀딩 중일 때 청소
-    if GetKey(KEY_LEFT_MOUSE) then
-        decal:PaintAtWorldPos(hit.Location, CLEAN_RADIUS, CLEAN_STRENGTH)
+    local currentToolId = GetCurrentCleaningToolId()
+    if currentToolId ~= "" and GetKey(KEY_LEFT_MOUSE) then
+        local cleanPower = GetCurrentCleaningToolPower()
+        local cleanStrength = math.floor(CLEAN_STRENGTH * cleanPower + 0.5)
+        if cleanStrength > 0 then
+            decal:PaintAtWorldPos(hit.Location, GetCurrentCleaningToolRadius(), cleanStrength)
+        end
 
         local pct = decal:GetCleanPercentage()
         --SetProgress(pct)

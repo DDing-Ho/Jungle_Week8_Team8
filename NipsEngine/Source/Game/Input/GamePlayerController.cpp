@@ -1,5 +1,6 @@
 ﻿#include "Game/Input/GamePlayerController.h"
 
+#include "Audio/AudioSystem.h"
 #include "Component/CameraComponent.h"
 #include "Component/LuaScriptComponent.h"
 #include "Component/Movement/CharacterMovementComponent.h"
@@ -65,6 +66,18 @@ namespace
 	{
 		static const FName Name("Jump");
 		return Name;
+	}
+
+	const FString& MopToolId()
+	{
+		static const FString Id("mop");
+		return Id;
+	}
+
+	const FString& MopCleaningLoopSoundPath()
+	{
+		static const FString Path("Asset/Audio/mopping-floor.wav");
+		return Path;
 	}
 
 	// 새 Axis를 추가하려면:
@@ -386,6 +399,7 @@ FGamePlayerController::FGamePlayerController()
 
 FGamePlayerController::~FGamePlayerController()
 {
+	StopCleaningLoopSound();
 	DestroyPhysicsHandle();
 }
 
@@ -572,6 +586,7 @@ void FGamePlayerController::SetWorld(UWorld* InWorld)
 	}
 
 	EndCleaningToolViewModel();
+	StopCleaningLoopSound();
 	World = InWorld;
 	Player = nullptr;
 	Camera = nullptr;
@@ -591,6 +606,7 @@ void FGamePlayerController::SetPlayer(AActor* InPlayer)
 	}
 
 	EndCleaningToolViewModel();
+	StopCleaningLoopSound();
 	DestroyPhysicsHandle();
 	CharacterMovement = nullptr;
 	Player = InPlayer;
@@ -788,6 +804,11 @@ bool FGamePlayerController::TryBeginCleaningUse()
 		return false;
 	}
 
+	if (bIsCleaningUseHeld)
+	{
+		return true;
+	}
+
 	if (!PhysicsHandle || !PhysicsHandle->IsHolding())
 	{
 		UE_LOG("[CleaningTool] BeginUse blocked: no held physics object.");
@@ -814,6 +835,7 @@ bool FGamePlayerController::TryBeginCleaningUse()
 		HeldBody->SetAngularVelocity(FVector::ZeroVector);
 	}
 	FCleaningToolAnimator::Get().BeginUse(*ToolData);
+	StartCleaningLoopSound(*ToolData);
 	UE_LOG("[CleaningTool] BeginUse started: toolId=%s amplitude=%.3f speed=%.3f.",
 		   CurrentToolId.c_str(),
 		   ToolData->UseBobAmplitude,
@@ -830,6 +852,34 @@ void FGamePlayerController::EndCleaningUse()
 
 	bIsCleaningUseHeld = false;
 	FCleaningToolAnimator::Get().EndUse();
+	StopCleaningLoopSound();
+}
+
+void FGamePlayerController::StartCleaningLoopSound(const FCleaningToolData& ToolData)
+{
+	if (ToolData.ToolId != MopToolId())
+	{
+		return;
+	}
+
+	if (CleaningLoopSoundHandle.IsValid())
+	{
+		FAudioSystem::Get().Stop(CleaningLoopSoundHandle);
+		CleaningLoopSoundHandle = {};
+	}
+
+	CleaningLoopSoundHandle = FAudioSystem::Get().Play2D(MopCleaningLoopSoundPath(), 1.0f, true);
+}
+
+void FGamePlayerController::StopCleaningLoopSound()
+{
+	if (!CleaningLoopSoundHandle.IsValid())
+	{
+		return;
+	}
+
+	FAudioSystem::Get().Stop(CleaningLoopSoundHandle);
+	CleaningLoopSoundHandle = {};
 }
 
 void FGamePlayerController::TogglePickup()
@@ -859,6 +909,7 @@ void FGamePlayerController::TogglePickup()
 		GGameContext::Get().SetCurrentTool("");
 		Handle->Release();
 		Handle->ResetHoldDistance();
+		GGameContext::Get().ClearHeldObject();
 		return;
 	}
 
@@ -880,6 +931,8 @@ void FGamePlayerController::TogglePickup()
                 NotifyPickedUp(HeldActor);
 
                 const FString HeldToolId = FindCleaningToolIdFromActor(HeldActor);
+                const FString HeldItemId = FindItemIdFromActor(HeldActor);
+                GGameContext::Get().SetHeldObject(HeldActor, HeldItemId, HeldToolId);
                 bSelectedHeldTool = !HeldToolId.empty() && FCleaningToolSystem::Get().SelectTool(HeldToolId);
                 if (bSelectedHeldTool)
                 {
@@ -960,8 +1013,9 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 	GGameContext::Get().SetCurrentTool("");
 	Handle->Release();
 	Handle->ResetHoldDistance();
+	GGameContext::Get().ClearHeldObject();
 
-	World->DestroyActor(HeldActor);
+	World->DeactivateActor(HeldActor);
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
@@ -1051,11 +1105,13 @@ UCharacterMovementComponent* FGamePlayerController::GetCharacterMovement()
 void FGamePlayerController::DestroyPhysicsHandle()
 {
 	EndCleaningToolViewModel();
+	StopCleaningLoopSound();
 	if (PhysicsHandle)
 	{
 		PhysicsHandle->Release();
 		PhysicsHandle = nullptr;
 	}
+	GGameContext::Get().ClearHeldObject();
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 }

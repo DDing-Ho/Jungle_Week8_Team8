@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Engine/Input/InputMapping.h"
+#include "Audio/AudioSystem.h"
 #include "Game/Input/BaseGameController.h"
 #include "Game/Systems/CleaningGameTypes.h"
 #include "Math/Vector.h"
@@ -72,6 +73,8 @@ private:
     void ApplyInputAxes();
     bool TryBeginCleaningUse();
     void EndCleaningUse();
+    void StartCleaningLoopSound(const struct FCleaningToolData& ToolData);
+    void StopCleaningLoopSound();
     void TogglePickup();
     void NotifyPickedUp(AActor* PickedActor);
     void TryInspectHoveredItem();
@@ -123,6 +126,7 @@ private:
     bool bFreeCameraInitialized = false;
     bool bInitialRigidBodyRotationsCaptured = false;
     bool bIsCleaningUseHeld = false;
+    FAudioHandle CleaningLoopSoundHandle;
     std::function<void()> OnRequestToggleInputCapture;
     std::function<void()> OnRequestTogglePause;
 };

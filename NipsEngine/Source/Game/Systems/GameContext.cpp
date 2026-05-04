@@ -38,14 +38,23 @@ GGameContext& GGameContext::Get()
 
 void GGameContext::Reset()
 {
+	const FHeldObjectInfo PreviousHeldObjectInfo = HeldObjectInfo;
+
 	CleanProgress = 0.0f;
 	ClearMapDecals();
 	CurrentToolId.clear();
 	CurrentInspectedItemId.clear();
+	HeldObjectInfo = {};
 	FoundItemIds.clear();
 	KeptItemIds.clear();
 	DiscardedItemIds.clear();
 	UnlockedStoryFlags.clear();
+
+	if (PreviousHeldObjectInfo.IsHolding())
+	{
+		OnObjectDropped.Broadcast(PreviousHeldObjectInfo);
+		OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	}
 
 	BroadcastChanged();
 }
@@ -165,6 +174,60 @@ void GGameContext::SetCurrentInspectedItem(const FString& ItemId)
 void GGameContext::ClearCurrentInspectedItem()
 {
 	SetCurrentInspectedItem("");
+}
+
+void GGameContext::SetHeldObject(AActor* Actor, const FString& ItemId, const FString& ToolId)
+{
+	FHeldObjectInfo NewInfo;
+	NewInfo.Actor = Actor;
+	if (Actor != nullptr)
+	{
+		NewInfo.ActorName = Actor->GetFName().ToString();
+	}
+	NewInfo.ItemId = ItemId;
+	NewInfo.ToolId = ToolId;
+
+	if (!ToolId.empty())
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::CleaningTool;
+	}
+	else if (!ItemId.empty())
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::Item;
+	}
+	else if (Actor != nullptr)
+	{
+		NewInfo.ObjectType = EGameHeldObjectType::Object;
+	}
+
+	const bool bChanged =
+		HeldObjectInfo.Actor != NewInfo.Actor ||
+		HeldObjectInfo.ItemId != NewInfo.ItemId ||
+		HeldObjectInfo.ToolId != NewInfo.ToolId ||
+		HeldObjectInfo.ObjectType != NewInfo.ObjectType;
+	if (!bChanged)
+	{
+		return;
+	}
+
+	HeldObjectInfo = NewInfo;
+	OnObjectPickedUp.Broadcast(HeldObjectInfo);
+	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	BroadcastChanged();
+}
+
+void GGameContext::ClearHeldObject()
+{
+	if (!HeldObjectInfo.IsHolding())
+	{
+		return;
+	}
+
+	const FHeldObjectInfo PreviousInfo = HeldObjectInfo;
+	HeldObjectInfo = {};
+	OnObjectDropped.Broadcast(PreviousInfo);
+	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
+	BroadcastChanged();
 }
 
 bool GGameContext::MarkItemFound(const FString& ItemId)

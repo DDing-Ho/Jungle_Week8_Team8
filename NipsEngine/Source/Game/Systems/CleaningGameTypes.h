@@ -52,6 +52,7 @@ struct FCleaningToolData
 	FString AnimationSetId;
 	FString EffectId;
 	float CleaningPower = 1.0f;
+	float CleaningRadius = 0.8f;
 	float HoldDistance = 4.0f;
 	FVector HoldCameraLocalOffset = FVector::ZeroVector;
 	FVector UseStrokeCameraLocalDirection = FVector(0.0f, 0.0f, 1.0f);
@@ -70,6 +71,7 @@ struct FCleaningToolUseResult
 	FString EffectId;
 	FString InteractionSoundId;
 	float CleaningPower = 0.0f;
+	float CleaningRadius = 0.0f;
 	bool bCanCleanSurface = true;
 };
 

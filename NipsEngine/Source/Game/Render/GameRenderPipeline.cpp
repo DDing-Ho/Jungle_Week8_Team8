@@ -11,6 +11,18 @@
 #include "Core/Logging/Stats.h"
 #include "Core/Logging/GPUProfiler.h"
 
+namespace
+{
+	FShowFlags MakeGameShowFlags()
+	{
+		FShowFlags ShowFlags;
+		ShowFlags.bShadow = true;
+		return ShowFlags;
+	}
+
+	constexpr EShadowFilterType GameShadowFilterType = EShadowFilterType::ESM;
+}
+
 FGameRenderPipeline::FGameRenderPipeline(UGameEngine* InEngine, FRenderer& InRenderer)
 	: Engine(InEngine)
 {
@@ -56,7 +68,7 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 		return;
 	}
 
-	FShowFlags ShowFlags;
+	const FShowFlags ShowFlags = MakeGameShowFlags();
 
 	// 씬 수집 (기즈모/선택/그리드/에디터 오버레이 생략)
 	Renderer.GetEditorLineBatcher().Clear();
@@ -104,11 +116,12 @@ bool FGameRenderPipeline::PrepareViewport(FRenderer& Renderer, FSceneView& OutSc
 
 	Renderer.BeginViewportFrame(&RenderTargets);
 
-	FShowFlags ShowFlags;
+	const FShowFlags ShowFlags = MakeGameShowFlags();
 	Bus.Clear();
 	Bus.SetViewProjection(OutSceneView.ViewMatrix, OutSceneView.ProjectionMatrix);
 	Bus.SetCameraPlane(OutSceneView.NearPlane, OutSceneView.FarPlane);
 	Bus.SetRenderSettings(OutSceneView.ViewMode, ShowFlags);
+	Bus.SetShadowFilterType(GameShadowFilterType);
 	Bus.SetViewportSize(FVector2(static_cast<float>(Rect.Width), static_cast<float>(Rect.Height)));
 	Bus.SetViewportOrigin(FVector2(0.0f, 0.0f));
 	Bus.SetFXAAEnabled(!OutSceneView.bOrthographic);

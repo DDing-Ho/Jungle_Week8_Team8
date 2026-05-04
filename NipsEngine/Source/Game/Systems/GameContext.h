@@ -2,8 +2,30 @@
 
 #include "Game/Systems/CleaningGameTypes.h"
 
+class AActor;
 class UDecalComponent;
 class UWorld;
+
+enum class EGameHeldObjectType
+{
+	None,
+	Object,
+	Item,
+	CleaningTool
+};
+
+struct FHeldObjectInfo
+{
+	AActor* Actor = nullptr;
+	FString ActorName;
+	FString ItemId;
+	FString ToolId;
+	EGameHeldObjectType ObjectType = EGameHeldObjectType::None;
+
+	bool IsHolding() const { return Actor != nullptr; }
+	bool IsItem() const { return ObjectType == EGameHeldObjectType::Item; }
+	bool IsCleaningTool() const { return ObjectType == EGameHeldObjectType::CleaningTool; }
+};
 
 class GGameContext
 {
@@ -28,6 +50,11 @@ public:
 	void ClearCurrentInspectedItem();
 	const FString& GetCurrentInspectedItemId() const { return CurrentInspectedItemId; }
 
+	void SetHeldObject(AActor* Actor, const FString& ItemId, const FString& ToolId);
+	void ClearHeldObject();
+	const FHeldObjectInfo& GetHeldObjectInfo() const { return HeldObjectInfo; }
+	bool IsHoldingObject() const { return HeldObjectInfo.IsHolding(); }
+
 	bool MarkItemFound(const FString& ItemId);
 	bool MarkItemKept(const FString& ItemId);
 	bool MarkItemDiscarded(const FString& ItemId);
@@ -48,9 +75,13 @@ public:
 
 	DECLARE_DELEGATE(FOnGameContextChanged);
 	DECLARE_DELEGATE(FOnItemDispositionChanged, const FString&, EGameItemDisposition);
+	DECLARE_DELEGATE(FOnHeldObjectChanged, const FHeldObjectInfo&);
 
 	FOnGameContextChanged OnContextChanged;
 	FOnItemDispositionChanged OnItemDispositionChanged;
+	FOnHeldObjectChanged OnHeldObjectChanged;
+	FOnHeldObjectChanged OnObjectPickedUp;
+	FOnHeldObjectChanged OnObjectDropped;
 
 private:
 	GGameContext() = default;
@@ -62,6 +93,7 @@ private:
 	int32 InitialDecalCount = 0;
 	FString CurrentToolId;
 	FString CurrentInspectedItemId;
+	FHeldObjectInfo HeldObjectInfo;
 
 	TSet<FString> FoundItemIds;
 	TSet<FString> KeptItemIds;

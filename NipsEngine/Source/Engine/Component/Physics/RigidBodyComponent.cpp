@@ -1,6 +1,7 @@
 ﻿#include "Component/Physics/RigidBodyComponent.h"
 
 #include "Audio/AudioSystem.h"
+#include "Component/Collision/ShapeComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "Core/Logger.h"
@@ -113,7 +114,7 @@ void URigidBodyComponent::PostEditProperty(const char* PropertyName)
 
 USceneComponent* URigidBodyComponent::GetUpdatedComponent() const
 {
-    if (IsLiveObjectPointer(UpdatedComponent))
+    if (IsLiveObjectPointer(UpdatedComponent) && Cast<UShapeComponent>(UpdatedComponent) == nullptr)
     {
         return UpdatedComponent;
     }

@@ -44,8 +44,11 @@ void UCylinderComponent::Serialize(FArchive& Ar)
 
 void UCylinderComponent::UpdateWorldAABB() const
 {
-	const float SafeHalfHeight = std::fabs(CylinderHalfHeight);
-	const float SafeRadius = std::fabs(CylinderRadius);
+	const FVector Scale = GetWorldScale();
+	const float RadiusScale = std::max(std::fabs(Scale.X), std::fabs(Scale.Y));
+	const float HeightScale = std::fabs(Scale.Z);
+	const float SafeHalfHeight = std::fabs(CylinderHalfHeight) * HeightScale;
+	const float SafeRadius = std::fabs(CylinderRadius) * RadiusScale;
 	const FVector LocalExtent(SafeRadius, SafeRadius, SafeHalfHeight);
 	const FAABB LocalAABB(-LocalExtent, LocalExtent);
 
@@ -56,8 +59,11 @@ void UCylinderComponent::UpdateWorldAABB() const
 
 bool UCylinderComponent::RaycastMesh(const FRay& Ray, FHitResult& OutHitResult)
 {
-	const float SafeHalfHeight = std::fabs(CylinderHalfHeight);
-	const float SafeRadius = std::fabs(CylinderRadius);
+	const FVector Scale = GetWorldScale();
+	const float RadiusScale = std::max(std::fabs(Scale.X), std::fabs(Scale.Y));
+	const float HeightScale = std::fabs(Scale.Z);
+	const float SafeHalfHeight = std::fabs(CylinderHalfHeight) * HeightScale;
+	const float SafeRadius = std::fabs(CylinderRadius) * RadiusScale;
 	if (SafeHalfHeight <= MathUtil::Epsilon || SafeRadius <= MathUtil::Epsilon)
 	{
 		return false;

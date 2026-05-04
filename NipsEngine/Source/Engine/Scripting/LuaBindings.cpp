@@ -62,6 +62,21 @@ namespace
 
 		return nullptr;
 	}
+
+	const char* ToLuaHeldObjectType(EGameHeldObjectType Type)
+	{
+		switch (Type)
+		{
+		case EGameHeldObjectType::Object:
+			return "Object";
+		case EGameHeldObjectType::Item:
+			return "Item";
+		case EGameHeldObjectType::CleaningTool:
+			return "CleaningTool";
+		default:
+			return "None";
+		}
+	}
 }
 
 void RegisterLuaBindings(sol::state& Lua)
@@ -246,6 +261,31 @@ void RegisterLuaBindings(sol::state& Lua)
 		return static_cast<int32>(GGameContext::Get().GetResolvedItemCount());
 	});
 
+	Lua.set_function("IsHoldingObject", []()
+	{
+		return GGameContext::Get().IsHoldingObject();
+	});
+
+	Lua.set_function("GetHeldActorName", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ActorName;
+	});
+
+	Lua.set_function("GetHeldItemId", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ItemId;
+	});
+
+	Lua.set_function("GetHeldToolId", []()
+	{
+		return GGameContext::Get().GetHeldObjectInfo().ToolId;
+	});
+
+	Lua.set_function("GetHeldObjectType", []()
+	{
+		return FString(ToLuaHeldObjectType(GGameContext::Get().GetHeldObjectInfo().ObjectType));
+	});
+
 	Lua.set_function("DeactivateActor", [](AActor* Actor)
 	{
 		if (!Actor)
@@ -329,6 +369,25 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set_function("SelectCleaningTool", [](const std::string& ToolId)
 	{
 		return FCleaningToolSystem::Get().SelectTool(ToolId);
+	});
+
+	Lua.set_function("GetCurrentCleaningToolId", []()
+	{
+		return GGameContext::Get().GetCurrentToolId();
+	});
+
+	Lua.set_function("GetCurrentCleaningToolRadius", []()
+	{
+		const FString& ToolId = GGameContext::Get().GetCurrentToolId();
+		const FCleaningToolData* ToolData = ToolId.empty() ? nullptr : FCleaningToolSystem::Get().FindToolData(ToolId);
+		return ToolData ? ToolData->CleaningRadius : 0.0f;
+	});
+
+	Lua.set_function("GetCurrentCleaningToolPower", []()
+	{
+		const FString& ToolId = GGameContext::Get().GetCurrentToolId();
+		const FCleaningToolData* ToolData = ToolId.empty() ? nullptr : FCleaningToolSystem::Get().FindToolData(ToolId);
+		return ToolData ? ToolData->CleaningPower : 0.0f;
 	});
 
 	Lua.set_function("RegisterCleaningToolActor", [](AActor* Actor, const std::string& ToolId)
