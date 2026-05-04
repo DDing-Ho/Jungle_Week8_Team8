@@ -80,7 +80,7 @@
 	</div>
 
 	<div id="elapsed-time-panel">
-		<div id="elapsed-time-label">Time</div>
+		<div id="elapsed-time-label">남은 시간</div>
 		<div id="elapsed-time-value">0m 00s</div>
 	</div>
 
@@ -121,7 +121,7 @@
 		<div id="pause-panel">
 			<div id="pause-title">MENU</div>
 			<div id="pause-items-row" class="stat-row">Items: <span id="pause-item-count" class="stat-value">0</span></div>
-			<div id="pause-time-row" class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
+			<div id="pause-time-row" class="stat-row">남은 시간: <span id="pause-time" class="stat-value">0m 00s</span></div>
 			<div id="pause-progress-row" class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
 			<div id="retry-button" class="pause-button">Resume</div>
 			<div id="pause-settings-button" class="pause-button">Settings</div>

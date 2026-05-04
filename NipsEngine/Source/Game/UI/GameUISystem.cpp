@@ -422,6 +422,7 @@ bool GameUISystem::WantsMouseCursor() const
 		   CurrentState == EGameUIState::Ending ||
 		   bSettingsOpen ||
 		   bCreditsOpen ||
+		   bDebugMenuOpen ||
 		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
 		   DialoguePanel::IsActive();
@@ -1025,13 +1026,31 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	DialoguePanel::Tick(DeltaTime, Mode);
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
+
+	if (RmlRenderInterface)
+		RmlRenderInterface->SetFlashFactor(0.0f);
+
 	TickTitleTransitions(DeltaTime);
 	if (CurrentState == EGameUIState::InGame && !bPauseMenuOpen && Mode == EUIRenderMode::Play)
 	{
 		ElapsedTime += std::max(0.0f, DeltaTime);
 	}
 
+	float MaxTime = 300.0f; // 5분
+	float RemainingTime = std::max(0.0f, MaxTime - ElapsedTime);
+
+	if (RemainingTime <= 0.0f && CurrentState == EGameUIState::InGame && Mode == EUIRenderMode::Play)
+	{
+		SetEndingType(EEndingType::Bad);
+		SetState(EGameUIState::Ending);
+	}
+
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
+
+	if (Rml::Element* TimerElement = RmlDocument->GetElementById("elapsed-time-value"))
+	{
+		TimerElement->SetClass("critical", RemainingTime <= 60.0f);
+	}
 
 	const bool bShowStart = CurrentState == EGameUIState::StartMenu && Mode == EUIRenderMode::Play;
 	const bool bShowHud = CurrentState == EGameUIState::InGame;
@@ -1101,9 +1120,9 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementText("item-count", std::to_string(ItemCount));
 	SetElementText("pause-item-count", std::to_string(ItemCount));
-	const std::string ElapsedTimeText = FormatTime(ElapsedTime);
-	SetElementText("elapsed-time-value", ElapsedTimeText);
-	SetElementText("pause-time", ElapsedTimeText);
+	const std::string RemainingTimeText = FormatTime(RemainingTime);
+	SetElementText("elapsed-time-value", RemainingTimeText);
+	SetElementText("pause-time", RemainingTimeText);
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	UpdateSettingsElements();
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
@@ -1225,7 +1244,7 @@ void GameUISystem::UpdateTitleTransitionElements()
 
 	if (RmlRenderInterface)
 	{
-		RmlRenderInterface->SetFlashFactor(IntroIconBlink);
+		RmlRenderInterface->SetFlashFactor(bShowIntro ? IntroIconBlink : 0.0f);
 	}
 
 	constexpr float StartFadeDuration = 1.0f;

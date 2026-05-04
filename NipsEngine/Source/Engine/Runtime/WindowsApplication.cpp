@@ -136,6 +136,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 
 bool FWindowsApplication::Init(HINSTANCE InHInstance)
 {
+	SetProcessDPIAware();
 	HInstance = InHInstance;
 
 	WCHAR WindowClass[] = L"JungleWindowClass";
