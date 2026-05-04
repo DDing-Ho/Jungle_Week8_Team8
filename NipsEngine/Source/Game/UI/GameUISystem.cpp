@@ -669,16 +669,22 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	switch (InteractionHintType)
 	{
 	case EInteractionHintType::Pickup:
-		SetElementText("interaction-key", "E");
+		SetElementText("interaction-secondary-key-label", "Q");
+		SetElementText("interaction-secondary-text", "살펴보기");
+		SetElementText("interaction-key-label", "E");
 		SetElementText("interaction-hint-text", "들기");
 		break;
 	case EInteractionHintType::Drop:
 	case EInteractionHintType::DropWithInspect:
-		SetElementText("interaction-key", "E");
+		SetElementText("interaction-secondary-key-label", "Q");
+		SetElementText("interaction-secondary-text", "살펴보기");
+		SetElementText("interaction-key-label", "E");
 		SetElementText("interaction-hint-text", "놓기");
 		break;
 	default:
-		SetElementText("interaction-key", "");
+		SetElementText("interaction-secondary-key-label", "");
+		SetElementText("interaction-secondary-text", "");
+		SetElementText("interaction-key-label", "");
 		SetElementText("interaction-hint-text", "");
 		break;
 	}
@@ -728,18 +734,32 @@ void GameUISystem::UpdateTitleTransitionElements()
 {
 	const bool bInStartMenu = CurrentState == EGameUIState::StartMenu;
 
+	constexpr float IntroFadeInDuration = 1.0f;
 	constexpr float IntroHoldDuration = 3.0f;
-	constexpr float IntroTotalDuration = 4.0f;
-	const float IntroFadeProgress = (TitleIntroElapsed - IntroHoldDuration) / (IntroTotalDuration - IntroHoldDuration);
-	const float IntroAlpha = bInStartMenu ? 1.0f - std::clamp(IntroFadeProgress, 0.0f, 1.0f) : 0.0f;
+	constexpr float IntroFadeOutDuration = 1.0f;
+	constexpr float IntroFadeOutStart = IntroFadeInDuration + IntroHoldDuration;
+	constexpr float IntroTotalDuration = IntroFadeOutStart + IntroFadeOutDuration;
+
+	float IntroIconAlpha = 1.0f;
+	if (TitleIntroElapsed < IntroFadeInDuration)
+	{
+		IntroIconAlpha = TitleIntroElapsed / IntroFadeInDuration;
+	}
+	else if (TitleIntroElapsed >= IntroFadeOutStart)
+	{
+		IntroIconAlpha = 1.0f - ((TitleIntroElapsed - IntroFadeOutStart) / IntroFadeOutDuration);
+	}
+	IntroIconAlpha = bInStartMenu ? std::clamp(IntroIconAlpha, 0.0f, 1.0f) : 0.0f;
+
+	const float IntroLayerAlpha = bInStartMenu && TitleIntroElapsed >= IntroFadeOutStart ? IntroIconAlpha : (bInStartMenu ? 1.0f : 0.0f);
 	const bool bShowIntro = bInStartMenu && TitleIntroElapsed < IntroTotalDuration && !bStartGameTransitionActive;
 
 	constexpr float StartFadeDuration = 1.0f;
 	const float StartFadeAlpha = bStartGameTransitionActive ? std::clamp(StartGameTransitionElapsed / StartFadeDuration, 0.0f, 1.0f) : 0.0f;
 
 	SetElementVisible("title-intro-layer", bShowIntro);
-	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroAlpha));
-	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroAlpha));
+	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
+	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
 
 	SetElementVisible("screen-fade-layer", bStartGameTransitionActive);
 	SetElementProperty("screen-fade-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, StartFadeAlpha));
