@@ -500,22 +500,9 @@ void FGamePlayerController::ApplyInputAxes()
 				MoveComp->SetActive(true);
 				MoveComp->SetComponentTickEnabled(true);
 				MoveComp->AddInputVector(Direction.GetSafeNormal());
-				static int32 InputLogCounter = 0;
-				if ((InputLogCounter++ % 30) == 0)
-				{
-					UE_LOG("[PlayerMove] Controller input forward=%.2f right=%.2f dir=(%.2f, %.2f, %.2f) player=%s moveComp=%s",
-						MoveForwardValue,
-						MoveRightValue,
-						Direction.GetSafeNormal().X,
-						Direction.GetSafeNormal().Y,
-						Direction.GetSafeNormal().Z,
-						Player ? Player->GetFName().ToString().c_str() : "None",
-						MoveComp->GetFName().ToString().c_str());
-				}
 			}
 			else
 			{
-				UE_LOG("[PlayerMove] Controller has movement input but no CharacterMovementComponent. Falling back to direct move.");
 				MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
 			}
 		}

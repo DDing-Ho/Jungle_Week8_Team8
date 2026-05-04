@@ -1060,21 +1060,6 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 				const JPH::Vec3 LocalExtent = Shape->GetLocalBounds().GetExtent();
 				const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
 				const float RequestedDistance = RequestedDelta.Size();
-				if (Body->IsKinematicBody())
-				{
-					static int32 KinematicHitLogCounter = 0;
-					if ((KinematicHitLogCounter++ % 30) == 0)
-					{
-						const FVector PenetrationAxis = ToEngineVector(BlockingHit.mPenetrationAxis);
-						UE_LOG("[PlayerMove] Jolt block body=%s fraction=%.4f depth=%.4f axis=(%.3f, %.3f, %.3f) requested=(%.4f, %.4f, %.4f) current=(%.3f, %.3f, %.3f)",
-							Body->GetOwner() ? Body->GetOwner()->GetFName().ToString().c_str() : "None",
-							BlockingHit.mFraction,
-							BlockingHit.mPenetrationDepth,
-							PenetrationAxis.X, PenetrationAxis.Y, PenetrationAxis.Z,
-							RequestedDelta.X, RequestedDelta.Y, RequestedDelta.Z,
-							CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z);
-					}
-				}
 				float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
 				if (Body->IsKinematicBody() && RequestedDistance > 0.001f)
 				{
