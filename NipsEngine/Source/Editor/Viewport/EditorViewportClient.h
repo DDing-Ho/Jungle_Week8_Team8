@@ -100,6 +100,8 @@ public:
 	FSceneViewport*       GetViewport()       { return Viewport; }
 	const FSceneViewport* GetViewport() const { return Viewport; }
 	void                  SetViewport(FSceneViewport* InViewport) { Viewport = InViewport; }
+	FGamePlayerController& GetGamePlayerController() { return GamePlayerController; }
+	const FGamePlayerController& GetGamePlayerController() const { return GamePlayerController; }
 
 	FEditorViewportState*       GetViewportState()       { return State; }
 	const FEditorViewportState* GetViewportState() const { return State; }

@@ -473,6 +473,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("hud-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
+	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
 	SetElementVisible("pause-layer", bShowPause);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
@@ -640,6 +641,18 @@ bool GameUISystem::CreateGameDocument()
 			color: #d6d6d6;
 		}
 
+		#crosshair-dot {
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: 6px;
+			height: 6px;
+			margin-left: -3px;
+			margin-top: -3px;
+			background-color: rgba(255, 255, 255, 235);
+			border-radius: 3px;
+		}
+
 		#pause-layer {
 			background-color: rgba(0, 0, 0, 150);
 		}
@@ -758,6 +771,8 @@ bool GameUISystem::CreateGameDocument()
 	<div id="item-status">
 		<div id="current-item-name">No item</div>
 	</div>
+
+	<div id="crosshair-dot"></div>
 
 	<div id="pause-layer">
 		<div id="pause-panel">

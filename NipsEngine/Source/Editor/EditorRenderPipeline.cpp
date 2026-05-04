@@ -8,7 +8,9 @@
 #include "Core/Logging/GPUProfiler.h"
 #include "Runtime/SceneView.h"
 #include "Engine/Component/GizmoComponent.h"
+#include "GameFramework/AActor.h"
 #include "Game/UI/GameUISystem.h"
+#include "Math/Vector4.h"
 
 FEditorRenderPipeline::FEditorRenderPipeline(UEditorEngine* InEditor, FRenderer& InRenderer) : Editor(InEditor)
 {
@@ -90,6 +92,11 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 
 		Collector.CollectGizmo(Editor->GetGizmo(), ShowFlags, Bus, VC->GetViewportState()->bHovered);
 		Collector.CollectSelection(Editor->GetSelectionManager().GetSelectedActors(), ShowFlags, ViewMode, Bus);
+	}
+	else if (AActor* HoveredActor = VC->GetGamePlayerController().GetHoveredPickableActor())
+	{
+		TArray<AActor*> HoveredActors = { HoveredActor };
+		Collector.CollectOutline(HoveredActors, FVector4(1.0f, 0.92f, 0.05f, 1.0f), 5.0f, Bus);
 	}
 
 	// CPU 배처 데이터 준비 → GPU 드로우 (SetSubViewport 영역에만 출력됨)

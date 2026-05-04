@@ -197,6 +197,7 @@ void FGamePlayerController::Tick(float DeltaTime)
 	CaptureInitialRigidBodyRotations();
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
+	UpdateHoveredPickableActor();
 	FCleaningToolAnimator::Get().Tick(DeltaTime);
 	if (UPhysicsHandleComponent* Handle = GetPhysicsHandle())
 	{
@@ -325,6 +326,7 @@ void FGamePlayerController::SetWorld(UWorld* InWorld)
 	World = InWorld;
 	Player = nullptr;
 	Camera = nullptr;
+	HoveredPickableActor = nullptr;
 	InitialRigidBodyRotations.clear();
 	bInitialRigidBodyRotationsCaptured = false;
 	DestroyPhysicsHandle();
@@ -609,6 +611,7 @@ void FGamePlayerController::DestroyPhysicsHandle()
 		PhysicsHandle->Release();
 		PhysicsHandle = nullptr;
 	}
+	HoveredPickableActor = nullptr;
 }
 
 void FGamePlayerController::RefreshPawnComponents()
@@ -640,6 +643,34 @@ void FGamePlayerController::RefreshPawnComponents()
 		{
 			break;
 		}
+	}
+}
+
+void FGamePlayerController::UpdateHoveredPickableActor()
+{
+	HoveredPickableActor = nullptr;
+
+	if (World == nullptr || !IsInputEnabled())
+	{
+		return;
+	}
+
+	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+	if (Handle == nullptr || Handle->IsHolding())
+	{
+		return;
+	}
+
+	FVector CameraLocation;
+	FVector CameraForward;
+	if (!GetActiveCameraFrame(CameraLocation, CameraForward))
+	{
+		return;
+	}
+
+	if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
+	{
+		HoveredPickableActor = Body->GetOwner();
 	}
 }
 

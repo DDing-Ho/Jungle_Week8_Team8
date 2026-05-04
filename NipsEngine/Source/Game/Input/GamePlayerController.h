@@ -57,6 +57,7 @@ public:
 	void ClearToggleInputCaptureCallback() { OnRequestToggleInputCapture = nullptr; }
 	void SetTogglePauseCallback(std::function<void()> Callback) { OnRequestTogglePause = std::move(Callback); }
 	void ClearTogglePauseCallback() { OnRequestTogglePause = nullptr; }
+	AActor* GetHoveredPickableActor() const { return HoveredPickableActor; }
 
 	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 
@@ -69,6 +70,7 @@ private:
 	UPhysicsHandleComponent* GetPhysicsHandle();
 	void DestroyPhysicsHandle();
 	void RefreshPawnComponents();
+	void UpdateHoveredPickableActor();
 	bool GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const;
 	bool GetActiveCameraBasis(FVector& OutLocation, FVector& OutForward, FVector& OutRight, FVector& OutUp) const;
 	void CaptureInitialRigidBodyRotations();
@@ -85,6 +87,7 @@ private:
 	UCameraComponent* Camera = nullptr;
 	FViewportCamera* FreeCamera = nullptr;
 	UPhysicsHandleComponent* PhysicsHandle = nullptr;
+	AActor* HoveredPickableActor = nullptr;
 	FInputMappingContext InputMapping;
 	std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;
 

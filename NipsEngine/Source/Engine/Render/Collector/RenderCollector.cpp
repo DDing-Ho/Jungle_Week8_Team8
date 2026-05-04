@@ -173,6 +173,11 @@ void FRenderCollector::CollectSelection(const TArray<AActor*>& SelectedActors, c
 	OverlayRenderCollector.CollectSelection(SelectedActors, ShowFlags, ViewMode, RenderBus, LineBatcher);
 }
 
+void FRenderCollector::CollectOutline(const TArray<AActor*>& Actors, const FVector4& OutlineColor, float OutlineThicknessPixels, FRenderBus& RenderBus)
+{
+	OverlayRenderCollector.CollectOutline(Actors, OutlineColor, OutlineThicknessPixels, RenderBus);
+}
+
 void FRenderCollector::CollectDebugBounds(UWorld* World, const FShowFlags& ShowFlags, EViewMode ViewMode, FRenderBus& RenderBus)
 {
 	OverlayRenderCollector.CollectDebugBounds(World, ShowFlags, ViewMode, RenderBus, LineBatcher);

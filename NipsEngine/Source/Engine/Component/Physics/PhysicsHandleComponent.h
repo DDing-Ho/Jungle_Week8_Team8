@@ -22,6 +22,7 @@ public:
 
 	bool TryGrab(UWorld* World, const FViewportCamera* Camera);
 	bool TryGrab(UWorld* World, const FVector& CameraLocation, const FVector& CameraForward);
+	URigidBodyComponent* FindPickableBody(UWorld* World, const FVector& CameraLocation, const FVector& CameraForward, FHitResult* OutHit = nullptr) const;
 	void Release();
 	void TickHandle(float DeltaTime, const FViewportCamera* Camera, const FVector& TargetOffset = FVector::ZeroVector, const FQuat* TargetRotation = nullptr, bool bSnapToTarget = false);
 	void TickHandle(float DeltaTime, const FVector& CameraLocation, const FVector& CameraForward, const FVector& TargetOffset = FVector::ZeroVector, const FQuat* TargetRotation = nullptr, bool bSnapToTarget = false);

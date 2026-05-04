@@ -254,19 +254,8 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocati
 
 	FHitResult Hit;
 	const FVector Forward = CameraForward.GetSafeNormal();
-	if (Forward.IsNearlyZero())
-	{
-		return false;
-	}
-
-	const FRay Ray(CameraLocation, Forward);
-	if (!LineTracePickup(World, Ray, TraceDistance, GetOwner(), Hit))
-	{
-		return false;
-	}
-
-	URigidBodyComponent* Body = FindRigidBodyFromHit(Hit);
-	if (!IsLiveObjectPointer(Body) || !Body->CanBePickedUp())
+	URigidBodyComponent* Body = FindPickableBody(World, CameraLocation, Forward, &Hit);
+	if (Body == nullptr)
 	{
 		return false;
 	}
@@ -282,6 +271,39 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocati
 	Body->SetVelocity(FVector::ZeroVector);
 	Body->PlayPickupSound();
 	return true;
+}
+
+URigidBodyComponent* UPhysicsHandleComponent::FindPickableBody(UWorld* World, const FVector& CameraLocation, const FVector& CameraForward, FHitResult* OutHit) const
+{
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+
+	const FVector Forward = CameraForward.GetSafeNormal();
+	if (Forward.IsNearlyZero())
+	{
+		return nullptr;
+	}
+
+	FHitResult Hit;
+	const FRay Ray(CameraLocation, Forward);
+	if (!LineTracePickup(World, Ray, TraceDistance, GetOwner(), Hit))
+	{
+		return nullptr;
+	}
+
+	URigidBodyComponent* Body = FindRigidBodyFromHit(Hit);
+	if (!IsLiveObjectPointer(Body) || !Body->CanBePickedUp())
+	{
+		return nullptr;
+	}
+
+	if (OutHit != nullptr)
+	{
+		*OutHit = Hit;
+	}
+	return Body;
 }
 
 void UPhysicsHandleComponent::Release()
