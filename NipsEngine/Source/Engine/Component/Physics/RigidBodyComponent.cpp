@@ -131,15 +131,32 @@ void URigidBodyComponent::SetHeldByPhysicsHandle(bool bHeld)
 {
 	if (!IsDynamicBody())
 	{
+		UE_LOG("[PickupDebug] SetHeldByPhysicsHandle ignored: actor=%s body=%p requested=%d bodyType=%d",
+			Owner ? Owner->GetName().c_str() : "None",
+			this,
+			bHeld ? 1 : 0,
+			static_cast<int32>(GetBodyType()));
 		return;
 	}
 
 	if (bHeldByPhysicsHandle == bHeld)
 	{
+		UE_LOG("[PickupDebug] SetHeldByPhysicsHandle skipped: actor=%s body=%p held=%d",
+			Owner ? Owner->GetName().c_str() : "None",
+			this,
+			bHeld ? 1 : 0);
 		return;
 	}
 
 	bHeldByPhysicsHandle = bHeld;
+	UE_LOG("[PickupDebug] SetHeldByPhysicsHandle: actor=%s body=%p held=%d usingJolt=%d sim=%d gravity=%d loc=(%.3f, %.3f, %.3f)",
+		Owner ? Owner->GetName().c_str() : "None",
+		this,
+		bHeld ? 1 : 0,
+		IsUsingJoltPhysics() ? 1 : 0,
+		bSimulatePhysics ? 1 : 0,
+		bUseGravity ? 1 : 0,
+		GetPhysicsLocation().X, GetPhysicsLocation().Y, GetPhysicsLocation().Z);
 	if (bHeld)
 	{
 		bWasSimulatingBeforeHold = bSimulatePhysics;

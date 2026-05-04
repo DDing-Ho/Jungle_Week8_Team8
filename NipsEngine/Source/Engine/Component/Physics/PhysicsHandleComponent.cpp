@@ -4,6 +4,7 @@
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
+#include "Core/Logger.h"
 #include "Engine/Geometry/AABB.h"
 #include "Engine/Viewport/ViewportCamera.h"
 #include "GameFramework/AActor.h"
@@ -262,12 +263,28 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocati
 	const FRay Ray(CameraLocation, Forward);
 	if (!LineTracePickup(World, Ray, TraceDistance, GetOwner(), Hit))
 	{
+		UE_LOG("[PickupDebug] TryGrab failed: no ray hit. camera=(%.3f, %.3f, %.3f) forward=(%.3f, %.3f, %.3f) trace=%.3f",
+			CameraLocation.X, CameraLocation.Y, CameraLocation.Z,
+			Forward.X, Forward.Y, Forward.Z,
+			TraceDistance);
 		return false;
 	}
 
 	URigidBodyComponent* Body = FindRigidBodyFromHit(Hit);
 	if (!IsLiveObjectPointer(Body) || !Body->CanBePickedUp())
 	{
+		const UPrimitiveComponent* HitComponent = Hit.HitComponent;
+		AActor* HitActor = HitComponent ? HitComponent->GetOwner() : nullptr;
+		UE_LOG("[PickupDebug] TryGrab failed: hitActor=%s hitComp=%s body=%p live=%d bodyType=%d sim=%d gravity=%d pickup=%d canPickup=%d",
+			HitActor ? HitActor->GetName().c_str() : "None",
+			HitComponent ? HitComponent->GetName().c_str() : "None",
+			Body,
+			IsLiveObjectPointer(Body) ? 1 : 0,
+			Body ? static_cast<int32>(Body->GetBodyType()) : -1,
+			Body && Body->IsSimulatingPhysics() ? 1 : 0,
+			Body && Body->IsGravityEnabled() ? 1 : 0,
+			Body && Body->CanBePickedUp() ? 1 : 0,
+			Body && Body->CanBePickedUp() ? 1 : 0);
 		return false;
 	}
 
@@ -278,6 +295,16 @@ bool UPhysicsHandleComponent::TryGrab(UWorld* World, const FVector& CameraLocati
 	HoldVelocity = FVector::ZeroVector;
 	HoldDistanceOffset = ComputeHoldDistanceOffset(Body, CameraLocation, Forward);
 	CurrentHoldDistance = HoldDistance + HoldDistanceOffset;
+	UE_LOG("[PickupDebug] TryGrab success: actor=%s body=%p bodyType=%d sim=%d gravity=%d hold=%.3f offset=%.3f current=%.3f loc=(%.3f, %.3f, %.3f)",
+		Body->GetOwner() ? Body->GetOwner()->GetName().c_str() : "None",
+		Body,
+		static_cast<int32>(Body->GetBodyType()),
+		Body->IsSimulatingPhysics() ? 1 : 0,
+		Body->IsGravityEnabled() ? 1 : 0,
+		HoldDistance,
+		HoldDistanceOffset,
+		CurrentHoldDistance,
+		HoldLocation.X, HoldLocation.Y, HoldLocation.Z);
 	Body->SetHeldByPhysicsHandle(true);
 	Body->SetVelocity(FVector::ZeroVector);
 	Body->PlayPickupSound();
