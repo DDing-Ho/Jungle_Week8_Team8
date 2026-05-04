@@ -32,6 +32,8 @@ public:
 	void EnableScissorRegion(bool bEnable) override;
 	void SetScissorRegion(Rml::Rectanglei Region) override;
 
+	void SetFlashFactor(float InFactor) { FlashFactor = InFactor; }
+
 private:
 	struct FGeometry;
 	struct FTexture;
@@ -46,6 +48,7 @@ private:
 	int Width = 1;
 	int Height = 1;
 	bool bScissorEnabled = false;
+	float FlashFactor = 0.0f;
 
 	TComPtr<ID3D11VertexShader> VertexShader;
 	TComPtr<ID3D11PixelShader> PixelShader;

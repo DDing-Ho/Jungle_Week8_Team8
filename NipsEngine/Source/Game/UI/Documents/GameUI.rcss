@@ -7,7 +7,7 @@ body {
 	color: #ffffff;
 }
 
-#start-menu, #settings-layer, #pause-layer, #ending-panel, #title-intro-layer, #screen-fade-layer {
+#start-menu, #settings-layer, #credits-layer, #pause-layer, #ending-panel, #title-intro-layer, #screen-fade-layer {
 	position: absolute;
 	left: 0px;
 	top: 0px;
@@ -89,6 +89,7 @@ body {
 
 #settings-layer {
 	background-color: rgba(0, 0, 0, 140);
+	z-index: 20;
 }
 
 #settings-panel {
@@ -173,6 +174,77 @@ body {
 	top: 264px;
 }
 
+#credits-layer {
+	background-color: rgba(0, 0, 0, 140);
+	z-index: 20;
+}
+
+#credits-panel {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 520px;
+	height: 372px;
+	margin-left: -260px;
+	margin-top: -186px;
+	background-color: rgba(20, 20, 22, 245);
+	border-width: 1px;
+	border-color: rgba(130, 130, 145, 180);
+}
+
+#credits-title {
+	position: absolute;
+	left: 0px;
+	top: 28px;
+	width: 100%;
+	text-align: center;
+	font-size: 28px;
+	color: #ffffff;
+}
+
+.credits-row {
+	position: absolute;
+	left: 58px;
+	width: 480px;
+	height: 34px;
+	font-size: 18px;
+}
+
+#credits-row-1 {
+	top: 94px;
+}
+
+#credits-row-2 {
+	top: 140px;
+}
+
+#credits-row-3 {
+	top: 186px;
+}
+
+#credits-row-4 {
+	top: 232px;
+}
+
+.credits-name {
+	display: inline-block;
+	width: 210px;
+	font-size: 25px;
+	color: #ffe08a;
+}
+
+.credits-role {
+	display: inline-block;
+	width: 200px;
+	font-size: 18px;
+	color: #dcdcdc;
+}
+
+#credits-close-button {
+	left: 160px;
+	top: 304px;
+}
+
 #game-cursor {
 	position: absolute;
 	left: 0px;
@@ -180,6 +252,7 @@ body {
 	width: 32px;
 	height: 32px;
 	pointer-events: none;
+	z-index: 100;
 }
 
 #hud-panel {
@@ -428,9 +501,9 @@ body {
 	left: 50%;
 	top: 50%;
 	width: 360px;
-	height: 398px;
+	height: 456px;
 	margin-left: -180px;
-	margin-top: -199px;
+	margin-top: -228px;
 	background-color: rgba(20, 20, 22, 245);
 	border-width: 1px;
 	border-color: rgba(130, 130, 145, 180);
@@ -490,12 +563,16 @@ body {
 	top: 218px;
 }
 
-#pause-title-button {
+#pause-settings-button {
 	top: 276px;
 }
 
-#pause-exit-button {
+#pause-title-button {
 	top: 334px;
+}
+
+#pause-exit-button {
+	top: 392px;
 }
 
 .pause-button:hover {

@@ -150,6 +150,8 @@ private:
     void FinishStartGameTransition();
     void OpenSettings();
     void CloseSettings();
+    void OpenCredits();
+    void CloseCredits();
     void AdjustMouseSensitivity(float Delta);
     void AdjustBgmVolume(float Delta);
     void AdjustSfxVolume(float Delta);
@@ -177,6 +179,8 @@ private:
     std::unique_ptr<FRmlUiClickListener> ExitClickListener;
     std::unique_ptr<FRmlUiClickListener> SettingsOpenClickListener;
     std::unique_ptr<FRmlUiClickListener> SettingsCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> CreditsOpenClickListener;
+    std::unique_ptr<FRmlUiClickListener> CreditsCloseClickListener;
     std::unique_ptr<FRmlUiClickListener> PauseTitleClickListener;
     std::vector<std::unique_ptr<FRmlUiClickListener>> SettingsStepClickListeners;
     std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverEnterListeners;
@@ -191,6 +195,7 @@ private:
     float StartGameTransitionElapsed = 0.0f;
     bool bStartGameTransitionReady = false;
     bool bSettingsOpen = false;
+    bool bCreditsOpen = false;
     float MouseSensitivityScale = 1.0f;
     float BgmVolume = 1.0f;
     float SfxVolume = 1.0f;

@@ -44,6 +44,29 @@
 		</div>
 	</div>
 
+	<div id="credits-layer">
+		<div id="credits-panel">
+			<div id="credits-title">CREDITS</div>
+			<div id="credits-row-1" class="credits-row">
+				<span class="credits-name">Yoonji Nam</span>
+				<span class="credits-role">Lead Developer</span>
+			</div>
+			<div id="credits-row-2" class="credits-row">
+				<span class="credits-name">Hyeongil Jeon</span>
+				<span class="credits-role">First Developer</span>
+			</div>
+			<div id="credits-row-3" class="credits-row">
+				<span class="credits-name">Seyeong Park</span>
+				<span class="credits-role">Master Developer</span>
+			</div>
+			<div id="credits-row-4" class="credits-row">
+				<span class="credits-name">Kihoon Kim</span>
+				<span class="credits-role">Best Developer</span>
+			</div>
+			<div id="credits-close-button" class="pause-button">Back</div>
+		</div>
+	</div>
+
 	<div id="hud-panel">
 		<div id="progress-track"></div>
 		<div id="progress-fill"></div>
@@ -95,6 +118,7 @@
 			<div id="pause-time-row" class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
 			<div id="pause-progress-row" class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
 			<div id="retry-button" class="pause-button">Resume</div>
+			<div id="pause-settings-button" class="pause-button">Settings</div>
 			<div id="pause-title-button" class="pause-button">Exit to Title</div>
 			<div id="pause-exit-button" class="pause-button">Exit to Desktop</div>
 		</div>

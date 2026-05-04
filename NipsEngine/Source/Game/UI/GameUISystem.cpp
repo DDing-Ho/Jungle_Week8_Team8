@@ -262,8 +262,14 @@ void GameUISystem::Shutdown()
 			Element->RemoveEventListener("click", ExitClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("settings-button"))
 			Element->RemoveEventListener("click", SettingsOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("pause-settings-button"))
+			Element->RemoveEventListener("click", SettingsOpenClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("settings-close-button"))
 			Element->RemoveEventListener("click", SettingsCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("credits-button"))
+			Element->RemoveEventListener("click", CreditsOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
+			Element->RemoveEventListener("click", CreditsCloseClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 			Element->RemoveEventListener("click", PauseTitleClickListener.get());
 		for (size_t Index = 0; Index < SettingsStepClickListeners.size() && Index < std::size(SettingsStepBindings); ++Index)
@@ -306,6 +312,8 @@ void GameUISystem::Shutdown()
 	ExitClickListener.reset();
 	SettingsOpenClickListener.reset();
 	SettingsCloseClickListener.reset();
+	CreditsOpenClickListener.reset();
+	CreditsCloseClickListener.reset();
 	PauseTitleClickListener.reset();
 	SettingsStepClickListeners.clear();
 	TitleButtonHoverEnterListeners.clear();
@@ -365,6 +373,7 @@ void GameUISystem::SetState(EGameUIState NewState)
 	CurrentState = NewState;
 	SetPauseMenuOpen(false);
 	bSettingsOpen = false;
+	bCreditsOpen = false;
 }
 
 bool GameUISystem::WantsMouseCursor() const
@@ -373,6 +382,7 @@ bool GameUISystem::WantsMouseCursor() const
 		   CurrentState == EGameUIState::Prologue ||
 		   CurrentState == EGameUIState::Ending ||
 		   bSettingsOpen ||
+		   bCreditsOpen ||
 		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
 		   DialoguePanel::IsActive();
@@ -392,6 +402,7 @@ void GameUISystem::SetPauseMenuOpen(bool bOpen)
 	if (bPauseMenuOpen)
 	{
 		bSettingsOpen = false;
+		bCreditsOpen = false;
 	}
 }
 
@@ -417,6 +428,7 @@ void GameUISystem::ResetGameData()
 	CurrentItemDesc.clear();
 	InteractionHintType = EInteractionHintType::None;
 	bSettingsOpen = false;
+	bCreditsOpen = false;
 	HideItemInspect();
 }
 
@@ -504,6 +516,7 @@ void GameUISystem::RequestExitToTitle()
 {
 	bPauseMenuOpen = false;
 	bSettingsOpen = false;
+	bCreditsOpen = false;
 	if (ExitToTitleCallback)
 	{
 		ExitToTitleCallback();
@@ -542,11 +555,23 @@ void GameUISystem::RequestStartGame()
 void GameUISystem::OpenSettings()
 {
 	bSettingsOpen = true;
+	bCreditsOpen = false;
 }
 
 void GameUISystem::CloseSettings()
 {
 	bSettingsOpen = false;
+}
+
+void GameUISystem::OpenCredits()
+{
+	bCreditsOpen = true;
+	bSettingsOpen = false;
+}
+
+void GameUISystem::CloseCredits()
+{
+	bCreditsOpen = false;
 }
 
 void GameUISystem::AdjustMouseSensitivity(float Delta)
@@ -637,6 +662,15 @@ bool GameUISystem::OnUIKeyDown(int VK)
 		return true;
 	}
 
+	if (bCreditsOpen)
+	{
+		if (VK == VK_ESCAPE)
+		{
+			CloseCredits();
+		}
+		return true;
+	}
+
 	if (CurrentState == EGameUIState::StartMenu)
 	{
 		if (VK == VK_RETURN || VK == VK_SPACE)
@@ -674,6 +708,9 @@ bool GameUISystem::OnUIKeyUp(int VK)
 		RmlContext->ProcessKeyUp(Key, 0);
 
 	if (bSettingsOpen)
+		return true;
+
+	if (bCreditsOpen)
 		return true;
 
 	if (CurrentState == EGameUIState::StartMenu)
@@ -740,9 +777,10 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
 
 	const bool bShowStart = CurrentState == EGameUIState::StartMenu && Mode == EUIRenderMode::Play;
-	const bool bShowSettings = bShowStart && bSettingsOpen;
 	const bool bShowHud = CurrentState == EGameUIState::InGame;
 	const bool bShowPause = CurrentState == EGameUIState::InGame && bPauseMenuOpen;
+	const bool bShowSettings = bSettingsOpen && (bShowStart || bShowPause);
+	const bool bShowCredits = bCreditsOpen && bShowStart;
 	const bool bShowDialogue = DialoguePanel::IsActive() &&
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
@@ -752,6 +790,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("settings-layer", bShowSettings);
+	SetElementVisible("credits-layer", bShowCredits);
 	SetElementVisible("hud-panel", bShowHud);
 	SetElementVisible("elapsed-time-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
@@ -910,13 +949,27 @@ void GameUISystem::UpdateTitleTransitionElements()
 	const float IntroLayerAlpha = bInStartMenu && TitleIntroElapsed >= IntroFadeOutStart ? IntroIconAlpha : (bInStartMenu ? 1.0f : 0.0f);
 	const bool bShowIntro = bInStartMenu && TitleIntroElapsed < IntroTotalDuration && !bStartGameTransitionActive;
 
+	float IntroIconBlink = 0.0f;
+	constexpr float BlinkStartTime = 0.8f;
+	constexpr float BlinkDuration = 0.6f;
+	if (TitleIntroElapsed >= BlinkStartTime && TitleIntroElapsed < BlinkStartTime + BlinkDuration)
+	{
+		float t = (TitleIntroElapsed - BlinkStartTime) / BlinkDuration;
+		IntroIconBlink = std::sin(t * 3.14159265f);
+	}
+
+	if (RmlRenderInterface)
+	{
+		RmlRenderInterface->SetFlashFactor(IntroIconBlink);
+	}
+
 	constexpr float StartFadeDuration = 1.0f;
 	const float StartFadeAlpha = bStartGameTransitionActive ? std::clamp(StartGameTransitionElapsed / StartFadeDuration, 0.0f, 1.0f) : 0.0f;
 
 	SetElementVisible("title-intro-layer", bShowIntro);
 	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
 	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
-
+	
 	SetElementVisible("screen-fade-layer", bStartGameTransitionActive);
 	SetElementProperty("screen-fade-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, StartFadeAlpha));
 }
@@ -969,7 +1022,6 @@ void GameUISystem::BindRmlUiEvents()
 
 	RetryClickListener = std::make_unique<FRmlUiClickListener>([]()
 	{
-		GameUISystem::Get().ResetGameData();
 		GameUISystem::Get().SetPauseMenuOpen(false);
 	});
 
@@ -988,6 +1040,16 @@ void GameUISystem::BindRmlUiEvents()
 		GameUISystem::Get().CloseSettings();
 	});
 
+	CreditsOpenClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().OpenCredits();
+	});
+
+	CreditsCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseCredits();
+	});
+
 	PauseTitleClickListener = std::make_unique<FRmlUiClickListener>([]()
 	{
 		GameUISystem::Get().RequestExitToTitle();
@@ -1003,8 +1065,14 @@ void GameUISystem::BindRmlUiEvents()
 		Element->AddEventListener("click", ExitClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("settings-button"))
 		Element->AddEventListener("click", SettingsOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("pause-settings-button"))
+		Element->AddEventListener("click", SettingsOpenClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("settings-close-button"))
 		Element->AddEventListener("click", SettingsCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("credits-button"))
+		Element->AddEventListener("click", CreditsOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
+		Element->AddEventListener("click", CreditsCloseClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 		Element->AddEventListener("click", PauseTitleClickListener.get());
 
