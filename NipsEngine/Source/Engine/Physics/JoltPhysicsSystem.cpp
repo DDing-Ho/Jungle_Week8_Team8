@@ -27,6 +27,7 @@
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/ShapeCast.h>
@@ -140,6 +141,11 @@ namespace
 		return JPH::Quat(Quat.X, Quat.Y, Quat.Z, Quat.W).Normalized();
 	}
 
+	JPH::Quat GetJoltCapsuleYAxisToZAxisRotation()
+	{
+		return JPH::Quat::sRotation(JPH::Vec3::sAxisX(), JPH::DegreesToRadians(90.0f));
+	}
+
 	FQuat GetWorldQuat(const USceneComponent* Scene)
 	{
 		return Scene != nullptr ? Scene->GetWorldTransform().GetRotation() : FQuat::Identity;
@@ -187,6 +193,75 @@ namespace
 		const float HorizontalSeparation = std::sqrt(ToBody.X * ToBody.X + ToBody.Y * ToBody.Y);
 		const bool bBodyClearlyBelow = VerticalSeparation > 0.05f && VerticalSeparation > HorizontalSeparation * 0.1f;
 		return bBodyClearlyBelow && RequestedDelta.Z >= -0.001f;
+	}
+
+	bool ShouldIgnoreKinematicStartContact(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta)
+	{
+		if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+		{
+			return false;
+		}
+
+		const FVector PenetrationAxis = ToEngineVector(Hit.mPenetrationAxis).GetSafeNormal();
+		if (PenetrationAxis.IsNearlyZero())
+		{
+			return true;
+		}
+
+		const FVector HorizontalNormal(PenetrationAxis.X, PenetrationAxis.Y, 0.0f);
+		const FVector HorizontalDelta(RequestedDelta.X, RequestedDelta.Y, 0.0f);
+		if (HorizontalNormal.IsNearlyZero() || HorizontalDelta.IsNearlyZero())
+		{
+			return true;
+		}
+
+		const float IntoA = FVector::DotProduct(HorizontalDelta.GetSafeNormal(), HorizontalNormal.GetSafeNormal());
+		const float IntoB = FVector::DotProduct(HorizontalDelta.GetSafeNormal(), (HorizontalNormal * -1.0f).GetSafeNormal());
+		return std::max(IntoA, IntoB) < 0.35f;
+	}
+
+	bool TryBuildKinematicSlideDelta(const URigidBodyComponent* Body, const JPH::ShapeCastResult& Hit, const FVector& RequestedDelta, FVector& OutSlideDelta)
+	{
+		if (Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle())
+		{
+			return false;
+		}
+
+		const FVector RequestedHorizontal(RequestedDelta.X, RequestedDelta.Y, 0.0f);
+		if (RequestedHorizontal.IsNearlyZero())
+		{
+			return false;
+		}
+
+		FVector Normal = (ToEngineVector(Hit.mPenetrationAxis) * -1.0f).GetSafeNormal();
+		if (Normal.IsNearlyZero())
+		{
+			return false;
+		}
+
+		// Jolt의 penetration axis 부호는 shape cast 상황에 따라 뒤집힐 수 있으므로,
+		// 요청 이동에 반대되는 쪽을 접촉 normal로 사용합니다.
+		if (FVector::DotProduct(RequestedDelta, Normal) > 0.0f)
+		{
+			Normal *= -1.0f;
+		}
+
+		const bool bMostlyVerticalSurface = std::fabs(Normal.Z) > 0.65f;
+		if (!bMostlyVerticalSurface)
+		{
+			return false;
+		}
+
+		const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, Normal);
+		if (IntoSurfaceDistance >= 0.0f)
+		{
+			OutSlideDelta = RequestedHorizontal;
+			return true;
+		}
+
+		OutSlideDelta = RequestedDelta - Normal * IntoSurfaceDistance;
+		OutSlideDelta.Z = 0.0f;
+		return !OutSlideDelta.IsNearlyZero();
 	}
 
 	void GatherBlockingShapes(AActor* Actor, TArray<UShapeComponent*>& OutShapes)
@@ -264,7 +339,30 @@ namespace
 			const float HeightScale = SafePositive(Scale.Z, 1.0f);
 			const float Radius = SafePositive(std::fabs(Capsule->GetCapsuleRadius()) * RadiusScale, 0.05f);
 			const float HalfCylinderHeight = std::max(0.01f, std::fabs(Capsule->GetCapsuleHalfHeight()) * HeightScale - Radius);
-			return new JPH::CapsuleShape(HalfCylinderHeight, Radius);
+			JPH::ShapeRefC CapsuleShape = new JPH::CapsuleShape(HalfCylinderHeight, Radius);
+			return new JPH::RotatedTranslatedShape(
+				JPH::Vec3::sZero(),
+				GetJoltCapsuleYAxisToZAxisRotation(),
+				CapsuleShape.GetPtr());
+		}
+
+		return nullptr;
+	}
+
+	UCapsuleComponent* FindBlockingCapsule(AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
+		{
+			UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Primitive);
+			if (Capsule != nullptr && Capsule->IsBlockComponent())
+			{
+				return Capsule;
+			}
 		}
 
 		return nullptr;
@@ -354,6 +452,38 @@ namespace
 		return CreateShapeFromSettings(CompoundSettings);
 	}
 
+	JPH::ShapeRefC CreateJoltCharacterShape(URigidBodyComponent* Body)
+	{
+		if (Body == nullptr || Body->GetOwner() == nullptr || Body->GetUpdatedComponent() == nullptr)
+		{
+			return nullptr;
+		}
+
+		UCapsuleComponent* Capsule = FindBlockingCapsule(Body->GetOwner());
+		if (Capsule == nullptr)
+		{
+			return CreateJoltBodyShape(Body->GetOwner(), Body->GetUpdatedComponent());
+		}
+
+		const FVector Scale = AbsVector(Capsule->GetWorldScale());
+		const float RadiusScale = SafePositive(std::max(Scale.X, Scale.Y), 1.0f);
+		const float HeightScale = SafePositive(Scale.Z, 1.0f);
+		const float Radius = SafePositive(std::fabs(Capsule->GetCapsuleRadius()) * RadiusScale, 0.05f);
+		const float HalfHeight = SafePositive(std::fabs(Capsule->GetCapsuleHalfHeight()) * HeightScale, Radius);
+		const float HalfCylinderHeight = std::max(0.01f, HalfHeight - Radius);
+
+		JPH::ShapeRefC CapsuleShape = new JPH::CapsuleShape(HalfCylinderHeight, Radius);
+		FVector LocalPosition;
+		FQuat LocalRotation;
+		GetLocalShapeTransform(Capsule, Body->GetUpdatedComponent(), LocalPosition, LocalRotation);
+
+		JPH::RotatedTranslatedShapeSettings OffsetSettings(
+			ToJoltLocalPosition(LocalPosition),
+			(ToJoltQuat(LocalRotation) * GetJoltCapsuleYAxisToZAxisRotation()).Normalized(),
+			CapsuleShape.GetPtr());
+		return CreateShapeFromSettings(OffsetSettings);
+	}
+
 	JPH::BodyID MakeBodyID(uint32 RawBodyID)
 	{
 		return JPH::BodyID(RawBodyID);
@@ -401,6 +531,7 @@ struct FJoltPhysicsSystem::FImpl
 	std::vector<JPH::BodyID> BodyIDs;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> RigidBodies;
 	std::unordered_map<URigidBodyComponent*, JPH::BodyID> DynamicBodies;
+	std::unordered_map<URigidBodyComponent*, JPH::Ref<JPH::CharacterVirtual>> Characters;
 };
 
 FJoltPhysicsSystem& FJoltPhysicsSystem::Get()
@@ -528,6 +659,7 @@ void FJoltPhysicsSystem::ClearWorld()
 	Impl->BodyIDs.clear();
 	Impl->RigidBodies.clear();
 	Impl->DynamicBodies.clear();
+	Impl->Characters.clear();
 }
 
 void FJoltPhysicsSystem::RebuildWorld(UWorld* World)
@@ -556,16 +688,59 @@ void FJoltPhysicsSystem::RebuildWorld(UWorld* World)
 			continue;
 		}
 
-		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
-		{
-			if (Cast<UShapeComponent>(Primitive) != nullptr && Primitive->IsBlockComponent())
-			{
-				RegisterStaticBody(Primitive);
-			}
-		}
+		RegisterStaticActor(Actor);
 	}
 
 	Impl->PhysicsSystem.OptimizeBroadPhase();
+}
+
+void FJoltPhysicsSystem::RegisterStaticActor(AActor* Actor)
+{
+	if (Impl == nullptr || Actor == nullptr)
+	{
+		return;
+	}
+
+	TArray<UShapeComponent*> BlockingShapes;
+	GatherBlockingShapes(Actor, BlockingShapes);
+	if (BlockingShapes.empty())
+	{
+		return;
+	}
+
+	if (BlockingShapes.size() == 1)
+	{
+		RegisterStaticBody(BlockingShapes[0]);
+		return;
+	}
+
+	USceneComponent* Root = Actor->GetRootComponent();
+	if (Root == nullptr)
+	{
+		return;
+	}
+
+	JPH::ShapeRefC Shape = CreateJoltBodyShape(Actor, Root);
+	if (Shape == nullptr)
+	{
+		return;
+	}
+
+	JPH::BodyCreationSettings Settings(
+		Shape,
+		ToJoltPosition(Root->GetWorldLocation()),
+		ToJoltQuat(GetWorldQuat(Root)),
+		JPH::EMotionType::Static,
+		ObjectLayers::NonMoving);
+	Settings.mFriction = 0.8f;
+	Settings.mRestitution = 0.05f;
+	Settings.mEnhancedInternalEdgeRemoval = true;
+
+	JPH::BodyID BodyID = Impl->PhysicsSystem.GetBodyInterface().CreateAndAddBody(Settings, JPH::EActivation::DontActivate);
+	if (!BodyID.IsInvalid())
+	{
+		Impl->BodyIDs.push_back(BodyID);
+	}
 }
 
 void FJoltPhysicsSystem::RegisterStaticBody(UPrimitiveComponent* ShapeComponent)
@@ -589,6 +764,7 @@ void FJoltPhysicsSystem::RegisterStaticBody(UPrimitiveComponent* ShapeComponent)
 		ObjectLayers::NonMoving);
 	Settings.mFriction = 0.8f;
 	Settings.mRestitution = 0.05f;
+	Settings.mEnhancedInternalEdgeRemoval = true;
 
 	JPH::BodyID BodyID = Impl->PhysicsSystem.GetBodyInterface().CreateAndAddBody(Settings, JPH::EActivation::DontActivate);
 	if (!BodyID.IsInvalid())
@@ -630,6 +806,7 @@ void FJoltPhysicsSystem::RegisterDynamicBody(URigidBodyComponent* Body)
 		ObjectLayer);
 	Settings.mFriction = 0.85f;
 	Settings.mRestitution = 0.05f;
+	Settings.mEnhancedInternalEdgeRemoval = true;
 	Settings.mLinearDamping = Body->GetLinearDamping();
 	Settings.mAngularDamping = Body->GetAngularDamping();
 	Settings.mMaxLinearVelocity = Body->GetMaxSpeed() > 0.0f ? Body->GetMaxSpeed() : 500.0f;
@@ -743,9 +920,63 @@ void FJoltPhysicsSystem::SetBodyTransformFromComponent(URigidBodyComponent* Body
 		JPH::EActivation::Activate);
 }
 
+bool FJoltPhysicsSystem::CheckKinematicGround(URigidBodyComponent* Body, float ProbeDistance, float& OutGroundDistance)
+{
+	OutGroundDistance = 0.0f;
+	if (Impl == nullptr || Body == nullptr || !Body->IsKinematicBody() || Body->IsHeldByPhysicsHandle() ||
+		Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || ProbeDistance <= 0.0f)
+	{
+		return false;
+	}
+
+	const JPH::BodyID BodyID = Impl->DynamicBodies[Body];
+	JPH::BodyInterface& BodyInterface = Impl->PhysicsSystem.GetBodyInterface();
+	JPH::RefConst<JPH::Shape> Shape = BodyInterface.GetShape(BodyID);
+	if (Shape == nullptr)
+	{
+		return false;
+	}
+
+	const FVector CurrentLocation = Body->GetPhysicsLocation();
+	const FVector ProbeDelta(0.0f, 0.0f, -ProbeDistance);
+	const FQuat Rotation = Body->GetUpdatedComponent()
+		? Body->GetUpdatedComponent()->GetWorldTransform().GetRotation()
+		: FQuat::Identity;
+
+	const JPH::RMat44 StartTransform = JPH::RMat44::sRotationTranslation(
+		ToJoltQuat(Rotation),
+		ToJoltPosition(CurrentLocation));
+	const JPH::RShapeCast ShapeCast = JPH::RShapeCast::sFromWorldTransform(
+		Shape,
+		JPH::Vec3::sReplicate(1.0f),
+		StartTransform,
+		ToJoltVector(ProbeDelta));
+
+	JPH::ShapeCastSettings Settings;
+	Settings.mReturnDeepestPoint = true;
+	JPH::IgnoreSingleBodyFilter BodyFilter(BodyID);
+	JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> Collector;
+	Impl->PhysicsSystem.GetNarrowPhaseQuery().CastShape(
+		ShapeCast,
+		Settings,
+		ToJoltPosition(CurrentLocation),
+		Collector,
+		{},
+		{},
+		BodyFilter);
+
+	if (!Collector.HadHit() || Collector.mHit.mFraction > 1.0f)
+	{
+		return false;
+	}
+
+	OutGroundDistance = std::max(0.0f, Collector.mHit.mFraction * ProbeDistance);
+	return true;
+}
+
 bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime)
 {
-	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || !Body->IsDynamicBody())
+	if (Impl == nullptr || Body == nullptr || Impl->DynamicBodies.find(Body) == Impl->DynamicBodies.end() || Body->IsStaticBody())
 	{
 		return false;
 	}
@@ -803,6 +1034,11 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 							}
 						}
 
+						if (ShouldIgnoreKinematicStartContact(Body, Hit, RequestedDelta))
+						{
+							continue;
+						}
+
 						const FVector ContactNormal = (ToEngineVector(Hit.mPenetrationAxis) * -1.0f).GetSafeNormal();
 						const float IntoSurfaceDistance = FVector::DotProduct(RequestedDelta, ContactNormal);
 						if (ContactNormal.IsNearlyZero() || IntoSurfaceDistance >= 0.0f)
@@ -823,8 +1059,27 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 			{
 				const JPH::Vec3 LocalExtent = Shape->GetLocalBounds().GetExtent();
 				const float SmallestExtent = std::max(0.01f, LocalExtent.ReduceMin());
-				const float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
 				const float RequestedDistance = RequestedDelta.Size();
+				if (Body->IsKinematicBody())
+				{
+					static int32 KinematicHitLogCounter = 0;
+					if ((KinematicHitLogCounter++ % 30) == 0)
+					{
+						const FVector PenetrationAxis = ToEngineVector(BlockingHit.mPenetrationAxis);
+						UE_LOG("[PlayerMove] Jolt block body=%s fraction=%.4f depth=%.4f axis=(%.3f, %.3f, %.3f) requested=(%.4f, %.4f, %.4f) current=(%.3f, %.3f, %.3f)",
+							Body->GetOwner() ? Body->GetOwner()->GetFName().ToString().c_str() : "None",
+							BlockingHit.mFraction,
+							BlockingHit.mPenetrationDepth,
+							PenetrationAxis.X, PenetrationAxis.Y, PenetrationAxis.Z,
+							RequestedDelta.X, RequestedDelta.Y, RequestedDelta.Z,
+							CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z);
+					}
+				}
+				float SafetyDistance = std::clamp(SmallestExtent * 0.35f, 0.02f, 0.12f);
+				if (Body->IsKinematicBody() && RequestedDistance > 0.001f)
+				{
+					SafetyDistance = std::min(SafetyDistance, RequestedDistance * 0.2f);
+				}
 				const float SafetyFraction = RequestedDistance > 0.001f ? SafetyDistance / RequestedDistance : 1.0f;
 				if (BlockingHit.mFraction <= 0.001f)
 				{
@@ -835,6 +1090,10 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 						const FVector SlideDelta = RequestedDelta - ContactNormal * IntoSurfaceDistance;
 						InOutTargetLocation = CurrentLocation + SlideDelta;
 					}
+				}
+				else if (FVector SlideDelta; TryBuildKinematicSlideDelta(Body, BlockingHit, RequestedDelta, SlideDelta))
+				{
+					InOutTargetLocation = CurrentLocation + SlideDelta;
 				}
 				else
 				{
@@ -851,6 +1110,114 @@ bool FJoltPhysicsSystem::MoveKinematicBody(URigidBodyComponent* Body, FVector& I
 		ToJoltPosition(InOutTargetLocation),
 		ToJoltQuat(TargetRotation),
 		MoveDeltaTime);
+	return true;
+}
+
+bool FJoltPhysicsSystem::MoveCharacter(URigidBodyComponent* Body, const FVector& DesiredVelocity, float DeltaTime, float GroundStickDistance, FVector& OutLocation, FVector& OutVelocity, bool& bOutGrounded)
+{
+	OutLocation = Body != nullptr ? Body->GetPhysicsLocation() : FVector::ZeroVector;
+	OutVelocity = DesiredVelocity;
+	bOutGrounded = false;
+
+	if (Impl == nullptr || Body == nullptr || Body->GetUpdatedComponent() == nullptr || DeltaTime <= 0.0f)
+	{
+		return false;
+	}
+
+	JPH::Ref<JPH::CharacterVirtual>& Character = Impl->Characters[Body];
+	if (Character == nullptr)
+	{
+		JPH::ShapeRefC Shape = CreateJoltCharacterShape(Body);
+		if (Shape == nullptr)
+		{
+			Impl->Characters.erase(Body);
+			return false;
+		}
+
+		JPH::CharacterVirtualSettings Settings;
+		Settings.mShape = Shape;
+		Settings.mUp = JPH::Vec3::sAxisZ();
+		Settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisZ(), -0.05f);
+		Settings.mMaxSlopeAngle = JPH::DegreesToRadians(50.0f);
+		Settings.mEnhancedInternalEdgeRemoval = true;
+		Settings.mPredictiveContactDistance = 0.08f;
+		Settings.mCollisionTolerance = 0.001f;
+		Settings.mCharacterPadding = 0.015f;
+		Settings.mPenetrationRecoverySpeed = 1.0f;
+		Settings.mMaxStrength = 0.0f;
+
+		Character = new JPH::CharacterVirtual(
+			&Settings,
+			ToJoltPosition(Body->GetPhysicsLocation()),
+			ToJoltQuat(GetWorldQuat(Body->GetUpdatedComponent())),
+			&Impl->PhysicsSystem);
+	}
+
+	const FVector ComponentLocation = Body->GetPhysicsLocation();
+	const FVector CharacterLocation = ToEngineVector(Character->GetPosition());
+	if ((CharacterLocation - ComponentLocation).SizeSquared() > 0.25f)
+	{
+		Character->SetPosition(ToJoltPosition(ComponentLocation));
+		Character->RefreshContacts(
+			Impl->PhysicsSystem.GetDefaultBroadPhaseLayerFilter(ObjectLayers::Moving),
+			Impl->PhysicsSystem.GetDefaultLayerFilter(ObjectLayers::Moving),
+			{},
+			{},
+			*Impl->TempAllocator);
+	}
+
+	Character->SetRotation(ToJoltQuat(GetWorldQuat(Body->GetUpdatedComponent())));
+	Character->SetLinearVelocity(ToJoltVector(DesiredVelocity));
+	Character->SetEnhancedInternalEdgeRemoval(true);
+
+	JPH::CharacterVirtual::ExtendedUpdateSettings UpdateSettings;
+	const float SafeStickDistance = std::clamp(GroundStickDistance, 0.02f, 0.5f);
+	UpdateSettings.mStickToFloorStepDown = JPH::Vec3(0.0f, 0.0f, -SafeStickDistance);
+	UpdateSettings.mWalkStairsStepUp = JPH::Vec3(0.0f, 0.0f, 0.25f);
+	UpdateSettings.mWalkStairsStepDownExtra = JPH::Vec3(0.0f, 0.0f, -0.15f);
+
+	const JPH::Vec3 Gravity(0.0f, 0.0f, -9.8f);
+	const JPH::DefaultBroadPhaseLayerFilter BroadPhaseFilter = Impl->PhysicsSystem.GetDefaultBroadPhaseLayerFilter(ObjectLayers::Moving);
+	const JPH::DefaultObjectLayerFilter ObjectLayerFilter = Impl->PhysicsSystem.GetDefaultLayerFilter(ObjectLayers::Moving);
+	JPH::ShapeFilter ShapeFilter;
+
+	auto BodyIt = Impl->DynamicBodies.find(Body);
+	if (BodyIt != Impl->DynamicBodies.end())
+	{
+		JPH::IgnoreSingleBodyFilter BodyFilter(BodyIt->second);
+		Character->ExtendedUpdate(
+			DeltaTime,
+			Gravity,
+			UpdateSettings,
+			BroadPhaseFilter,
+			ObjectLayerFilter,
+			BodyFilter,
+			ShapeFilter,
+			*Impl->TempAllocator);
+
+		Impl->PhysicsSystem.GetBodyInterface().SetPositionAndRotation(
+			BodyIt->second,
+			Character->GetPosition(),
+			Character->GetRotation(),
+			JPH::EActivation::Activate);
+	}
+	else
+	{
+		JPH::BodyFilter BodyFilter;
+		Character->ExtendedUpdate(
+			DeltaTime,
+			Gravity,
+			UpdateSettings,
+			BroadPhaseFilter,
+			ObjectLayerFilter,
+			BodyFilter,
+			ShapeFilter,
+			*Impl->TempAllocator);
+	}
+
+	OutLocation = ToEngineVector(Character->GetPosition());
+	OutVelocity = ToEngineVector(Character->GetLinearVelocity());
+	bOutGrounded = Character->IsSupported();
 	return true;
 }
 

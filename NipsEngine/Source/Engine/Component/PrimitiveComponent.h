@@ -71,6 +71,8 @@ public:
 
     bool IsGenerateOverlapEvents() const { return bGenerateOverlapEvents; }
     bool IsBlockComponent() const { return bBlockComponent; }
+    void SetGenerateOverlapEvents(bool bInGenerateOverlapEvents) { bGenerateOverlapEvents = bInGenerateOverlapEvents; }
+    void SetBlockComponent(bool bInBlockComponent) { bBlockComponent = bInBlockComponent; }
     bool IsOverlappingActor(const AActor* Other) const;
     bool IsBlockingActor(const AActor* Other) const;
 

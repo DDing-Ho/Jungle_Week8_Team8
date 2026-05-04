@@ -26,7 +26,9 @@ public:
 	void SetBodyKinematic(URigidBodyComponent* Body);
 	void SetBodyDynamic(URigidBodyComponent* Body);
 	void SetBodyTransformFromComponent(URigidBodyComponent* Body);
+	bool CheckKinematicGround(URigidBodyComponent* Body, float ProbeDistance, float& OutGroundDistance);
 	bool MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime);
+	bool MoveCharacter(URigidBodyComponent* Body, const FVector& DesiredVelocity, float DeltaTime, float GroundStickDistance, FVector& OutLocation, FVector& OutVelocity, bool& bOutGrounded);
 	void SetBodyLinearVelocity(URigidBodyComponent* Body, const FVector& Velocity);
 	void AddBodyImpulse(URigidBodyComponent* Body, const FVector& Impulse);
 
@@ -38,6 +40,7 @@ private:
 	FJoltPhysicsSystem& operator=(const FJoltPhysicsSystem&) = delete;
 
 	void ClearWorld();
+	void RegisterStaticActor(class AActor* Actor);
 	void RegisterStaticBody(UPrimitiveComponent* ShapeComponent);
 	void RegisterDynamicBody(URigidBodyComponent* Body);
 

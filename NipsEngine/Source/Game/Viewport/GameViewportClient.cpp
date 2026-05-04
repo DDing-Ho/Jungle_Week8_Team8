@@ -21,6 +21,7 @@ namespace
 
 		if (APawnActor* ExistingPawn = World->FindPawn())
 		{
+			ExistingPawn->EnsureDefaultComponents();
 			return ExistingPawn;
 		}
 

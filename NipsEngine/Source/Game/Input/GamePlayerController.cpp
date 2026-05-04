@@ -1,6 +1,7 @@
 ﻿#include "Game/Input/GamePlayerController.h"
 
 #include "Component/CameraComponent.h"
+#include "Component/Movement/CharacterMovementComponent.h"
 #include "Component/Physics/PhysicsHandleComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/SceneComponent.h"
@@ -194,6 +195,7 @@ FGamePlayerController::~FGamePlayerController()
 void FGamePlayerController::Tick(float DeltaTime)
 {
 	IBaseGameController::Tick(DeltaTime);
+	RefreshPawnComponents();
 	CaptureInitialRigidBodyRotations();
 	SyncFreeCameraAngles();
 	ApplyInputAxes();
@@ -312,6 +314,11 @@ void FGamePlayerController::OnKeyReleased(int VK)
 
 void FGamePlayerController::OnWheelScrolled(float Notch)
 {
+	if (IsRuntimeWorld())
+	{
+		return;
+	}
+
 	MoveActiveCamera(ToForward(Camera ? Camera->GetPitchDegrees() : FreeCameraPitch,
 		Camera ? Camera->GetYawDegrees() : FreeCameraYaw), Notch * MoveSpeed * 0.25f);
 }
@@ -326,6 +333,7 @@ void FGamePlayerController::SetWorld(UWorld* InWorld)
 	World = InWorld;
 	Player = nullptr;
 	Camera = nullptr;
+	CharacterMovement = nullptr;
 	HoveredPickableActor = nullptr;
 	InitialRigidBodyRotations.clear();
 	bInitialRigidBodyRotationsCaptured = false;
@@ -340,6 +348,7 @@ void FGamePlayerController::SetPlayer(AActor* InPlayer)
 	}
 
 	DestroyPhysicsHandle();
+	CharacterMovement = nullptr;
 	Player = InPlayer;
 	RefreshPawnComponents();
 }
@@ -462,13 +471,42 @@ void FGamePlayerController::ApplyInputAxes()
 	// 실제 월드 방향은 현재 카메라의 forward/right/up 벡터로 변환합니다.
 	const float Yaw = Camera ? Camera->GetYawDegrees() : FreeCameraYaw;
 	const float Pitch = Camera ? Camera->GetPitchDegrees() : FreeCameraPitch;
-	const FVector Forward = ToForward(Pitch, Yaw);
+	const FVector Forward = IsRuntimeWorld() ? ToForward(0.0f, Yaw) : ToForward(Pitch, Yaw);
 	const FVector Right = ToRight(Yaw);
 
 	const FVector Direction = Forward * MoveForwardValue + Right * MoveRightValue;
 	if (!Direction.IsNearlyZero())
 	{
-		MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
+		if (IsRuntimeWorld())
+		{
+			if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+			{
+				MoveComp->SetActive(true);
+				MoveComp->SetComponentTickEnabled(true);
+				MoveComp->AddInputVector(Direction.GetSafeNormal());
+				static int32 InputLogCounter = 0;
+				if ((InputLogCounter++ % 30) == 0)
+				{
+					UE_LOG("[PlayerMove] Controller input forward=%.2f right=%.2f dir=(%.2f, %.2f, %.2f) player=%s moveComp=%s",
+						MoveForwardValue,
+						MoveRightValue,
+						Direction.GetSafeNormal().X,
+						Direction.GetSafeNormal().Y,
+						Direction.GetSafeNormal().Z,
+						Player ? Player->GetFName().ToString().c_str() : "None",
+						MoveComp->GetFName().ToString().c_str());
+				}
+			}
+			else
+			{
+				UE_LOG("[PlayerMove] Controller has movement input but no CharacterMovementComponent. Falling back to direct move.");
+				MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
+			}
+		}
+		else
+		{
+			MoveActiveCamera(Direction.GetSafeNormal(), MoveSpeed * DeltaTime);
+		}
 	}
 
 	if (!MathUtil::IsNearlyZero(RotateSensitivity))
@@ -604,6 +642,12 @@ UPhysicsHandleComponent* FGamePlayerController::GetPhysicsHandle()
 	return PhysicsHandle;
 }
 
+UCharacterMovementComponent* FGamePlayerController::GetCharacterMovement()
+{
+	RefreshPawnComponents();
+	return CharacterMovement;
+}
+
 void FGamePlayerController::DestroyPhysicsHandle()
 {
 	if (PhysicsHandle)
@@ -618,6 +662,7 @@ void FGamePlayerController::RefreshPawnComponents()
 {
 	Camera = nullptr;
 	PhysicsHandle = nullptr;
+	CharacterMovement = nullptr;
 	if (Player == nullptr)
 	{
 		return;
@@ -639,7 +684,12 @@ void FGamePlayerController::RefreshPawnComponents()
 			PhysicsHandle = Cast<UPhysicsHandleComponent>(Component);
 		}
 
-		if (Camera != nullptr && PhysicsHandle != nullptr)
+		if (CharacterMovement == nullptr)
+		{
+			CharacterMovement = Cast<UCharacterMovementComponent>(Component);
+		}
+
+		if (Camera != nullptr && PhysicsHandle != nullptr && CharacterMovement != nullptr)
 		{
 			break;
 		}
