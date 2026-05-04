@@ -5,7 +5,7 @@
 -- Log(message): writes to the editor console
 -- StartCoroutine(function() ... end), wait(seconds): coroutine helpers
 
-local CLEAN_RADIUS   = 0.09   -- 마스크 UV 반지름 (0~1 기준)
+local CLEAN_RADIUS   = 0.45   -- 브러시 반지름 (월드 단위, 데칼 크기와 무관하게 동일한 크기로 지워짐)
 local CLEAN_STRENGTH = 60     -- 지울 강도 (uint8, 클수록 빠르게 지워짐)
 local REACH_DISTANCE = 300.0  -- 레이캐스트 최대 거리
 

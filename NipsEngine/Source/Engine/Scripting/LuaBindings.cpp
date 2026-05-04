@@ -330,11 +330,22 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.new_usertype<UDecalComponent>(
 		"UDecalComponent",
 		"GetCleanPercentage", &UDecalComponent::GetCleanPercentage,
-		"PaintAtWorldPos", [](UDecalComponent& Decal, const FVector& WorldPos, float Radius, int Value)
+		"PaintAtWorldPos", [](UDecalComponent& Decal, const FVector& WorldPos, float WorldRadius, int Value)
 		{
 			FVector2 UV;
-			if (Decal.WorldPosToDecalUV(WorldPos, UV))
-				Decal.PaintMask(UV, Radius, static_cast<uint8>(Value));
+			if (!Decal.WorldPosToDecalUV(WorldPos, UV)) return;
+
+			const FVector BaseSize = Decal.GetDecalSize();
+			const FVector CurrentScale = Decal.GetRelativeScale();
+
+			// WorldPosToDecalUV: Local.Y -> UV.X(U축) 이므로 가로 기준은 Y축
+			const float RealWorldWidth = BaseSize.Y * CurrentScale.Y;
+
+			if (RealWorldWidth > 0.001f)
+			{
+				float FinalUVRadius = WorldRadius / RealWorldWidth;
+				Decal.PaintMask(UV, FinalUVRadius, static_cast<uint8>(Value));
+			}
 		}
 	);
 }
