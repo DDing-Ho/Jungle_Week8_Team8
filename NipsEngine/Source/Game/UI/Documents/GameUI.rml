@@ -7,9 +7,10 @@
 </head>
 <body>
 	<div id="start-menu">
-		<div id="line-top" class="title-line"></div>
-		<div id="game-title">GAME TITLE</div>
-		<div id="line-bottom" class="title-line"></div>
+		<img id="title-background" src="Asset/Texture/TitleBackground.png" />
+		<div id="game-title">
+			<img id="title-image" src="Asset/Texture/Title.png" />
+		</div>
 		<div id="start-button" class="menu-button">START</div>
 		<div id="exit-button" class="menu-button">EXIT</div>
 	</div>
@@ -25,6 +26,10 @@
 	</div>
 
 	<div id="crosshair-dot"></div>
+
+	<div id="interaction-hint">
+		<div id="interaction-hint-text"></div>
+	</div>
 
 	<div id="pause-layer">
 		<div id="pause-panel">

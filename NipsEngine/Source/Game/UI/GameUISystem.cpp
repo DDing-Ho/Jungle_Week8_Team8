@@ -102,6 +102,13 @@ namespace
 		return std::to_string(Percent) + "%";
 	}
 
+	std::string FormatPixels(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.2fpx", Value);
+		return Buffer;
+	}
+
 	std::string LoadTextResource(int ResourceId)
 	{
 		HMODULE Module = GetModuleHandleW(nullptr);
@@ -245,7 +252,7 @@ void GameUISystem::RenderToCurrentTarget(EUIRenderMode Mode, int Width, int Heig
 
 	RmlRenderInterface->BeginFrame(Width, Height);
 	RmlContext->SetDimensions(Rml::Vector2i(Width, Height));
-	UpdateRmlUiDocument(Mode);
+	UpdateRmlUiDocument(Mode, Width, Height);
 	RmlContext->Update();
 	RmlContext->Render();
 
@@ -301,6 +308,7 @@ void GameUISystem::ResetGameData()
 	ElapsedTime = 0.f;
 	CurrentItemName.clear();
 	CurrentItemDesc.clear();
+	InteractionHintType = EInteractionHintType::None;
 }
 
 void GameUISystem::SetProgress(float InProgress)
@@ -312,6 +320,11 @@ void GameUISystem::SetCurrentItem(const char* Name, const char* Desc)
 {
 	CurrentItemName = Name ? Name : "";
 	CurrentItemDesc = Desc ? Desc : "";
+}
+
+void GameUISystem::SetInteractionHint(EInteractionHintType Type)
+{
+	InteractionHintType = Type;
 }
 
 void GameUISystem::SetItemCount(int Count)
@@ -474,7 +487,7 @@ void GameUISystem::RenderCurrentPanel(EUIRenderMode Mode)
 	}
 }
 
-void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
+void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height)
 {
 	if (!RmlDocument)
 		return;
@@ -499,15 +512,40 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
 	const bool bShowTheEnd = bShowEnding && EndingPanel::ShouldShowTheEnd();
+	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && InteractionHintType != EInteractionHintType::None;
 
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("hud-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
+	SetElementVisible("interaction-hint", bShowInteractionHint);
 	SetElementVisible("pause-layer", bShowPause);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
 	SetElementVisible("the-end", bShowTheEnd);
+
+	constexpr float TitleBackgroundAspect = 2760.0f / 1504.0f;
+	float TitleBackgroundWidth = static_cast<float>(Width);
+	float TitleBackgroundHeight = static_cast<float>(Height);
+	if (Width > 0 && Height > 0)
+	{
+		const float ViewAspect = static_cast<float>(Width) / static_cast<float>(Height);
+		if (ViewAspect > TitleBackgroundAspect)
+		{
+			TitleBackgroundWidth = static_cast<float>(Width);
+			TitleBackgroundHeight = TitleBackgroundWidth / TitleBackgroundAspect;
+		}
+		else
+		{
+			TitleBackgroundHeight = static_cast<float>(Height);
+			TitleBackgroundWidth = TitleBackgroundHeight * TitleBackgroundAspect;
+		}
+	}
+
+	SetElementProperty("title-background", "width", FormatPixels(TitleBackgroundWidth));
+	SetElementProperty("title-background", "height", FormatPixels(TitleBackgroundHeight));
+	SetElementProperty("title-background", "left", FormatPixels((static_cast<float>(Width) - TitleBackgroundWidth) * 0.5f));
+	SetElementProperty("title-background", "top", FormatPixels((static_cast<float>(Height) - TitleBackgroundHeight) * 0.5f));
 
 	const std::string ProgressText = FormatPercent(CleanProgress);
 	SetElementText("progress-value", ProgressText);
@@ -519,6 +557,19 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode)
 	SetElementText("pause-time", FormatTime(ElapsedTime));
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
+
+	switch (InteractionHintType)
+	{
+	case EInteractionHintType::Clean:
+		SetElementText("interaction-hint-text", "[E] 청소하기");
+		break;
+	case EInteractionHintType::Inspect:
+		SetElementText("interaction-hint-text", "[E] 살펴보기");
+		break;
+	default:
+		SetElementText("interaction-hint-text", "");
+		break;
+	}
 
 	SetElementText("dialogue-speaker", DialoguePanel::GetSpeaker());
 	SetElementText("dialogue-text", DialoguePanel::GetVisibleText());
@@ -546,7 +597,7 @@ bool GameUISystem::CreateGameDocument()
 
 	RmlDocument->Show();
 	BindRmlUiEvents();
-	UpdateRmlUiDocument(EUIRenderMode::Play);
+	UpdateRmlUiDocument(EUIRenderMode::Play, 1280, 720);
 	return true;
 }
 

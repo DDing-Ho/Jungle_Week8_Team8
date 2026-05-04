@@ -18,30 +18,26 @@ body {
 	background-color: rgba(9, 10, 16, 255);
 }
 
+#title-background {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: auto;
+}
+
 #game-title {
 	position: absolute;
-	top: 34%;
 	left: 0px;
+	top: 8%;
 	width: 100%;
-	font-size: 42px;
+	height: 24%;
 	text-align: center;
-	color: #f4f4f4;
 }
 
-.title-line {
-	position: absolute;
-	left: 35%;
-	width: 30%;
-	height: 1px;
-	background-color: rgba(130, 130, 160, 180);
-}
-
-#line-top {
-	top: 32%;
-}
-
-#line-bottom {
-	top: 43%;
+#title-image {
+	width: 66%;
+	height: auto;
 }
 
 .menu-button {
@@ -65,11 +61,11 @@ body {
 }
 
 #start-button {
-	top: 50%;
+	top: 62%;
 }
 
 #exit-button {
-	top: 58%;
+	top: 70%;
 }
 
 #hud-panel {
@@ -143,6 +139,24 @@ body {
 	border-width: 1px;
 	border-color: rgba(82, 82, 82, 190);
 	border-radius: 3px;
+}
+
+#interaction-hint {
+	position: absolute;
+	left: 0px;
+	bottom: 18%;
+	width: 100%;
+	text-align: center;
+}
+
+#interaction-hint-text {
+	display: inline-block;
+	padding: 9px 18px;
+	font-size: 18px;
+	color: #f5f0e6;
+	background-color: rgba(15, 13, 10, 185);
+	border-width: 1px;
+	border-color: rgba(230, 205, 150, 155);
 }
 
 #pause-layer {

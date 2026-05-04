@@ -11,6 +11,8 @@
 #include "Game/Systems/CleaningToolAnimator.h"
 #include "Game/Systems/CleaningToolSystem.h"
 #include "Game/Systems/GameContext.h"
+#include "Game/Systems/ItemSystem.h"
+#include "Game/UI/GameUISystem.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Math/Matrix.h"
@@ -151,7 +153,7 @@ namespace
 		return Value;
 	}
 
-	FString FindCleaningToolIdFromActor(const AActor* Actor)
+	FString FindCleaningToolIdFromActor(const AActor* Actor, bool bLogResult = true)
 	{
 		if (!Actor)
 		{
@@ -161,23 +163,61 @@ namespace
 		const FString ScriptToolId = FLuaScriptSystem::Get().GetStringGameStateValue("CleaningTool:" + Actor->GetFName().ToString());
 		if (!ScriptToolId.empty())
 		{
-			UE_LOG("[CleaningTool] Actor=%s resolved by Lua toolId=%s", Actor->GetFName().ToString().c_str(), ScriptToolId.c_str());
+			if (bLogResult)
+			{
+				UE_LOG("[CleaningTool] Actor=%s resolved by Lua toolId=%s", Actor->GetFName().ToString().c_str(), ScriptToolId.c_str());
+			}
 			return ScriptToolId;
 		}
 
 		const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
-		UE_LOG("[CleaningTool] Actor=%s has no Lua tool id. Trying fallback match.", Actor->GetFName().ToString().c_str());
+		if (bLogResult)
+		{
+			UE_LOG("[CleaningTool] Actor=%s has no Lua tool id. Trying fallback match.", Actor->GetFName().ToString().c_str());
+		}
 		const TArray<FCleaningToolData>& ToolDataList = FCleaningToolSystem::Get().GetAllToolData();
 		for (const FCleaningToolData& ToolData : ToolDataList)
 		{
 			if (ActorName == NormalizeToolMatchKey(ToolData.ToolId))
 			{
-				UE_LOG("[CleaningTool] Actor=%s resolved by actor name toolId=%s", Actor->GetFName().ToString().c_str(), ToolData.ToolId.c_str());
+				if (bLogResult)
+				{
+					UE_LOG("[CleaningTool] Actor=%s resolved by actor name toolId=%s", Actor->GetFName().ToString().c_str(), ToolData.ToolId.c_str());
+				}
 				return ToolData.ToolId;
 			}
 		}
 
-		UE_LOG("[CleaningTool] Actor=%s is not a registered cleaning tool.", Actor->GetFName().ToString().c_str());
+		if (bLogResult)
+		{
+			UE_LOG("[CleaningTool] Actor=%s is not a registered cleaning tool.", Actor->GetFName().ToString().c_str());
+		}
+		return "";
+	}
+
+	FString FindItemIdFromActor(const AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return "";
+		}
+
+		const FString ScriptItemId = FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+		if (!ScriptItemId.empty())
+		{
+			return ScriptItemId;
+		}
+
+		const FString ActorName = NormalizeToolMatchKey(Actor->GetName());
+		const TArray<FGameItemData>& Items = FItemSystem::Get().GetAllItemData();
+		for (const FGameItemData& ItemData : Items)
+		{
+			if (ActorName == NormalizeToolMatchKey(ItemData.ItemId))
+			{
+				return ItemData.ItemId;
+			}
+		}
+
 		return "";
 	}
 }
@@ -715,6 +755,7 @@ void FGamePlayerController::RefreshPawnComponents()
 void FGamePlayerController::UpdateHoveredPickableActor()
 {
 	HoveredPickableActor = nullptr;
+	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
 
 	if (World == nullptr || !IsInputEnabled())
 	{
@@ -737,6 +778,14 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 	if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
 	{
 		HoveredPickableActor = Body->GetOwner();
+		if (!FindCleaningToolIdFromActor(HoveredPickableActor, false).empty())
+		{
+			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Clean);
+		}
+		else if (!FindItemIdFromActor(HoveredPickableActor).empty())
+		{
+			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Inspect);
+		}
 	}
 }
 
