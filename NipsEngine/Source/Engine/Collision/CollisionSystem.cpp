@@ -1,10 +1,12 @@
 ﻿#include "CollisionSystem.h"
 
 #include "Collision/Collision.h"
+#include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/ShapeComponent.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Geometry/AABB.h"
+#include "Geometry/OBB.h"
 #include "Math/Utils.h"
 #include "Core/Logger.h"
 #include "GameFramework/AActor.h"
@@ -95,6 +97,140 @@ namespace
 		}
 
 		return true;
+	}
+
+	FOBB MakeBoxOBB(const UBoxComponent* Box)
+	{
+		if (Box == nullptr)
+		{
+			return {};
+		}
+
+		const FVector Extent = Box->GetBoxExtent();
+		const FVector Scale = Box->GetWorldScale();
+		return FOBB(
+			Box->GetWorldLocation(),
+			FVector(
+				MathUtil::Abs(Extent.X) * MathUtil::Abs(Scale.X),
+				MathUtil::Abs(Extent.Y) * MathUtil::Abs(Scale.Y),
+				MathUtil::Abs(Extent.Z) * MathUtil::Abs(Scale.Z)),
+			Box->GetWorldMatrix().GetRotationMatrix());
+	}
+
+	void ProjectOBBOnAxis(const TArray<FVector>& Vertices, const FVector& Axis, float& OutMin, float& OutMax)
+	{
+		OutMin = FLT_MAX;
+		OutMax = -FLT_MAX;
+
+		for (const FVector& Vertex : Vertices)
+		{
+			const float Projection = FVector::DotProduct(Vertex, Axis);
+			OutMin = std::min(OutMin, Projection);
+			OutMax = std::max(OutMax, Projection);
+		}
+	}
+
+	bool TestSeparationAxis(
+		const TArray<FVector>& VerticesA,
+		const TArray<FVector>& VerticesB,
+		const FVector& CenterDelta,
+		FVector Axis,
+		FVector& InOutBestNormal,
+		float& InOutBestDepth)
+	{
+		if (Axis.SizeSquared() < 1e-8f)
+		{
+			return true;
+		}
+
+		Axis.NormalizeSafe();
+
+		float MinA;
+		float MaxA;
+		float MinB;
+		float MaxB;
+		ProjectOBBOnAxis(VerticesA, Axis, MinA, MaxA);
+		ProjectOBBOnAxis(VerticesB, Axis, MinB, MaxB);
+
+		const float Overlap = std::min(MaxA, MaxB) - std::max(MinA, MinB);
+		if (Overlap <= 0.0f)
+		{
+			return false;
+		}
+
+		if (Overlap < InOutBestDepth)
+		{
+			InOutBestDepth = Overlap;
+			InOutBestNormal = FVector::DotProduct(CenterDelta, Axis) >= 0.0f ? Axis : Axis * -1.0f;
+		}
+
+		return true;
+	}
+
+	bool TryMakeBoxSeparation(const UBoxComponent* A, const UBoxComponent* B, FVector& OutNormal, float& OutDepth)
+	{
+		if (A == nullptr || B == nullptr)
+		{
+			return false;
+		}
+
+		const FOBB BoxA = MakeBoxOBB(A);
+		const FOBB BoxB = MakeBoxOBB(B);
+
+		TArray<FVector> VerticesA;
+		TArray<FVector> VerticesB;
+		BoxA.GetVertices(VerticesA);
+		BoxB.GetVertices(VerticesB);
+
+		FVector AxesA[3];
+		FVector AxesB[3];
+		BoxA.GetAxes(AxesA[0], AxesA[1], AxesA[2]);
+		BoxB.GetAxes(AxesB[0], AxesB[1], AxesB[2]);
+
+		const FVector CenterDelta = BoxB.Center - BoxA.Center;
+		OutDepth = FLT_MAX;
+		OutNormal = FVector::ZeroVector;
+
+		for (const FVector& Axis : AxesA)
+		{
+			if (!TestSeparationAxis(VerticesA, VerticesB, CenterDelta, Axis, OutNormal, OutDepth))
+			{
+				return false;
+			}
+		}
+
+		for (const FVector& Axis : AxesB)
+		{
+			if (!TestSeparationAxis(VerticesA, VerticesB, CenterDelta, Axis, OutNormal, OutDepth))
+			{
+				return false;
+			}
+		}
+
+		for (const FVector& AxisA : AxesA)
+		{
+			for (const FVector& AxisB : AxesB)
+			{
+				if (!TestSeparationAxis(VerticesA, VerticesB, CenterDelta, FVector::CrossProduct(AxisA, AxisB), OutNormal, OutDepth))
+				{
+					return false;
+				}
+			}
+		}
+
+		return !OutNormal.IsNearlyZero() && OutDepth < FLT_MAX;
+	}
+
+	bool TryMakeShapeSeparation(UPrimitiveComponent* A, UPrimitiveComponent* B, FVector& OutNormal, float& OutDepth)
+	{
+		if (A != nullptr && B != nullptr &&
+			A->GetCollisionType() == ECollisionType::Box &&
+			B->GetCollisionType() == ECollisionType::Box)
+		{
+			return TryMakeBoxSeparation(static_cast<UBoxComponent*>(A), static_cast<UBoxComponent*>(B), OutNormal, OutDepth);
+		}
+
+		return TryMakeAABBSeparation(A->GetWorldAABB(), B->GetWorldAABB(), OutNormal, OutDepth);
 	}
 }
 
@@ -293,7 +429,7 @@ void FCollisionSystem::ProcessBlocking(UPrimitiveComponent* A, UPrimitiveCompone
 
 	FVector Normal;
 	float Depth = 0.0f;
-	if (!TryMakeAABBSeparation(A->GetWorldAABB(), B->GetWorldAABB(), Normal, Depth))
+	if (!TryMakeShapeSeparation(A, B, Normal, Depth))
 	{
 		return;
 	}

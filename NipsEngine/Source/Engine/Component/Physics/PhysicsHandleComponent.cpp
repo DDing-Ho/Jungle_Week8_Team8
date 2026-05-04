@@ -331,7 +331,7 @@ void UPhysicsHandleComponent::Release()
     FJoltPhysicsSystem::Get().ClearHeldBodyOwner(HeldBody);
     HeldBody->SetHeldByPhysicsHandle(false);
     HeldBody->SetVelocity(HoldVelocity);
-    HeldBody->PlayDropSound();
+    HeldBody->QueueDropSound(HeldBody->GetDropSoundPath());
     HeldBody = nullptr;
     HeldWorld = nullptr;
     HoldVelocity = FVector::ZeroVector;

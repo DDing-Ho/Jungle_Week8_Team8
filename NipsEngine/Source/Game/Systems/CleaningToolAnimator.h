@@ -18,6 +18,7 @@ public:
 	const FString& GetToolId() const { return ActiveToolId; }
 	const FVector& GetCameraLocalOffset() const { return CameraLocalOffset; }
 	const FVector& GetHoldCameraLocalOffset() const { return HoldCameraLocalOffset; }
+	int GetUseStrokeCycleIndex() const;
 
 private:
 	FCleaningToolAnimator() = default;
