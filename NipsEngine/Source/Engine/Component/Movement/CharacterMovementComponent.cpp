@@ -1,4 +1,4 @@
-#include "Component/Movement/CharacterMovementComponent.h"
+﻿#include "Component/Movement/CharacterMovementComponent.h"
 
 #include "Audio/AudioSystem.h"
 #include "Component/Physics/RigidBodyComponent.h"
@@ -15,6 +15,7 @@
 namespace
 {
 	constexpr float GravityAcceleration = 9.8f;
+	constexpr float DefaultJumpSpeed = 5.5f;
 	constexpr float DefaultFootstepVolume = 0.8f;
 	constexpr float DefaultFootstepStepDistance = 1.70f;
 	constexpr float DefaultFootstepMinSpeed = 0.35f;
@@ -55,6 +56,7 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	uint32 RigidBodyUUID = RigidBody ? RigidBody->GetUUID() : 0;
 	Ar << "RigidBodyUUID" << RigidBodyUUID;
 	Ar << "MaxWalkSpeed" << MaxWalkSpeed;
+	Ar << "JumpSpeed" << JumpSpeed;
 	Ar << "Acceleration" << Acceleration;
 	Ar << "BrakingDeceleration" << BrakingDeceleration;
 	Ar << "GravityScale" << GravityScale;
@@ -80,6 +82,10 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 			FootstepStepDistance = DefaultFootstepStepDistance;
 			FootstepMinSpeed = DefaultFootstepMinSpeed;
 		}
+		if (JumpSpeed <= 0.0f)
+		{
+			JumpSpeed = DefaultJumpSpeed;
+		}
 		ClampEditableValues();
 	}
 }
@@ -89,6 +95,7 @@ void UCharacterMovementComponent::GetEditableProperties(TArray<FPropertyDescript
 	UMovementComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Velocity", EPropertyType::Vec3, &Velocity });
 	OutProps.push_back({ "Max Walk Speed", EPropertyType::Float, &MaxWalkSpeed, 0.0f, 20.0f, 0.1f });
+	OutProps.push_back({ "Jump Speed", EPropertyType::Float, &JumpSpeed, 0.0f, 30.0f, 0.1f });
 	OutProps.push_back({ "Acceleration", EPropertyType::Float, &Acceleration, 0.0f, 100.0f, 0.5f });
 	OutProps.push_back({ "Braking Deceleration", EPropertyType::Float, &BrakingDeceleration, 0.0f, 100.0f, 0.5f });
 	OutProps.push_back({ "Gravity Scale", EPropertyType::Float, &GravityScale, 0.0f, 10.0f, 0.05f });
@@ -125,12 +132,12 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 		Input = Input.GetSafeNormal();
 	}
 
-	const FVector DesiredHorizontalVelocity = Input * MaxWalkSpeed;
+	const FVector DesiredHorizontalVelocity = Input * MaxWalkSpeed * SpeedMultiplier;
 	const float HorizontalStep = (Input.IsNearlyZero() ? BrakingDeceleration : Acceleration) * DeltaTime;
 	Velocity.X = MoveToward(Velocity.X, DesiredHorizontalVelocity.X, HorizontalStep);
 	Velocity.Y = MoveToward(Velocity.Y, DesiredHorizontalVelocity.Y, HorizontalStep);
 
-	if (bGrounded)
+	if (bGrounded && Velocity.Z <= 0.0f)
 	{
 		Velocity.Z = 0.0f;
 	}
@@ -218,9 +225,27 @@ void UCharacterMovementComponent::RefreshUpdatedReferences()
 	}
 }
 
+void UCharacterMovementComponent::Jump()
+{
+	if (!bGrounded)
+	{
+		return;
+	}
+
+	Velocity.Z = std::max(Velocity.Z, JumpSpeed);
+	bGrounded = false;
+}
+
+void UCharacterMovementComponent::SetSpeedMultiplier(float InSpeedMultiplier)
+{
+	SpeedMultiplier = std::max(0.0f, InSpeedMultiplier);
+}
+
 void UCharacterMovementComponent::ClampEditableValues()
 {
 	MaxWalkSpeed = std::max(0.0f, MaxWalkSpeed);
+	JumpSpeed = std::max(0.0f, JumpSpeed);
+	SpeedMultiplier = std::max(0.0f, SpeedMultiplier);
 	Acceleration = std::max(0.0f, Acceleration);
 	BrakingDeceleration = std::max(0.0f, BrakingDeceleration);
 	GravityScale = std::max(0.0f, GravityScale);

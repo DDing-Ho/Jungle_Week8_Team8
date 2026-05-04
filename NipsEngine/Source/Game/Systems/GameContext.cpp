@@ -1,8 +1,34 @@
 #include "Game/Systems/GameContext.h"
 
-#include "GameFramework/AActor.h"
+#include "Component/DecalComponent.h"
+#include "Engine/GameFramework/AActor.h"
+#include "Engine/GameFramework/World.h"
+#include "Object/Object.h"
 
 #include <algorithm>
+
+namespace
+{
+	constexpr float CleanDecalThreshold = 0.95f;
+
+	bool IsLiveObjectPointer(const UObject* Object)
+	{
+		if (Object == nullptr)
+		{
+			return false;
+		}
+
+		for (const UObject* LiveObject : GUObjectArray)
+		{
+			if (LiveObject == Object)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
 
 GGameContext& GGameContext::Get()
 {
@@ -15,6 +41,7 @@ void GGameContext::Reset()
 	const FHeldObjectInfo PreviousHeldObjectInfo = HeldObjectInfo;
 
 	CleanProgress = 0.0f;
+	ClearMapDecals();
 	CurrentToolId.clear();
 	CurrentInspectedItemId.clear();
 	HeldObjectInfo = {};
@@ -42,6 +69,84 @@ void GGameContext::SetCleanProgress(float InProgress)
 
 	CleanProgress = ClampedProgress;
 	BroadcastChanged();
+}
+
+void GGameContext::RegisterMapDecals(UWorld* World)
+{
+	ClearMapDecals();
+
+	if (!World)
+	{
+		SetCleanProgress(1.0f);
+		return;
+	}
+
+	for (AActor* Actor : World->GetActors())
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (UDecalComponent* Decal = Cast<UDecalComponent>(Component))
+			{
+				if (std::find(MapDecals.begin(), MapDecals.end(), Decal) == MapDecals.end())
+				{
+					MapDecals.push_back(Decal);
+				}
+			}
+		}
+	}
+
+	InitialDecalCount = static_cast<int32>(MapDecals.size());
+	RefreshCleanProgressFromDecals();
+}
+
+void GGameContext::ClearMapDecals()
+{
+	MapDecals.clear();
+	InitialDecalCount = 0;
+}
+
+void GGameContext::RefreshCleanProgressFromDecals()
+{
+	if (InitialDecalCount <= 0)
+	{
+		SetCleanProgress(1.0f);
+		return;
+	}
+
+	const int32 RemainingDecalCount = GetRemainingDecalCount();
+	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingDecalCount) / static_cast<float>(InitialDecalCount));
+	SetCleanProgress(CleanedRatio);
+}
+
+int32 GGameContext::GetRemainingDecalCount() const
+{
+	int32 RemainingCount = 0;
+
+	for (const UDecalComponent* Decal : MapDecals)
+	{
+		if (!IsLiveObjectPointer(Decal))
+		{
+			continue;
+		}
+
+		const AActor* DecalOwner = Decal->GetOwner();
+		if (DecalOwner == nullptr || !DecalOwner->IsActive())
+		{
+			continue;
+		}
+
+		if (Decal->GetCleanPercentage() <= CleanDecalThreshold)
+		{
+			++RemainingCount;
+		}
+	}
+
+	return RemainingCount;
 }
 
 void GGameContext::SetCurrentTool(const FString& ToolId)
@@ -75,7 +180,10 @@ void GGameContext::SetHeldObject(AActor* Actor, const FString& ItemId, const FSt
 {
 	FHeldObjectInfo NewInfo;
 	NewInfo.Actor = Actor;
-	NewInfo.ActorName = Actor ? Actor->GetFName().ToString() : FString();
+	if (Actor != nullptr)
+	{
+		NewInfo.ActorName = Actor->GetFName().ToString();
+	}
 	NewInfo.ItemId = ItemId;
 	NewInfo.ToolId = ToolId;
 
@@ -92,18 +200,19 @@ void GGameContext::SetHeldObject(AActor* Actor, const FString& ItemId, const FSt
 		NewInfo.ObjectType = EGameHeldObjectType::Object;
 	}
 
-	if (HeldObjectInfo.Actor == NewInfo.Actor
-		&& HeldObjectInfo.ActorName == NewInfo.ActorName
-		&& HeldObjectInfo.ItemId == NewInfo.ItemId
-		&& HeldObjectInfo.ToolId == NewInfo.ToolId
-		&& HeldObjectInfo.ObjectType == NewInfo.ObjectType)
+	const bool bChanged =
+		HeldObjectInfo.Actor != NewInfo.Actor ||
+		HeldObjectInfo.ItemId != NewInfo.ItemId ||
+		HeldObjectInfo.ToolId != NewInfo.ToolId ||
+		HeldObjectInfo.ObjectType != NewInfo.ObjectType;
+	if (!bChanged)
 	{
 		return;
 	}
 
 	HeldObjectInfo = NewInfo;
-	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
 	OnObjectPickedUp.Broadcast(HeldObjectInfo);
+	OnHeldObjectChanged.Broadcast(HeldObjectInfo);
 	BroadcastChanged();
 }
 

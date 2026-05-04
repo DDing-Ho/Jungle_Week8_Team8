@@ -284,12 +284,14 @@ body {
 }
 
 #item-inspect-title {
+	display: block;
 	font-size: 25px;
 	font-weight: 900;
 	color: #ffe08a;
 }
 
 #item-inspect-separator {
+	display: block;
 	margin-top: 18px;
 	width: 100%;
 	height: 1px;
@@ -297,11 +299,13 @@ body {
 }
 
 #item-inspect-desc {
+	display: block;
 	margin-top: 20px;
 	font-size: 18px;
 	font-weight: 700;
 	line-height: 27px;
 	color: #f3ead8;
+	white-space: pre-wrap;
 }
 
 #pause-layer {
@@ -312,27 +316,44 @@ body {
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 320px;
-	height: 320px;
-	margin-left: -160px;
-	margin-top: -160px;
-	padding: 24px;
+	width: 360px;
+	height: 340px;
+	margin-left: -180px;
+	margin-top: -170px;
 	background-color: rgba(20, 20, 22, 245);
 	border-width: 1px;
 	border-color: rgba(130, 130, 145, 180);
 }
 
 #pause-title {
+	position: absolute;
+	left: 0px;
+	top: 28px;
 	width: 100%;
 	text-align: center;
-	font-size: 24px;
+	font-size: 28px;
 	color: #ffffff;
 }
 
 .stat-row {
-	margin-top: 16px;
-	font-size: 16px;
+	position: absolute;
+	left: 46px;
+	width: 268px;
+	height: 24px;
+	font-size: 17px;
 	color: #dcdcdc;
+}
+
+#pause-items-row {
+	top: 88px;
+}
+
+#pause-time-row {
+	top: 122px;
+}
+
+#pause-progress-row {
+	top: 156px;
 }
 
 .stat-value {
@@ -340,23 +361,32 @@ body {
 }
 
 .pause-button {
-	width: 100%;
-	height: 40px;
-	margin-top: 16px;
-	padding-top: 8px;
-	text-align: center;
-	font-size: 18px;
-	color: #ededed;
-	background-color: rgba(38, 40, 45, 255);
-	border-width: 1px;
-	border-color: rgba(115, 120, 130, 200);
+    position: absolute;
+    left: 80px; 
+    width: 200px;
+    height: 36px;
+    padding-top: 10px;
+    text-align: center;
+    font-size: 20px; 
+    font-weight: bold; 
+    color: #ededed;
+    background-color: rgba(38, 40, 45, 255);
+    border-width: 1px;
+    border-color: rgba(115, 120, 130, 200);
+}
+
+#retry-button {
+    top: 218px;
+}
+
+#pause-exit-button {
+    top: 276px;
 }
 
 .pause-button:hover {
-	background-color: rgba(58, 64, 74, 255);
-	color: #ffdc64;
+    background-color: rgba(58, 64, 74, 255);
+    color: #ffdc64;
 }
-
 #dialogue-panel {
 	position: absolute;
 	left: 10%;
@@ -370,15 +400,18 @@ body {
 }
 
 #dialogue-speaker {
+	display: block;
 	font-size: 18px;
 	color: #ffd264;
 }
 
 #dialogue-text {
+	display: block;
 	margin-top: 8px;
 	font-size: 17px;
 	line-height: 22px;
 	color: #e6e6e6;
+	white-space: pre-wrap;
 }
 
 #dialogue-hint {

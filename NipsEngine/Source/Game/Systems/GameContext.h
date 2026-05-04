@@ -3,13 +3,15 @@
 #include "Game/Systems/CleaningGameTypes.h"
 
 class AActor;
+class UDecalComponent;
+class UWorld;
 
 enum class EGameHeldObjectType
 {
 	None,
 	Object,
 	Item,
-	CleaningTool,
+	CleaningTool
 };
 
 struct FHeldObjectInfo
@@ -20,7 +22,7 @@ struct FHeldObjectInfo
 	FString ToolId;
 	EGameHeldObjectType ObjectType = EGameHeldObjectType::None;
 
-	bool IsHolding() const { return Actor != nullptr || !ActorName.empty(); }
+	bool IsHolding() const { return Actor != nullptr; }
 	bool IsItem() const { return ObjectType == EGameHeldObjectType::Item; }
 	bool IsCleaningTool() const { return ObjectType == EGameHeldObjectType::CleaningTool; }
 };
@@ -34,6 +36,12 @@ public:
 
 	void SetCleanProgress(float InProgress);
 	float GetCleanProgress() const { return CleanProgress; }
+	void RegisterMapDecals(UWorld* World);
+	void ClearMapDecals();
+	void RefreshCleanProgressFromDecals();
+	const TArray<UDecalComponent*>& GetMapDecals() const { return MapDecals; }
+	int32 GetInitialDecalCount() const { return InitialDecalCount; }
+	int32 GetRemainingDecalCount() const;
 
 	void SetCurrentTool(const FString& ToolId);
 	const FString& GetCurrentToolId() const { return CurrentToolId; }
@@ -81,6 +89,8 @@ private:
 	void BroadcastChanged();
 
 	float CleanProgress = 0.0f;
+	TArray<UDecalComponent*> MapDecals;
+	int32 InitialDecalCount = 0;
 	FString CurrentToolId;
 	FString CurrentInspectedItemId;
 	FHeldObjectInfo HeldObjectInfo;

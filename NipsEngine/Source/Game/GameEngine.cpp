@@ -134,6 +134,8 @@ void UGameEngine::StartMainGame()
 	}
 
 	GameUISystem::Get().ResetGameData();
+	GGameContext::Get().RegisterMapDecals(GetWorld());
+	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 	GameUISystem::Get().SetState(EGameUIState::InGame);
 	BeginPlay();
 }
@@ -144,6 +146,11 @@ void UGameEngine::Tick(float DeltaTime)
 	UpdateInputWorldType();
 	GameViewport->Tick(DeltaTime);
 	WorldTick(DeltaTime);
+	if (GameUISystem::Get().GetState() == EGameUIState::InGame)
+	{
+		GGameContext::Get().RefreshCleanProgressFromDecals();
+		GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
+	}
 	GameViewport->LateTick(DeltaTime);
 	FAudioSystem::Get().Tick(DeltaTime);
 	Render(DeltaTime);

@@ -99,6 +99,21 @@
       ]
     },
     {
+      "id": "shoes",
+      "name": "신발",
+      "type": "DummyItem",
+      "desc": [
+        "한쪽에 모래가 묻어 있는 신발이다."
+      ],
+      "keptDesc": "신발을 따로 보관하기로 했다.",
+      "discardedDesc": "신발은 버릴 물건 상자 안으로 들어갔다.",
+      "canClassify": true,
+      "endingRole": "Normal",
+      "storyFlags": [
+        "found_shoes"
+      ]
+    },
+    {
       "id": "mop",
       "name": "대걸레",
       "type": "CleaningTool",

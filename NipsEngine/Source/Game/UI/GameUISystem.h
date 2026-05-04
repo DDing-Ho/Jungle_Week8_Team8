@@ -49,6 +49,8 @@ enum class EInteractionHintType
     Pickup,
     Drop,
     DropWithInspect,
+    Keep,
+    Discard,
 };
 
 // -------------------------------------------------------

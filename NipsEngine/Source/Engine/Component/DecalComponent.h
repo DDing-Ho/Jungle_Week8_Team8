@@ -36,6 +36,7 @@ public:
 	FColor GetDecalColor() const { return DecalColor; }
 
 	void SetSize(const FVector& InSize) { DecalSize = InSize; }
+	const FVector& GetDecalSize() const { return DecalSize; }
 
 	void SetFadeIn(float InStartDelay, float InDuration);
 	void SetFadeOut(float InStartDelay, float InDuration, bool bInDestroyOwnerAfterFade = false);
@@ -43,7 +44,8 @@ public:
 	bool SupportsOutline() const override { return true; }
 
 	// GameJam
-    void InitializeMask(uint32 InWidth, uint32 InHeight);
+	void InitializeMask(uint32 InWidth, uint32 InHeight);
+	void ResizeMaskToDecalSize();
     void PaintMask(FVector2 UV, float Radius, uint8 Value);
 	void UpdateMaskTexture();
 	ID3D11ShaderResourceView* GetMaskSRV() const { return MaskSRV.Get(); }
@@ -82,4 +84,5 @@ private:
 	TComPtr<ID3D11ShaderResourceView> MaskSRV;
 
 	bool bMaskDirty = false;
+	float CachedCleanPercentage = 0.0f; // 디버그용, 추후 수정 필요할 시 변경
 };

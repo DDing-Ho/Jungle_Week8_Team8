@@ -60,12 +60,12 @@
 
 	<div id="pause-layer">
 		<div id="pause-panel">
-			<div id="pause-title">[MENU]</div>
-			<div class="stat-row">Items: <span id="pause-item-count" class="stat-value">0</span></div>
-			<div class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
-			<div class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
-			<div id="retry-button" class="pause-button">RETRY</div>
-			<div id="pause-exit-button" class="pause-button">EXIT</div>
+			<div id="pause-title">MENU</div>
+			<div id="pause-items-row" class="stat-row">Items: <span id="pause-item-count" class="stat-value">0</span></div>
+			<div id="pause-time-row" class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
+			<div id="pause-progress-row" class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
+			<div id="retry-button" class="pause-button">Resume</div>
+			<div id="pause-exit-button" class="pause-button">Quit Game</div>
 		</div>
 	</div>
 

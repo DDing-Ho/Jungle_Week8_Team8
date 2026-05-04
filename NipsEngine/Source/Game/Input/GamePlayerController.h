@@ -3,6 +3,7 @@
 #include "Engine/Input/InputMapping.h"
 #include "Audio/AudioSystem.h"
 #include "Game/Input/BaseGameController.h"
+#include "Game/Systems/CleaningGameTypes.h"
 #include "Math/Vector.h"
 #include "Render/Common/ViewTypes.h"
 
@@ -75,12 +76,15 @@ private:
     void StartCleaningLoopSound(const struct FCleaningToolData& ToolData);
     void StopCleaningLoopSound();
     void TogglePickup();
+    void NotifyPickedUp(AActor* PickedActor);
     void TryInspectHoveredItem();
+    bool TryPlaceHeldItemInHoveredDecisionBox();
     UPhysicsHandleComponent* GetPhysicsHandle();
     UCharacterMovementComponent* GetCharacterMovement();
     void DestroyPhysicsHandle();
     void RefreshPawnComponents();
     void UpdateHoveredPickableActor();
+    AActor* FindHoveredDecisionBoxActor(EItemDecisionBoxType& OutBoxType) const;
     bool GetActiveCameraFrame(FVector& OutLocation, FVector& OutForward) const;
     bool GetActiveCameraBasis(FVector& OutLocation, FVector& OutForward, FVector& OutRight, FVector& OutUp) const;
     void CaptureInitialRigidBodyRotations();
@@ -108,6 +112,8 @@ private:
     UCharacterMovementComponent* CharacterMovement = nullptr;
     UStaticMeshComponent* CleaningToolViewModel = nullptr;
     AActor* HoveredPickableActor = nullptr;
+    AActor* HoveredDecisionBoxActor = nullptr;
+    EItemDecisionBoxType HoveredDecisionBoxType = EItemDecisionBoxType::KeepBox;
     FInputMappingContext InputMapping;
     std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;
     TArray<UPrimitiveComponent*> HiddenCleaningToolPrimitives;

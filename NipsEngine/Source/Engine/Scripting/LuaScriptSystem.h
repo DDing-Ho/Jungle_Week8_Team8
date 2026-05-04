@@ -33,6 +33,7 @@ public:
 	void CallEndOverlap(ULuaScriptComponent* Component, AActor* Owner, const FOverlapResult& Overlap);
 	void CallHit(ULuaScriptComponent* Component, AActor* Owner, const FHitResult& Hit);
 	void CallInteract(ULuaScriptComponent* Component, AActor* Owner, AActor* Interactor);
+	void CallPickedUp(ULuaScriptComponent* Component, AActor* Owner, AActor* Picker);
 
 	bool IsLuaEnabled() const { return bLuaEnabled; }
 	const FString& GetLastError() const { return LastError; }

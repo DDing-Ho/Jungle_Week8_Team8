@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/Movement/MovementComponent.h"
 #include "Math/Vector.h"
@@ -19,6 +19,8 @@ public:
 	float GetMaxSpeed() const override { return MaxWalkSpeed; }
 
 	bool IsGrounded() const { return bGrounded; }
+	void Jump();
+	void SetSpeedMultiplier(float InSpeedMultiplier);
 	void SetRigidBody(URigidBodyComponent* InRigidBody) { RigidBody = InRigidBody; }
 
 protected:
@@ -35,6 +37,8 @@ private:
 	URigidBodyComponent* RigidBody = nullptr;
 
 	float MaxWalkSpeed = 3.5f;
+	float JumpSpeed = 5.5f;
+	float SpeedMultiplier = 1.0f;
 	float Acceleration = 18.0f;
 	float BrakingDeceleration = 24.0f;
 	float GravityScale = 1.0f;
