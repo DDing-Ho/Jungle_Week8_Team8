@@ -148,13 +148,16 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 
 	RegisterClassW(&WndClass);
 
+	int ScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+	int ScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
 	HWND HWindow = CreateWindowExW(
 		0,
 		WindowClass,
 		Title,
-		WS_POPUP | WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		1920, 1080,
+		WS_POPUP,
+		0, 0,
+		ScreenWidth, ScreenHeight,
 		nullptr, nullptr, HInstance, this);
 
 	if (!HWindow)

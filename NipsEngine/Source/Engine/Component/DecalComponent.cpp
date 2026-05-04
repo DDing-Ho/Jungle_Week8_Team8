@@ -9,10 +9,18 @@
 
 // GameJam
 #include "Runtime/Engine.h"
+#include <algorithm>
 #include <cmath>
 
 DEFINE_CLASS(UDecalComponent, UPrimitiveComponent)
 REGISTER_FACTORY(UDecalComponent)
+
+namespace
+{
+	constexpr float CleanCompleteThreshold = 0.85f;
+	constexpr float CleanCompleteFlashDuration = 0.22f;
+	constexpr float CleanCompleteFadeOutDuration = 0.65f;
+}
 
 // Decal Box가 화면 밖으로 나가도 컬링되지 않도록 합니다.
 UDecalComponent::UDecalComponent()
@@ -70,6 +78,9 @@ void UDecalComponent::BeginPlay()
 	UPrimitiveComponent::BeginPlay();
 
 	LifeTime = 0.0f;
+	CleanCompleteFlashTime = 0.0f;
+	bCleanCompleteFlashActive = false;
+	bCleanCompleteFlashPlayed = false;
 
 	//GameJam
 	ResizeMaskToDecalSize();
@@ -172,14 +183,18 @@ void UDecalComponent::TickComponent(float DeltaTime)
 		{
 			TickFadeOut();
 		}
+		else if (bCleanCompleteFlashActive)
+		{
+			TickCleanCompleteFlash(DeltaTime);
+		}
 		else
 		{
 			DecalColor.A = CleanAlpha;
 
 			// 85% 이상 청소되면 자동 페이드 아웃 및 파괴 시퀀스 시작
-			if (CachedCleanPercentage > 0.85f)
+			if (!bCleanCompleteFlashPlayed && CachedCleanPercentage > CleanCompleteThreshold)
 			{
-				SetFadeOut(0.0f, 1.0f, true);
+				StartCleanCompleteFlash(CleanAlpha);
 			}
 		}
 	}
@@ -226,6 +241,36 @@ void UDecalComponent::TickFadeOut()
 				World->DeactivateActor(GetOwner());
 			}
 		}
+	}
+}
+
+void UDecalComponent::StartCleanCompleteFlash(float CleanAlpha)
+{
+	bCleanCompleteFlashActive = true;
+	bCleanCompleteFlashPlayed = true;
+	CleanCompleteFlashTime = 0.0f;
+
+	DecalColor.R = 1.0f;
+	DecalColor.G = 1.0f;
+	DecalColor.B = 1.0f;
+	DecalColor.A = std::max(CleanAlpha, 0.85f);
+}
+
+void UDecalComponent::TickCleanCompleteFlash(float DeltaTime)
+{
+	CleanCompleteFlashTime += std::max(0.0f, DeltaTime);
+
+	const float FlashT = MathUtil::Clamp(CleanCompleteFlashTime / CleanCompleteFlashDuration, 0.0f, 1.0f);
+	DecalColor.R = 1.0f;
+	DecalColor.G = 1.0f;
+	DecalColor.B = 1.0f;
+	DecalColor.A = 1.0f - (0.15f * FlashT);
+
+	if (CleanCompleteFlashTime >= CleanCompleteFlashDuration)
+	{
+		bCleanCompleteFlashActive = false;
+		const float FadeOutLifeTime = LifeTime - FadeInStartDelay - FadeInDuration;
+		SetFadeOut(FadeOutLifeTime, CleanCompleteFadeOutDuration, true);
 	}
 }
 

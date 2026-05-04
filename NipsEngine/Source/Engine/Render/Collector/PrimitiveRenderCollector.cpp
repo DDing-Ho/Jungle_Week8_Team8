@@ -334,6 +334,9 @@ void FPrimitiveRenderCollector::CollectFromComponent(
 
 				Cmd.Material = Material;
 				Cmd.Constants.Decal.InvDecalWorld = DecalComp->GetDecalMatrix().GetInverse();
+				const bool bCleanCompleteEffectActive = DecalComp->IsCleanCompleteEffectActive();
+				Cmd.Constants.Decal.MaskInfluence = bCleanCompleteEffectActive ? 0.0f : 1.0f;
+				Cmd.Constants.Decal.WhiteOverride = bCleanCompleteEffectActive ? 1.0f : 0.0f;
 
 				Cmd.MaskSRV = DecalComp->GetMaskSRV();
 

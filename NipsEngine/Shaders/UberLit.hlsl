@@ -909,6 +909,9 @@ float3 ApplyLighting(FUberSurfaceData Surface, FLightingResult Lighting)
 cbuffer UberDecal : register(b5)
 {
     row_major float4x4 InvDecalWorld;
+    float DecalMaskInfluence;
+    float DecalWhiteOverride;
+    float2 DecalPadding;
 }
 
 struct FUberDecalPSOutput
@@ -929,9 +932,10 @@ FUberSurfaceData EvaluateProjectedDecal(FUberPSInput Input)
 
     Surface.UV = float2(LocalPos.y + 0.5f, 1.0f - (LocalPos.z + 0.5f));
     Surface.DiffuseSample = DiffuseMap.Sample(SampleState, Surface.UV);
+    Surface.DiffuseSample.rgb = lerp(Surface.DiffuseSample.rgb, float3(1.0f, 1.0f, 1.0f), DecalWhiteOverride);
    
     //GameJam
-    float MaskValue = DecalMaskMap.Sample(SampleState, Surface.UV).r;
+    float MaskValue = lerp(1.0f, DecalMaskMap.Sample(SampleState, Surface.UV).r, DecalMaskInfluence);
     Surface.DiffuseSample.a *= MaskValue;
 
     Surface.WorldNormal = ResolveSurfaceWorldNormal(Input, Surface.UV, Surface.WorldNormal);
