@@ -98,13 +98,13 @@ const char* EndingPanel::GetImagePath()
 	switch (ActiveEndingType)
 	{
 	case EEndingType::Good:
-		return "Asset/Texture/water.png";
+		return "Asset/Texture/GoodEnding.png";
 	case EEndingType::Bad:
-		return "Asset/Texture/TitleBackground.png";
+		return "Asset/Texture/BadEnding.png";
 	case EEndingType::Normal:
 	case EEndingType::None:
 	default:
-		return "Asset/Texture/TitleBackground.png";
+		return "Asset/Texture/NormalEnding.png";
 	}
 }
 
