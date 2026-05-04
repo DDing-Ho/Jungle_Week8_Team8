@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 39006,
+  "NextUUID" : 39234,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [-30.126202, -4.220149, 7.205866],
+    "Location" : [-33.854916, -0.486455, 4.184036],
     "NearClip" : 0.100000,
-    "Rotation" : [-0.538727, 6.326915, 4.877024]
+    "Rotation" : [-0.032532, -2.650085, -0.703491]
   },
   "Primitives" : {
     "11356" : {
@@ -1398,30 +1398,6 @@
       "Type" : "UBoxComponent",
       "Visible" : true
     },
-    "39004" : {
-      "AutoCreateScript" : true,
-      "AutoLoad" : true,
-      "AutoReloadScript" : true,
-      "EditorOnly" : false,
-      "EnableTick" : true,
-      "HiddenInEditor" : false,
-      "OwnerRootUUID" : 483,
-      "ScriptPath" : "Asset/Scripts/MedicineBottle.lua",
-      "Type" : "ULuaScriptComponent",
-      "UseDefaultScriptPath" : false
-    },
-    "39005" : {
-      "AutoCreateScript" : true,
-      "AutoLoad" : true,
-      "AutoReloadScript" : true,
-      "EditorOnly" : false,
-      "EnableTick" : true,
-      "HiddenInEditor" : false,
-      "OwnerRootUUID" : 160,
-      "ScriptPath" : "Asset/Scripts/OldFairyTaleBook.lua",
-      "Type" : "ULuaScriptComponent",
-      "UseDefaultScriptPath" : false
-    },
     "32389" : {
       "BlockComponent" : true,
       "BoxExtent" : [1.101891, 0.010626, 1.182090],
@@ -1628,7 +1604,7 @@
     },
     "35356" : {
       "BlockComponent" : true,
-      "BoxExtent" : [1.558150, 1.042908, 0.514300],
+      "BoxExtent" : [1.558150, 1.042908, 0.262278],
       "DebugBoundsVisibility" : 0,
       "DrawOnlyIfSelected" : false,
       "EditorOnly" : false,
@@ -1801,7 +1777,7 @@
       "SimulatePhysics" : true,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 284,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
@@ -1906,7 +1882,7 @@
       "SimulatePhysics" : true,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 391,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
@@ -2121,7 +2097,7 @@
       "SimulatePhysics" : true,
       "SleepSpeed" : 0.030000,
       "Type" : "URigidBodyComponent",
-      "UpdatedComponentUUID" : 447,
+      "UpdatedComponentUUID" : 0,
       "UseGravity" : true,
       "Velocity" : [0.000000, 0.000000, 0.000000]
     },
@@ -2892,6 +2868,30 @@
       "Type" : "UBillboardComponent",
       "Visible" : true,
       "Width" : 1.000000
+    },
+    "39004" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 483,
+      "ScriptPath" : "Asset/Scripts/MedicineBottle.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
+    },
+    "39005" : {
+      "AutoCreateScript" : true,
+      "AutoLoad" : true,
+      "AutoReloadScript" : true,
+      "EditorOnly" : false,
+      "EnableTick" : true,
+      "HiddenInEditor" : false,
+      "OwnerRootUUID" : 160,
+      "ScriptPath" : "Asset/Scripts/OldFairyTaleBook.lua",
+      "Type" : "ULuaScriptComponent",
+      "UseDefaultScriptPath" : false
     },
     "391" : {
       "ActorActive" : true,
