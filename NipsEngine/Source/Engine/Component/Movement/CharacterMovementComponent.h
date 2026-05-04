@@ -31,7 +31,9 @@ private:
 	void ClampEditableValues();
 	float MoveToward(float Current, float Target, float MaxDelta) const;
 	void UpdateFootsteps(float DeltaTime, const FVector& ActualDelta);
-	void PlayFootstep();
+	void PlayFootstep(float VolumeScale);
+	void PlayJumpSound();
+	void PlayLandingSound();
 
 private:
 	URigidBodyComponent* RigidBody = nullptr;
@@ -49,6 +51,8 @@ private:
 	float FootstepVolume = 0.8f;
 	float FootstepStepDistance = 1.70f;
 	float FootstepMinSpeed = 0.35f;
+	float SprintFootstepStepDistanceScale = 1.65f;
+	float SprintFootstepVolumeScale = 1.18f;
 	float FootstepAccumulatedDistance = 0.0f;
 	int32 FootstepIndex = 0;
 	bool bGrounded = false;

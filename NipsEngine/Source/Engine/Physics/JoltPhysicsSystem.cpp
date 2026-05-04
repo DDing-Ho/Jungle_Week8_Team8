@@ -442,7 +442,7 @@ void GetLocalShapeTransform(const USceneComponent* ShapeComponent, const USceneC
     const FTransform BodyTransform = BodyComponent->GetWorldTransform();
     const FTransform ShapeTransform = ShapeComponent->GetWorldTransform();
     OutPosition = BodyTransform.InverseTransformPositionNoScale(ShapeTransform.GetTranslation());
-    OutRotation = (BodyTransform.GetRotation().Inverse() * ShapeTransform.GetRotation()).GetNormalized();
+    OutRotation = (ShapeTransform.GetRotation() * BodyTransform.GetRotation().Inverse()).GetNormalized();
 }
 
 JPH::ShapeRefC CreateJoltBodyShape(AActor* Actor, const USceneComponent* BodyComponent)

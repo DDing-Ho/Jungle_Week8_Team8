@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <random>
 #include <windows.h>
 
 namespace
@@ -79,6 +80,25 @@ namespace
 	{
 		static const FString Path("Asset/Audio/mopping-floor.wav");
 		return Path;
+	}
+
+	const FString& SpongeToolId()
+	{
+		static const FString Id("sponge");
+		return Id;
+	}
+
+	FString SpongeCleaningSoundPath(int Index)
+	{
+		const int ClampedIndex = std::clamp(Index, 0, 4);
+		return "Asset/Audio/sponge-" + std::to_string(ClampedIndex + 1) + ".wav";
+	}
+
+	int RandomSpongeSoundIndex()
+	{
+		static std::mt19937 Generator(std::random_device{}());
+		static std::uniform_int_distribution<int> Distribution(0, 4);
+		return Distribution(Generator);
 	}
 
 	// 새 Axis를 추가하려면:
@@ -184,6 +204,65 @@ namespace
 		return Value;
 	}
 
+	FString GetAssetFileStemMatchKey(FString Value)
+	{
+		Value = NormalizeToolMatchKey(Value);
+		const size_t SlashPos = Value.find_last_of('/');
+		if (SlashPos != FString::npos)
+		{
+			Value = Value.substr(SlashPos + 1);
+		}
+
+		const size_t DotPos = Value.find_last_of('.');
+		if (DotPos != FString::npos)
+		{
+			Value = Value.substr(0, DotPos);
+		}
+		return Value;
+	}
+
+	FString NormalizeLooseItemMatchKey(FString Value)
+	{
+		Value = NormalizeToolMatchKey(Value);
+		Value.erase(std::remove_if(Value.begin(), Value.end(), [](char C)
+		{
+			return C == '_' || C == '-' || C == ' ';
+		}), Value.end());
+		return Value;
+	}
+
+	FString ResolveItemAliasFromMeshStem(const FString& MeshStem)
+	{
+		if (MeshStem == "frame" || MeshStem == "drawingpaper")
+		{
+			return "painting";
+		}
+		if (MeshStem == "cardboard_box" || MeshStem == "box")
+		{
+			return "moving_box";
+		}
+		if (MeshStem == "candybottle")
+		{
+			return "jar";
+		}
+		if (MeshStem == "rolleduppapers")
+		{
+			return "paper_roll";
+		}
+		if (MeshStem == "wooden_bucket_01_1k")
+		{
+			return "bucket";
+		}
+
+		return "";
+	}
+
+	bool IsItemInspectable(const FString& ItemId)
+	{
+		const FGameItemData* ItemData = FItemSystem::Get().FindItemData(ItemId);
+		return ItemData != nullptr && ItemData->bCanInspect;
+	}
+
 	FString FindCleaningToolIdFromActor(const AActor* Actor, bool bLogResult = true)
 	{
 		if (!Actor)
@@ -246,6 +325,32 @@ namespace
 			if (ActorName == NormalizeToolMatchKey(ItemData.ItemId))
 			{
 				return ItemData.ItemId;
+			}
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(Component);
+			if (MeshComponent == nullptr || MeshComponent->GetStaticMesh() == nullptr)
+			{
+				continue;
+			}
+
+			const FString MeshName = GetAssetFileStemMatchKey(MeshComponent->GetStaticMesh()->GetAssetPathFileName());
+			const FString AliasItemId = ResolveItemAliasFromMeshStem(MeshName);
+			if (!AliasItemId.empty() && FItemSystem::Get().FindItemData(AliasItemId) != nullptr)
+			{
+				return AliasItemId;
+			}
+
+			const FString LooseMeshName = NormalizeLooseItemMatchKey(MeshName);
+			for (const FGameItemData& ItemData : Items)
+			{
+				if (MeshName == NormalizeToolMatchKey(ItemData.ItemId) ||
+					LooseMeshName == NormalizeLooseItemMatchKey(ItemData.ItemId))
+				{
+					return ItemData.ItemId;
+				}
 			}
 		}
 
@@ -458,6 +563,7 @@ void FGamePlayerController::Tick(float DeltaTime)
 	ApplyInputAxes();
 	UpdateHoveredPickableActor();
 	FCleaningToolAnimator::Get().Tick(DeltaTime);
+	UpdateCleaningUseSound();
 	if (UPhysicsHandleComponent* Handle = GetPhysicsHandle())
 	{
 		FVector CameraLocation;
@@ -918,6 +1024,21 @@ void FGamePlayerController::EndCleaningUse()
 
 void FGamePlayerController::StartCleaningLoopSound(const FCleaningToolData& ToolData)
 {
+	LastSpongeUseStrokeCycle = -1;
+
+	if (CleaningOneShotSoundHandle.IsValid())
+	{
+		FAudioSystem::Get().Stop(CleaningOneShotSoundHandle);
+		CleaningOneShotSoundHandle = {};
+	}
+
+	if (ToolData.ToolId == SpongeToolId())
+	{
+		LastSpongeUseStrokeCycle = FCleaningToolAnimator::Get().GetUseStrokeCycleIndex();
+		PlayNextSpongeCleaningSound();
+		return;
+	}
+
 	if (ToolData.ToolId != MopToolId())
 	{
 		return;
@@ -934,13 +1055,61 @@ void FGamePlayerController::StartCleaningLoopSound(const FCleaningToolData& Tool
 
 void FGamePlayerController::StopCleaningLoopSound()
 {
-	if (!CleaningLoopSoundHandle.IsValid())
+	if (CleaningLoopSoundHandle.IsValid())
+	{
+		FAudioSystem::Get().Stop(CleaningLoopSoundHandle);
+		CleaningLoopSoundHandle = {};
+	}
+
+	if (CleaningOneShotSoundHandle.IsValid())
+	{
+		FAudioSystem::Get().Stop(CleaningOneShotSoundHandle);
+		CleaningOneShotSoundHandle = {};
+	}
+
+	LastSpongeUseStrokeCycle = -1;
+}
+
+void FGamePlayerController::UpdateCleaningUseSound()
+{
+	if (!bIsCleaningUseHeld || !FCleaningToolAnimator::Get().IsUsing())
 	{
 		return;
 	}
 
-	FAudioSystem::Get().Stop(CleaningLoopSoundHandle);
-	CleaningLoopSoundHandle = {};
+	const FString& CurrentToolId = GGameContext::Get().GetCurrentToolId();
+	if (CurrentToolId != SpongeToolId())
+	{
+		return;
+	}
+
+	const int CurrentStrokeCycle = FCleaningToolAnimator::Get().GetUseStrokeCycleIndex();
+	if (LastSpongeUseStrokeCycle < 0)
+	{
+		LastSpongeUseStrokeCycle = CurrentStrokeCycle;
+		return;
+	}
+
+	if (CurrentStrokeCycle == LastSpongeUseStrokeCycle)
+	{
+		return;
+	}
+
+	LastSpongeUseStrokeCycle = CurrentStrokeCycle;
+	PlayNextSpongeCleaningSound();
+}
+
+void FGamePlayerController::PlayNextSpongeCleaningSound()
+{
+	const FString SoundPath = SpongeCleaningSoundPath(RandomSpongeSoundIndex());
+
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = 1.0f;
+	CleaningOneShotSoundHandle = FAudioSystem::Get().Play(SoundPath, Params);
 }
 
 void FGamePlayerController::TogglePickup()
@@ -1245,7 +1414,8 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 		{
 			if (AActor* HeldActor = HeldBody->GetOwner())
 			{
-				if (GGameContext::Get().GetCurrentToolId().empty() && !FindItemIdFromActor(HeldActor).empty())
+				const FString HeldItemId = FindItemIdFromActor(HeldActor);
+				if (GGameContext::Get().GetCurrentToolId().empty() && !HeldItemId.empty())
 				{
 					EItemDecisionBoxType BoxType = EItemDecisionBoxType::KeepBox;
 					HoveredDecisionBoxActor = FindHoveredDecisionBoxActor(BoxType);
@@ -1258,7 +1428,7 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 					}
 					else
 					{
-						HintType = EInteractionHintType::DropWithInspect;
+						HintType = IsItemInspectable(HeldItemId) ? EInteractionHintType::DropWithInspect : EInteractionHintType::Drop;
 					}
 				}
 			}

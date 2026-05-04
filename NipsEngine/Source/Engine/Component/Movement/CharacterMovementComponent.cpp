@@ -19,6 +19,8 @@ namespace
 	constexpr float DefaultFootstepVolume = 0.8f;
 	constexpr float DefaultFootstepStepDistance = 1.70f;
 	constexpr float DefaultFootstepMinSpeed = 0.35f;
+	constexpr float JumpSoundVolume = 3.0f;
+	constexpr float LandingSoundVolume = 10.0f;
 
 	const FString& GetFootstepPath(int32 Index)
 	{
@@ -31,6 +33,18 @@ namespace
 		};
 		constexpr int32 Count = static_cast<int32>(sizeof(Paths) / sizeof(Paths[0]));
 		return Paths[Index % Count];
+	}
+
+	const FString& GetJumpSoundPath()
+	{
+		static const FString Path = "Asset/Audio/Linoleum_Mono_02.WAV";
+		return Path;
+	}
+
+	const FString& GetLandingSoundPath()
+	{
+		static const FString Path = "Asset/Audio/Linoleum_Mono_01.WAV";
+		return Path;
 	}
 }
 
@@ -67,6 +81,8 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	Ar << "FootstepVolume" << FootstepVolume;
 	Ar << "FootstepStepDistance" << FootstepStepDistance;
 	Ar << "FootstepMinSpeed" << FootstepMinSpeed;
+	Ar << "SprintFootstepStepDistanceScale" << SprintFootstepStepDistanceScale;
+	Ar << "SprintFootstepVolumeScale" << SprintFootstepVolumeScale;
 
 	if (Ar.IsLoading())
 	{
@@ -106,6 +122,8 @@ void UCharacterMovementComponent::GetEditableProperties(TArray<FPropertyDescript
 	OutProps.push_back({ "Footstep Volume", EPropertyType::Float, &FootstepVolume, 0.0f, 2.0f, 0.05f });
 	OutProps.push_back({ "Footstep Step Distance", EPropertyType::Float, &FootstepStepDistance, 0.1f, 5.0f, 0.05f });
 	OutProps.push_back({ "Footstep Min Speed", EPropertyType::Float, &FootstepMinSpeed, 0.0f, 5.0f, 0.05f });
+	OutProps.push_back({ "Sprint Footstep Step Distance Scale", EPropertyType::Float, &SprintFootstepStepDistanceScale, 1.0f, 4.0f, 0.05f });
+	OutProps.push_back({ "Sprint Footstep Volume Scale", EPropertyType::Float, &SprintFootstepVolumeScale, 1.0f, 2.0f, 0.05f });
 }
 
 void UCharacterMovementComponent::TickComponent(float DeltaTime)
@@ -125,6 +143,7 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 
 	ClampEditableValues();
 
+	const bool bWasGrounded = bGrounded;
 	FVector Input = ConsumeInputVector();
 	Input.Z = 0.0f;
 	if (Input.SizeSquared() > 1.0f)
@@ -195,6 +214,12 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 		Velocity.Y = 0.0f;
 	}
 
+	if (!bWasGrounded && bGrounded)
+	{
+		FootstepAccumulatedDistance = 0.0f;
+		PlayLandingSound();
+	}
+
 	UpdateFootsteps(DeltaTime, ActualDelta);
 }
 
@@ -234,6 +259,8 @@ void UCharacterMovementComponent::Jump()
 
 	Velocity.Z = std::max(Velocity.Z, JumpSpeed);
 	bGrounded = false;
+	FootstepAccumulatedDistance = 0.0f;
+	PlayJumpSound();
 }
 
 void UCharacterMovementComponent::SetSpeedMultiplier(float InSpeedMultiplier)
@@ -255,6 +282,8 @@ void UCharacterMovementComponent::ClampEditableValues()
 	FootstepVolume = std::clamp(FootstepVolume, 0.0f, 2.0f);
 	FootstepStepDistance = std::max(0.1f, FootstepStepDistance);
 	FootstepMinSpeed = std::max(0.0f, FootstepMinSpeed);
+	SprintFootstepStepDistanceScale = std::max(1.0f, SprintFootstepStepDistanceScale);
+	SprintFootstepVolumeScale = std::max(1.0f, SprintFootstepVolumeScale);
 }
 
 float UCharacterMovementComponent::MoveToward(float Current, float Target, float MaxDelta) const
@@ -269,7 +298,7 @@ float UCharacterMovementComponent::MoveToward(float Current, float Target, float
 
 void UCharacterMovementComponent::UpdateFootsteps(float DeltaTime, const FVector& ActualDelta)
 {
-	if (!bEnableFootsteps || DeltaTime <= 0.0f)
+	if (!bEnableFootsteps || DeltaTime <= 0.0f || !bGrounded)
 	{
 		FootstepAccumulatedDistance = 0.0f;
 		return;
@@ -286,15 +315,19 @@ void UCharacterMovementComponent::UpdateFootsteps(float DeltaTime, const FVector
 		return;
 	}
 
+	const bool bSprinting = SpeedMultiplier > 1.05f;
+	const float CurrentStepDistance = FootstepStepDistance * (bSprinting ? SprintFootstepStepDistanceScale : 1.0f);
+	const float CurrentVolumeScale = bSprinting ? SprintFootstepVolumeScale : 1.0f;
+
 	FootstepAccumulatedDistance += HorizontalDistance;
-	while (FootstepAccumulatedDistance >= FootstepStepDistance)
+	while (FootstepAccumulatedDistance >= CurrentStepDistance)
 	{
-		FootstepAccumulatedDistance -= FootstepStepDistance;
-		PlayFootstep();
+		FootstepAccumulatedDistance -= CurrentStepDistance;
+		PlayFootstep(CurrentVolumeScale);
 	}
 }
 
-void UCharacterMovementComponent::PlayFootstep()
+void UCharacterMovementComponent::PlayFootstep(float VolumeScale)
 {
 	const FString& FootstepPath = GetFootstepPath(FootstepIndex);
 	FAudioPlayParams Params;
@@ -302,7 +335,31 @@ void UCharacterMovementComponent::PlayFootstep()
 	Params.bLoop = false;
 	Params.bAffectedByAudioZones = false;
 	Params.Bus = EAudioBus::SFX;
-	Params.Volume = FootstepVolume;
+	Params.Volume = std::clamp(FootstepVolume * VolumeScale, 0.0f, 2.0f);
 	FAudioSystem::Get().Play(FootstepPath, Params);
 	++FootstepIndex;
+}
+
+void UCharacterMovementComponent::PlayJumpSound()
+{
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.bAllowVolumeBoost = true;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = JumpSoundVolume;
+	FAudioSystem::Get().Play(GetJumpSoundPath(), Params);
+}
+
+void UCharacterMovementComponent::PlayLandingSound()
+{
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.bAllowVolumeBoost = true;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = LandingSoundVolume;
+	FAudioSystem::Get().Play(GetLandingSoundPath(), Params);
 }

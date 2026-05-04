@@ -41,7 +41,11 @@ struct FGameItemData
 	FString DescriptionWhenKept;
 	FString DescriptionWhenDiscarded;
 	FString IconPath;
+	FString PickSoundId;
+	FString DropSoundId;
+	FString FirstFoundSoundId;
 	bool bCanClassify = true;
+	bool bCanInspect = true;
 	TArray<FString> StoryFlags;
 };
 

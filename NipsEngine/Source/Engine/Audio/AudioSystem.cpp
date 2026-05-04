@@ -24,10 +24,11 @@
 #if NIPS_WITH_MINIAUDIO
 namespace
 {
-	float ClampVolume(float Value)
+	float ClampVolume(float Value, bool bAllowBoost = false)
 	{
 		if (Value < 0.0f) return 0.0f;
-		if (Value > 2.0f) return 2.0f;
+		const float MaxVolume = bAllowBoost ? 10.0f : 2.0f;
+		if (Value > MaxVolume) return MaxVolume;
 		return Value;
 	}
 
@@ -88,6 +89,7 @@ struct FAudioSystemImpl
 		bool bLoop = false;
 		bool bSpatial = false;
 		bool bAffectedByAudioZones = true;
+		bool bAllowVolumeBoost = false;
 		bool bUsingZoneEffectBus = false;
 		EAudioBus Bus = EAudioBus::SFX;
 		float BaseVolume = 1.0f;
@@ -291,7 +293,7 @@ struct FAudioSystemImpl
 		}
 
 		const float BusVolume = BusVolumes[ToBusIndex(ActiveSound.Bus)];
-		return ClampVolume(ActiveSound.BaseVolume * BusVolume * Multiplier);
+		return ClampVolume(ActiveSound.BaseVolume * BusVolume * Multiplier, ActiveSound.bAllowVolumeBoost);
 	}
 
 	float GetEffectiveLowPassCutoff(const FActiveSound& ActiveSound) const
@@ -811,12 +813,13 @@ FAudioHandle FAudioSystem::Play(const FString& SoundPath, const FAudioPlayParams
 		return {};
 	}
 
-	const float BaseVolume = ClampVolume(Params.Volume);
+	const float BaseVolume = ClampVolume(Params.Volume, Params.bAllowVolumeBoost);
 	FAudioSystemImpl::FActiveSound ActiveSound;
 	ActiveSound.ResolvedSoundPath = AbsolutePath;
 	ActiveSound.bLoop = Params.bLoop;
 	ActiveSound.bSpatial = Params.bSpatial;
 	ActiveSound.bAffectedByAudioZones = Params.bAffectedByAudioZones;
+	ActiveSound.bAllowVolumeBoost = Params.bAllowVolumeBoost;
 	ActiveSound.Bus = Params.Bus;
 	ActiveSound.BaseVolume = BaseVolume;
 	ActiveSound.MinDistance = Params.MinDistance;
