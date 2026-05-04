@@ -2,13 +2,13 @@
   "ClassName" : "UWorld",
   "GameUIBootMode" : "InGame",
   "Name" : "Scene_00_GameScene",
-  "NextUUID" : 25790,
+  "NextUUID" : 26084,
   "PerspectiveCamera" : {
     "FOV" : 90.000000,
     "FarClip" : 2000.000000,
-    "Location" : [1.887969, -4.640369, 6.574116],
+    "Location" : [-5.884741, -4.748358, 0.126292],
     "NearClip" : 0.100000,
-    "Rotation" : [-12.370422, 25.336119, 27.136198]
+    "Rotation" : [25.284887, 9.692307, -70.383667]
   },
   "Primitives" : {
     "11356" : {
@@ -1471,7 +1471,7 @@
       "Location" : [-5.633029, -6.535170, -0.411577],
       "Material" : "Asset/Material/DecalMat_Inst_2.matinst",
       "Rotation" : [0.000000, 90.000000, 0.000000],
-      "Scale" : [1.000000, -0.200000, 0.500000],
+      "Scale" : [1.000000, 0.200000, 0.500000],
       "Size" : [5.000000, 5.000000, 5.000000],
       "Type" : "UDecalComponent",
       "Visible" : true
