@@ -67,6 +67,11 @@ void FGameRenderPipeline::RenderViewport(FRenderer& Renderer)
 		TArray<AActor*> HoveredActors = { HoveredActor };
 		Collector.CollectOutline(HoveredActors, FVector4(1.0f, 0.92f, 0.05f, 1.0f), 5.0f, Bus);
 	}
+	if (AActor* HeldActor = Viewport->GetPlayerController().GetHeldNonCleaningToolActor())
+	{
+		TArray<AActor*> HeldActors = { HeldActor };
+		Collector.CollectOutline(HeldActors, FVector4(1.0f, 0.05f, 0.02f, 1.0f), 5.0f, Bus);
+	}
 
 	Renderer.PrepareBatchers(Bus);
 	Renderer.Render(Bus);

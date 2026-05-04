@@ -87,6 +87,8 @@ public:
         UObjectManager::Get().DestroyObject(Actor);
     }
 
+    void DeactivateActor(AActor* Actor);
+
 	TArray<AActor*> GetActors() const { return PersistentLevel->GetActors(); }
 	APawnActor* FindPawn() const;
 	APlayerStartActor* FindPlayerStart() const;

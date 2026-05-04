@@ -95,6 +95,7 @@ public:
 	void AddDirectionalLight(const FVector& Position, const FVector& Direction, const FVector& DirectionRight, const FVector4& LineColor);
 	void AddSingleCone(const FVector& Position, const FVector& Forward, const FVector& Right, const FVector& Up, float ConeAngle, float Radius, const FVector4& Color);
 	void AddCapsule(const FVector& Position, float HalfHeight, float Radius, const FVector& UpVector, const FVector& RightVector, const FVector& ForwardVector, const FColor& InColor);
+	void AddCylinder(const FVector& Position, float HalfHeight, float Radius, const FVector& UpVector, const FVector& RightVector, const FVector& ForwardVector, const FColor& InColor);
 
 private:
 	UMaterialInterface* Material = nullptr;

@@ -16,7 +16,9 @@ struct FCameraSnapshot;
 class UCameraComponent;
 class UCharacterMovementComponent;
 class UPhysicsHandleComponent;
+class UPrimitiveComponent;
 class URigidBodyComponent;
+class UStaticMeshComponent;
 class UWorld;
 
 class FGamePlayerController : public IBaseGameController
@@ -59,6 +61,7 @@ public:
 	void SetTogglePauseCallback(std::function<void()> Callback) { OnRequestTogglePause = std::move(Callback); }
 	void ClearTogglePauseCallback() { OnRequestTogglePause = nullptr; }
 	AActor* GetHoveredPickableActor() const { return HoveredPickableActor; }
+	AActor* GetHeldNonCleaningToolActor() const;
 
 	void BuildSceneView(FSceneView& OutView, const FViewportRect& ViewRect, EViewMode ViewMode) const;
 
@@ -77,6 +80,14 @@ private:
 	bool GetActiveCameraBasis(FVector& OutLocation, FVector& OutForward, FVector& OutRight, FVector& OutUp) const;
 	void CaptureInitialRigidBodyRotations();
 	void ResetHeldBodyRotationToInitial();
+	bool BeginCleaningToolViewModel(const struct FCleaningToolData& ToolData);
+	void EndCleaningToolViewModel();
+	void UpdateCleaningToolViewModel(
+		const struct FCleaningToolData& ToolData,
+		const FVector& CameraLocalOffset,
+		const FVector& CameraLocation,
+		const FVector& CameraForward,
+		const FVector& CameraRight);
 	bool IsRuntimeWorld() const;
 	void RotateActiveCamera(float DeltaX, float DeltaY);
 	void MoveActiveCamera(const FVector& Direction, float Scale);
@@ -90,9 +101,12 @@ private:
 	FViewportCamera* FreeCamera = nullptr;
 	UPhysicsHandleComponent* PhysicsHandle = nullptr;
 	UCharacterMovementComponent* CharacterMovement = nullptr;
+	UStaticMeshComponent* CleaningToolViewModel = nullptr;
 	AActor* HoveredPickableActor = nullptr;
 	FInputMappingContext InputMapping;
 	std::unordered_map<URigidBodyComponent*, FVector> InitialRigidBodyRotations;
+	TArray<UPrimitiveComponent*> HiddenCleaningToolPrimitives;
+	TArray<bool> HiddenCleaningToolPrimitiveVisibility;
 
 	float MoveSpeed = 10.0f;
 	float RotateSensitivity = 0.15f;

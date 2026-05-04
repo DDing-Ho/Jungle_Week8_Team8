@@ -502,7 +502,7 @@ bool FWorldSpatialIndex::ShouldRunRotation(int32 TotalDirtyCount, int32 Structur
 
 bool FWorldSpatialIndex::ShouldTrackPrimitive(const UPrimitiveComponent* Primitive) const
 {
-	return Primitive != nullptr && Primitive->GetOwner() != nullptr;
+	return Primitive != nullptr && Primitive->GetOwner() != nullptr && Primitive->IsSceneQueryEnabled();
 }
 
 bool FWorldSpatialIndex::ShouldInsertIntoBVH(const UPrimitiveComponent* Primitive, const FAABB& BoundsSnapshot) const

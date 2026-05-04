@@ -397,6 +397,9 @@
     <ClCompile Include="Source\Engine\Component\Collision\CapsuleComponent.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\Collision\CylinderComponent.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\Collision\ShapeComponent.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
@@ -895,6 +898,7 @@
     <ClInclude Include="Source\Engine\Component\TextRenderComponent.h" />
     <ClInclude Include="Source\Engine\Component\Collision\BoxComponent.h" />
     <ClInclude Include="Source\Engine\Component\Collision\CapsuleComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Collision\CylinderComponent.h" />
     <ClInclude Include="Source\Engine\Component\Collision\ShapeComponent.h" />
     <ClInclude Include="Source\Engine\Component\Collision\SphereComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />

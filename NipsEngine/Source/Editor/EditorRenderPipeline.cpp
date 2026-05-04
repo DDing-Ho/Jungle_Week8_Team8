@@ -98,6 +98,14 @@ void FEditorRenderPipeline::RenderViewport(FRenderer& Renderer, int32 ViewportIn
 		TArray<AActor*> HoveredActors = { HoveredActor };
 		Collector.CollectOutline(HoveredActors, FVector4(1.0f, 0.92f, 0.05f, 1.0f), 5.0f, Bus);
 	}
+	if (!bEditingViewport)
+	{
+		if (AActor* HeldActor = VC->GetGamePlayerController().GetHeldNonCleaningToolActor())
+		{
+			TArray<AActor*> HeldActors = { HeldActor };
+			Collector.CollectOutline(HeldActors, FVector4(1.0f, 0.05f, 0.02f, 1.0f), 5.0f, Bus);
+		}
+	}
 
 	// CPU 배처 데이터 준비 → GPU 드로우 (SetSubViewport 영역에만 출력됨)
 	Renderer.PrepareBatchers(Bus);
