@@ -37,6 +37,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <fstream>
 #include <iostream>
@@ -180,6 +181,26 @@ namespace
 		return std::to_string(std::max(0, Score));
 	}
 
+	std::wstring GetScoreFilePath()
+	{
+		return FPaths::Combine(FPaths::Combine(FPaths::RootDir(), L"Saves"), L"Scores.txt");
+	}
+
+	std::vector<std::string> SplitScoreLine(const std::string& Line)
+	{
+		std::vector<std::string> Fields;
+		std::stringstream Stream(Line);
+		std::string Field;
+		while (std::getline(Stream, Field, ','))
+			Fields.push_back(Field);
+		return Fields;
+	}
+
+	int ParseScoreInt(const std::string& Text)
+	{
+		return std::max(0, std::atoi(Text.c_str()));
+	}
+
 	std::string LoadTextResource(int ResourceId)
 	{
 		HMODULE Module = GetModuleHandleW(nullptr);
@@ -214,6 +235,7 @@ namespace
 		"start-button",
 		"settings-button",
 		"credits-button",
+		"score-button",
 		"exit-button",
 	};
 
@@ -305,6 +327,10 @@ void GameUISystem::Shutdown()
 			Element->RemoveEventListener("click", CreditsOpenClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
 			Element->RemoveEventListener("click", CreditsCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("score-button"))
+			Element->RemoveEventListener("click", ScoreboardOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("scoreboard-close-button"))
+			Element->RemoveEventListener("click", ScoreboardCloseClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 			Element->RemoveEventListener("click", PauseTitleClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
@@ -356,6 +382,8 @@ void GameUISystem::Shutdown()
 	SettingsCloseClickListener.reset();
 	CreditsOpenClickListener.reset();
 	CreditsCloseClickListener.reset();
+	ScoreboardOpenClickListener.reset();
+	ScoreboardCloseClickListener.reset();
 	PauseTitleClickListener.reset();
 	SaveScoreClickListener.reset();
 	ExitToMainClickListener.reset();
@@ -432,6 +460,7 @@ void GameUISystem::SetState(EGameUIState NewState)
 	SetPauseMenuOpen(false);
 	bSettingsOpen = false;
 	bCreditsOpen = false;
+	bScoreboardOpen = false;
 	EndSettingsSliderDrag();
 }
 
@@ -442,6 +471,7 @@ bool GameUISystem::WantsMouseCursor() const
 		   CurrentState == EGameUIState::Ending ||
 		   bSettingsOpen ||
 		   bCreditsOpen ||
+		   bScoreboardOpen ||
 		   bDebugMenuOpen ||
 		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
@@ -500,6 +530,7 @@ void GameUISystem::ResetGameData()
 	ScoreSaveMessage.clear();
 	bSettingsOpen = false;
 	bCreditsOpen = false;
+	bScoreboardOpen = false;
 	HideItemInspect();
 }
 
@@ -588,6 +619,7 @@ void GameUISystem::RequestExitToTitle()
 	bPauseMenuOpen = false;
 	bSettingsOpen = false;
 	bCreditsOpen = false;
+	bScoreboardOpen = false;
 	EndSettingsSliderDrag();
 	if (ExitToTitleCallback)
 	{
@@ -643,6 +675,7 @@ void GameUISystem::RecalculateEndingScore()
 	EndingCleanScore = ScoreFromRatio(CleanRatio, 5000);
 	EndingTimeScore = ScoreFromRatio(TimeRatio, 3000);
 	EndingItemScore = 0;
+	EndingMissionScore = GGameContext::Get().GetMissionBonusScore();
 
 	const GGameContext& Context = GGameContext::Get();
 	const FItemSystem& ItemSystem = FItemSystem::Get();
@@ -673,7 +706,7 @@ void GameUISystem::RecalculateEndingScore()
 		EndingItemScore = std::max(EndingItemScore, CandidateScore);
 	}
 
-	EndingTotalScore = EndingCleanScore + EndingTimeScore + EndingItemScore;
+	EndingTotalScore = EndingCleanScore + EndingTimeScore + EndingItemScore + EndingMissionScore;
 	bEndingScoreDirty = false;
 }
 
@@ -751,16 +784,27 @@ void GameUISystem::CommitScoreNameInput()
 	if (bEndingScoreDirty)
 		RecalculateEndingScore();
 
-	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
-	FPaths::CreateDir(SavesDir);
-
-	const std::wstring ScorePath = FPaths::Combine(SavesDir, L"Scores.txt");
-	std::ofstream File(FPaths::ToUtf8(ScorePath), std::ios::app);
-	if (!File.is_open())
+	if (!WriteScoreRecord(ScoreNameInput))
 	{
 		ScoreSaveMessage = "Failed to save score.";
 		return;
 	}
+
+	bScoreSaved = true;
+	bScoreNameInputOpen = false;
+	ScoreSaveMessage = "Score saved.";
+	LoadScoreboard();
+}
+
+bool GameUISystem::WriteScoreRecord(const std::string& PlayerId)
+{
+	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
+	FPaths::CreateDir(SavesDir);
+
+	const std::wstring ScorePath = GetScoreFilePath();
+	std::ofstream File(FPaths::ToUtf8(ScorePath), std::ios::app);
+	if (!File.is_open())
+		return false;
 
 	SYSTEMTIME st;
 	GetLocalTime(&st);
@@ -769,20 +813,70 @@ void GameUISystem::CommitScoreNameInput()
 	std::snprintf(DateBuf, sizeof(DateBuf), "%04d-%02d-%02d %02d:%02d:%02d",
 		st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
-	File << ScoreNameInput
+	File << PlayerId
 		 << "," << EndingTotalScore
 		 << "," << EndingCleanScore
 		 << "," << EndingTimeScore
 		 << "," << EndingItemScore
+		 << "," << EndingMissionScore
 		 << "," << static_cast<int>(std::round(std::clamp(CleanProgress, 0.0f, 1.0f) * 100.0f))
 		 << "," << FormatTime(std::max(0.0f, 300.0f - ElapsedTime))
 		 << "," << DateBuf
 		 << "\n";
 
 	File.close();
-	bScoreSaved = true;
-	bScoreNameInputOpen = false;
-	ScoreSaveMessage = "Score saved.";
+	return true;
+}
+
+void GameUISystem::LoadScoreboard()
+{
+	ScoreboardEntries.clear();
+
+	std::ifstream File(FPaths::ToUtf8(GetScoreFilePath()));
+	if (!File.is_open())
+		return;
+
+	std::string Line;
+	while (std::getline(File, Line))
+	{
+		if (Line.empty() || Line[0] == '[')
+			continue;
+
+		const std::vector<std::string> Fields = SplitScoreLine(Line);
+		if (Fields.size() < 2)
+			continue;
+
+		FScoreboardEntry Entry;
+		Entry.PlayerId = Fields[0].empty() ? "UNKNOWN" : Fields[0].substr(0, 10);
+		Entry.TotalScore = ParseScoreInt(Fields[1]);
+		if (Fields.size() > 2)
+			Entry.CleanScore = ParseScoreInt(Fields[2]);
+		if (Fields.size() > 3)
+			Entry.TimeScore = ParseScoreInt(Fields[3]);
+		if (Fields.size() > 4)
+			Entry.ItemScore = ParseScoreInt(Fields[4]);
+		if (Fields.size() > 8)
+		{
+			Entry.MissionScore = ParseScoreInt(Fields[5]);
+			Entry.Date = Fields[8];
+		}
+		else if (Fields.size() > 7)
+		{
+			Entry.Date = Fields[7];
+		}
+
+		ScoreboardEntries.push_back(std::move(Entry));
+	}
+
+	std::sort(ScoreboardEntries.begin(), ScoreboardEntries.end(),
+		[](const FScoreboardEntry& A, const FScoreboardEntry& B)
+		{
+			return A.TotalScore > B.TotalScore;
+		});
+
+	constexpr size_t MaxScoreboardRows = 5;
+	if (ScoreboardEntries.size() > MaxScoreboardRows)
+		ScoreboardEntries.resize(MaxScoreboardRows);
 }
 
 void GameUISystem::UpdateEndingScoreElements(bool bShowScorePanel)
@@ -799,10 +893,71 @@ void GameUISystem::UpdateEndingScoreElements(bool bShowScorePanel)
 	SetElementText("ending-clean-score", FormatScore(EndingCleanScore));
 	SetElementText("ending-time-score", FormatScore(EndingTimeScore));
 	SetElementText("ending-item-score", FormatScore(EndingItemScore));
+	SetElementText("ending-mission-score", FormatScore(EndingMissionScore));
 	SetElementText("ending-total-score", FormatScore(EndingTotalScore));
 	SetElementText("score-name-value", ScoreNameInput.empty() ? "_" : ScoreNameInput);
 	SetElementText("score-save-message", ScoreSaveMessage);
 	SetElementText("save-score-button", bScoreSaved ? "Saved" : "Save Score");
+}
+
+void GameUISystem::UpdateScoreboardElements(bool bShowScoreboard)
+{
+	SetElementVisible("scoreboard-layer", bShowScoreboard);
+	if (!bShowScoreboard)
+		return;
+
+	SetElementVisible("scoreboard-empty", ScoreboardEntries.empty());
+
+	constexpr size_t MaxScoreboardRows = 5;
+	for (size_t Index = 0; Index < MaxScoreboardRows; ++Index)
+	{
+		const std::string RowId = "scoreboard-row-" + std::to_string(Index + 1);
+		const bool bHasEntry = Index < ScoreboardEntries.size();
+		SetElementVisible(RowId.c_str(), bHasEntry);
+		if (!bHasEntry)
+			continue;
+
+		const FScoreboardEntry& Entry = ScoreboardEntries[Index];
+		SetElementText(("scoreboard-rank-" + std::to_string(Index + 1)).c_str(), std::to_string(Index + 1));
+		SetElementText(("scoreboard-id-" + std::to_string(Index + 1)).c_str(), Entry.PlayerId);
+		SetElementText(("scoreboard-score-" + std::to_string(Index + 1)).c_str(), FormatScore(Entry.TotalScore));
+		SetElementText(("scoreboard-detail-" + std::to_string(Index + 1)).c_str(),
+			"C " + FormatScore(Entry.CleanScore) +
+			" / T " + FormatScore(Entry.TimeScore) +
+			" / I " + FormatScore(Entry.ItemScore) +
+			" / M " + FormatScore(Entry.MissionScore));
+		SetElementText(("scoreboard-date-" + std::to_string(Index + 1)).c_str(), Entry.Date);
+	}
+}
+
+void GameUISystem::UpdateMissionElements(bool bShowMissionPanel)
+{
+	SetElementVisible("mission-panel", bShowMissionPanel);
+	if (!bShowMissionPanel)
+		return;
+
+	struct FMissionUiRow
+	{
+		const char* RowId;
+		const char* CheckId;
+		EGameMissionType MissionType;
+	};
+
+	const FMissionUiRow Rows[] =
+	{
+		{ "mission-tool-row", "mission-tool-check", EGameMissionType::PickCleaningTool },
+		{ "mission-keep-row", "mission-keep-check", EGameMissionType::KeepImportantItem },
+		{ "mission-trash-row", "mission-trash-check", EGameMissionType::DiscardTrash },
+		{ "mission-dust-row", "mission-dust-check", EGameMissionType::CleanDust },
+	};
+
+	const GGameContext& Context = GGameContext::Get();
+	for (const FMissionUiRow& Row : Rows)
+	{
+		const bool bCompleted = Context.IsMissionCompleted(Row.MissionType);
+		SetElementText(Row.CheckId, bCompleted ? "V" : "");
+		SetElementClass(Row.RowId, "completed", bCompleted);
+	}
 }
 
 void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
@@ -814,6 +969,9 @@ void GameUISystem::RequestStartGame()
 {
 	if (bStartGameTransitionActive)
 		return;
+
+	LoadScoreboard();
+	bScoreboardOpen = false;
 
 	if (CurrentState == EGameUIState::StartMenu)
 	{
@@ -833,12 +991,14 @@ void GameUISystem::OpenSettings()
 {
 	bSettingsOpen = true;
 	bCreditsOpen = false;
+	bScoreboardOpen = false;
 }
 
 void GameUISystem::OpenCredits()
 {
 	bCreditsOpen = true;
 	bSettingsOpen = false;
+	bScoreboardOpen = false;
 }
 
 void GameUISystem::CloseCredits()
@@ -846,11 +1006,25 @@ void GameUISystem::CloseCredits()
 	bCreditsOpen = false;
 }
 
+void GameUISystem::OpenScoreboard()
+{
+	LoadScoreboard();
+	bScoreboardOpen = true;
+	bSettingsOpen = false;
+	bCreditsOpen = false;
+}
+
+void GameUISystem::CloseScoreboard()
+{
+	bScoreboardOpen = false;
+}
+
 void GameUISystem::OpenDebugMenu()
 {
 	bDebugMenuOpen = true;
 	bSettingsOpen = false;
 	bCreditsOpen = false;
+	bScoreboardOpen = false;
 	bPauseMenuOpen = false;
 }
 
@@ -1136,6 +1310,15 @@ bool GameUISystem::OnUIKeyDown(int VK)
 		return true;
 	}
 
+	if (bScoreboardOpen)
+	{
+		if (VK == VK_ESCAPE)
+		{
+			CloseScoreboard();
+		}
+		return true;
+	}
+
 	if (CurrentState == EGameUIState::StartMenu)
 	{
 		if (VK == VK_RETURN || VK == VK_SPACE)
@@ -1273,6 +1456,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	const bool bShowPause = CurrentState == EGameUIState::InGame && bPauseMenuOpen;
 	const bool bShowSettings = bSettingsOpen && (bShowStart || bShowPause);
 	const bool bShowCredits = bCreditsOpen && bShowStart;
+	const bool bShowScoreboard = bScoreboardOpen && bShowStart;
 	const bool bShowDialogue = DialoguePanel::IsActive() &&
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
@@ -1286,8 +1470,10 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("prologue-layer", bShowPrologue);
 	SetElementVisible("settings-layer", bShowSettings);
 	SetElementVisible("credits-layer", bShowCredits);
+	UpdateScoreboardElements(bShowScoreboard);
 	SetElementVisible("hud-panel", bShowHud);
 	SetElementVisible("elapsed-time-panel", bShowHud);
+	UpdateMissionElements(bShowHud);
 	SetElementVisible("item-status", bShowHud);
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
 	SetElementVisible("interaction-hint", bShowInteractionHint);
@@ -1509,7 +1695,7 @@ void GameUISystem::StartPrologue()
 
 	DialoguePanel::Show("", "저 방이에요.");
 	DialoguePanel::Enqueue("", "오랫동안 손을 못 댔어요.");
-	DialoguePanel::Enqueue("", "…부탁드려요.");
+	DialoguePanel::Enqueue("", "…청소 부탁드려요.");
 	DialoguePanel::Enqueue("", "들었던 대로 낡고 더러운 방이다.");
 	DialoguePanel::Enqueue("", "하지만 귀중한 물건도 몇 개 있는 것 같은데...");
 	DialoguePanel::Enqueue("", "보관해 뒀다가 청소가 끝나면 돌려주자.");
@@ -1545,6 +1731,7 @@ bool GameUISystem::CreateGameDocument()
 
 	RmlDocument->Show();
 	BindRmlUiEvents();
+	LoadScoreboard();
 	UpdateRmlUiDocument(EUIRenderMode::Play, 1280, 720);
 	return true;
 }
@@ -1588,6 +1775,16 @@ void GameUISystem::BindRmlUiEvents()
 	CreditsCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
 	{
 		GameUISystem::Get().CloseCredits();
+	});
+
+	ScoreboardOpenClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().OpenScoreboard();
+	});
+
+	ScoreboardCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseScoreboard();
 	});
 
 	PauseTitleClickListener = std::make_unique<FRmlUiClickListener>([]()
@@ -1649,6 +1846,10 @@ void GameUISystem::BindRmlUiEvents()
 		Element->AddEventListener("click", CreditsOpenClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
 		Element->AddEventListener("click", CreditsCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("score-button"))
+		Element->AddEventListener("click", ScoreboardOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("scoreboard-close-button"))
+		Element->AddEventListener("click", ScoreboardCloseClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
 		Element->AddEventListener("click", PauseTitleClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
@@ -1718,4 +1919,13 @@ void GameUISystem::SetElementAttribute(const char* Id, const char* Attribute, co
 
 	if (Rml::Element* Element = RmlDocument->GetElementById(Id))
 		Element->SetAttribute(Attribute, Value);
+}
+
+void GameUISystem::SetElementClass(const char* Id, const char* ClassName, bool bEnabled)
+{
+	if (!RmlDocument)
+		return;
+
+	if (Rml::Element* Element = RmlDocument->GetElementById(Id))
+		Element->SetClass(ClassName, bEnabled);
 }
