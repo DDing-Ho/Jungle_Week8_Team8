@@ -45,6 +45,15 @@ body {
 	height: auto;
 }
 
+#title-vignette {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+	opacity: 0.72;
+}
+
 #game-title {
 	position: absolute;
 	left: 0px;
@@ -344,12 +353,6 @@ body {
 	margin-top: 4px;
 	font-size: 28px;
 	color: #ffffff;
-}
-
-@keyframes blink {
-	0% { opacity: 1; }
-	50% { opacity: 0.3; }
-	100% { opacity: 1; }
 }
 
 #elapsed-time-value.critical {

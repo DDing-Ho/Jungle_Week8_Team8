@@ -190,6 +190,12 @@ private:
     void SetSettingsSliderNormalized(ESettingsSlider Slider, float Normalized);
     bool CreateGameDocument();
     void BindRmlUiEvents();
+    void UpdateEndingScoreElements(bool bShowScorePanel);
+    void RecalculateEndingScore();
+    void OpenScoreNameInput();
+    void CloseScoreNameInput();
+    bool HandleScoreNameInputKey(int VK);
+    void CommitScoreNameInput();
     void SetElementVisible(const char* Id, bool bVisible);
     void SetElementText(const char* Id, const std::string& Text);
     void SetElementProperty(const char* Id, const char* Property, const std::string& Value);
@@ -252,6 +258,15 @@ private:
     std::string InspectItemName;
     std::string InspectItemDesc;
     std::string InspectItemIconPath;
+    int EndingCleanScore = 0;
+    int EndingTimeScore = 0;
+    int EndingItemScore = 0;
+    int EndingTotalScore = 0;
+    bool bEndingScoreDirty = true;
+    bool bScoreNameInputOpen = false;
+    bool bScoreSaved = false;
+    std::string ScoreNameInput;
+    std::string ScoreSaveMessage;
 
     std::function<void()> ExitPlayCallback;
     std::function<void()> ExitToTitleCallback;

@@ -8,6 +8,7 @@
 <body>
 	<div id="start-menu">
 		<img id="title-background" src="Asset/Texture/TitleBackground.png" />
+		<img id="title-vignette" src="Asset/Texture/TitleVignette.png" />
 		<div id="game-title">
 			<img id="title-image" src="Asset/Texture/Title.png" />
 		</div>

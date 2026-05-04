@@ -12,6 +12,8 @@
 #include "Audio/AudioSystem.h"
 #include "Core/Paths.h"
 #include "Game/Systems/EndingSystem.h"
+#include "Game/Systems/GameContext.h"
+#include "Game/Systems/ItemSystem.h"
 #include "Render/Common/RenderTypes.h"
 
 #include <Windows.h>
@@ -165,6 +167,16 @@ namespace
 		if (EndingId == "Ending_Bad")
 			return EEndingType::Bad;
 		return EEndingType::Normal;
+	}
+
+	int ScoreFromRatio(float Ratio, int MaxScore)
+	{
+		return static_cast<int>(std::round(std::clamp(Ratio, 0.0f, 1.0f) * static_cast<float>(MaxScore)));
+	}
+
+	std::string FormatScore(int Score)
+	{
+		return std::to_string(std::max(0, Score));
 	}
 
 	std::string LoadTextResource(int ResourceId)
@@ -403,6 +415,11 @@ void GameUISystem::SetState(EGameUIState NewState)
 	{
 		if (CurrentEndingType == EEndingType::None)
 			CurrentEndingType = EndingTypeFromId(FEndingSystem::Get().EvaluateEnding().EndingId);
+		bEndingScoreDirty = true;
+		bScoreNameInputOpen = false;
+		bScoreSaved = false;
+		ScoreNameInput.clear();
+		ScoreSaveMessage.clear();
 		EndingPanel::Reset();
 	}
 	if (NewState == EGameUIState::StartMenu && CurrentState != EGameUIState::StartMenu)
@@ -473,6 +490,11 @@ void GameUISystem::ResetGameData()
 	CurrentItemDesc.clear();
 	InteractionHintType = EInteractionHintType::None;
 	CurrentEndingType = EEndingType::None;
+	bEndingScoreDirty = true;
+	bScoreNameInputOpen = false;
+	bScoreSaved = false;
+	ScoreNameInput.clear();
+	ScoreSaveMessage.clear();
 	bSettingsOpen = false;
 	bCreditsOpen = false;
 	HideItemInspect();
@@ -577,6 +599,12 @@ void GameUISystem::RequestExitToTitle()
 
 void GameUISystem::RequestSaveScore()
 {
+	if (CurrentState == EGameUIState::Ending)
+	{
+		OpenScoreNameInput();
+		return;
+	}
+	
 	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
 	FPaths::CreateDir(SavesDir);
 
@@ -1082,6 +1110,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementVisible("ending-visual-frame", bShowEndingVisual);
 	SetElementVisible("the-end", bShowTheEnd);
 	SetElementVisible("ending-buttons", bShowEndingButtons);
+	SetElementProperty("ending-panel", "background-color", FormatAlphaColor(8.0f, 8.0f, 12.0f, bShowTheEnd ? 0.98f : 0.90f));
 	UpdateTitleTransitionElements();
 
 	const bool bShowCustomCursor = WantsCustomCursor();
@@ -1259,8 +1288,12 @@ void GameUISystem::UpdateTitleTransitionElements()
 	const float TitleOpacity = bInStartMenu && !bShowIntro
 		? 1.0f - (TitleFlickerStrength * std::clamp(TitleFlickerWave, 0.0f, 1.0f))
 		: 1.0f;
+	const float VignetteOpacity = bInStartMenu
+		? 0.62f + (0.18f * std::clamp(TitleFlickerWave, 0.0f, 1.0f))
+		: 0.0f;
 
 	SetElementProperty("game-title", "opacity", FormatOpacity(TitleOpacity));
+	SetElementProperty("title-vignette", "opacity", FormatOpacity(VignetteOpacity));
 	SetElementVisible("title-intro-layer", bShowIntro);
 	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
 	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
