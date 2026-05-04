@@ -77,6 +77,8 @@ public:
 	bool IsPlaying(FAudioHandle Handle) const;
 	bool IsAtEnd(FAudioHandle Handle) const;
 	void SetVolume(FAudioHandle Handle, float Volume);
+	void SetBusVolume(EAudioBus Bus, float Volume);
+	float GetBusVolume(EAudioBus Bus) const;
 	void SetLooping(FAudioHandle Handle, bool bLoop);
 	void SetAffectedByAudioZones(FAudioHandle Handle, bool bAffected);
 

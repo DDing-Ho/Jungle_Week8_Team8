@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <cmath>
+#include <algorithm>
 
 #if __has_include(<miniaudio.h>)
 	#define NIPS_WITH_MINIAUDIO 1
@@ -28,6 +29,16 @@ namespace
 		if (Value < 0.0f) return 0.0f;
 		if (Value > 2.0f) return 2.0f;
 		return Value;
+	}
+
+	int32 ToBusIndex(EAudioBus Bus)
+	{
+		const int32 Index = static_cast<int32>(Bus);
+		if (Index < 0 || Index >= static_cast<int32>(EAudioBus::Count))
+		{
+			return static_cast<int32>(EAudioBus::SFX);
+		}
+		return Index;
 	}
 
 	float Clamp01(float Value)
@@ -125,6 +136,7 @@ struct FAudioSystemImpl
 	ma_uint32 EffectSampleRate = 48000;
 	std::unordered_map<uint32, FActiveSound> ActiveSounds;
 	std::unordered_map<uint32, FZoneMix> ZoneMixes;
+	float BusVolumes[static_cast<int32>(EAudioBus::Count)] = { 1.0f, 1.0f, 1.0f };
 	FVector ListenerLocation = FVector::ZeroVector;
 	uint32 LastListenerZoneId = 0;
 
@@ -278,7 +290,8 @@ struct FAudioSystemImpl
 			Multiplier = 1.0f + ((Master * BusVolume) - 1.0f) * Weight;
 		}
 
-		return ClampVolume(ActiveSound.BaseVolume * Multiplier);
+		const float BusVolume = BusVolumes[ToBusIndex(ActiveSound.Bus)];
+		return ClampVolume(ActiveSound.BaseVolume * BusVolume * Multiplier);
 	}
 
 	float GetEffectiveLowPassCutoff(const FActiveSound& ActiveSound) const
@@ -655,6 +668,7 @@ struct FAudioSystemImpl
 struct FAudioSystemImpl
 {
 	bool bLoggedDisabled = false;
+	float BusVolumes[static_cast<int32>(EAudioBus::Count)] = { 1.0f, 1.0f, 1.0f };
 };
 #endif
 
@@ -1018,6 +1032,36 @@ void FAudioSystem::SetVolume(FAudioHandle Handle, float Volume)
 	(void)Handle;
 	(void)Volume;
 #endif
+}
+
+void FAudioSystem::SetBusVolume(EAudioBus Bus, float Volume)
+{
+	const int32 BusIndex = static_cast<int32>(Bus);
+	if (BusIndex < 0 || BusIndex >= static_cast<int32>(EAudioBus::Count))
+	{
+		return;
+	}
+
+#if NIPS_WITH_MINIAUDIO
+	Impl->BusVolumes[BusIndex] = ClampVolume(Volume);
+	if (Impl->bInitialized)
+	{
+		Impl->ApplyVolumes();
+	}
+#else
+	Impl->BusVolumes[BusIndex] = std::clamp(Volume, 0.0f, 2.0f);
+#endif
+}
+
+float FAudioSystem::GetBusVolume(EAudioBus Bus) const
+{
+	const int32 BusIndex = static_cast<int32>(Bus);
+	if (BusIndex < 0 || BusIndex >= static_cast<int32>(EAudioBus::Count))
+	{
+		return 1.0f;
+	}
+
+	return Impl->BusVolumes[BusIndex];
 }
 
 void FAudioSystem::SetLooping(FAudioHandle Handle, bool bLoop)

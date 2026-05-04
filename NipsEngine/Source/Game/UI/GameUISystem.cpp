@@ -9,7 +9,9 @@
 #include "Game/UI/RmlUi/RmlUiSystemInterface.h"
 #include "Game/UI/StartMenuPanel.h"
 
+#include "Audio/AudioSystem.h"
 #include "Core/Paths.h"
+#include "Game/Systems/EndingSystem.h"
 #include "Render/Common/RenderTypes.h"
 
 #include <Windows.h>
@@ -30,8 +32,13 @@
 #include "RmlUi/Core/StringUtilities.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <functional>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -103,6 +110,26 @@ namespace
 		return std::to_string(Percent) + "%";
 	}
 
+	std::string FormatValuePercent(float Value)
+	{
+		const int Percent = static_cast<int>(std::round(std::clamp(Value, 0.0f, 3.0f) * 100.0f));
+		return std::to_string(Percent) + "%";
+	}
+
+	std::string FormatSensitivity(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.2f", std::clamp(Value, 0.2f, 3.0f));
+		return Buffer;
+	}
+
+	std::string FormatCssPercent(float Value)
+	{
+		char Buffer[32] = {};
+		std::snprintf(Buffer, sizeof(Buffer), "%.2f%%", std::clamp(Value, 0.0f, 1.0f) * 100.0f);
+		return Buffer;
+	}
+
 	std::string FormatPixels(float Value)
 	{
 		char Buffer[32] = {};
@@ -129,6 +156,15 @@ namespace
 			static_cast<int>(std::clamp(Blue, 0.0f, 255.0f)),
 			static_cast<int>(std::clamp(Alpha, 0.0f, 1.0f) * 255.0f));
 		return Buffer;
+	}
+
+	EEndingType EndingTypeFromId(const FString& EndingId)
+	{
+		if (EndingId == "Ending_Good")
+			return EEndingType::Good;
+		if (EndingId == "Ending_Bad")
+			return EEndingType::Bad;
+		return EEndingType::Normal;
 	}
 
 	std::string LoadTextResource(int ResourceId)
@@ -170,6 +206,15 @@ namespace
 
 	constexpr size_t TitleButtonCount = sizeof(TitleButtonIds) / sizeof(TitleButtonIds[0]);
 
+	constexpr float SettingsPanelWidth = 480.0f;
+	constexpr float SettingsPanelHeight = 326.0f;
+	constexpr float SettingsRowLeft = 44.0f;
+	constexpr float SettingsSliderLeft = 202.0f;
+	constexpr float SettingsSliderTop = 17.0f;
+	constexpr float SettingsSliderWidth = 132.0f;
+	constexpr float SettingsSliderHitHeight = 28.0f;
+	constexpr float MouseSensitivityMin = 0.2f;
+	constexpr float MouseSensitivityMax = 3.0f;
 }
 
 GameUISystem& GameUISystem::Get()
@@ -186,6 +231,8 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 
 	if (bRmlUiInitialized)
 		return;
+
+	LoadSettings();
 
 	D3DContext = Context;
 	RmlSystemInterface = std::make_unique<FRmlUiSystemInterface>();
@@ -235,6 +282,30 @@ void GameUISystem::Shutdown()
 			Element->RemoveEventListener("click", ExitClickListener.get());
 		if (Rml::Element* Element = RmlDocument->GetElementById("pause-exit-button"))
 			Element->RemoveEventListener("click", ExitClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("settings-button"))
+			Element->RemoveEventListener("click", SettingsOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("pause-settings-button"))
+			Element->RemoveEventListener("click", SettingsOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("settings-close-button"))
+			Element->RemoveEventListener("click", SettingsCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("credits-button"))
+			Element->RemoveEventListener("click", CreditsOpenClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
+			Element->RemoveEventListener("click", CreditsCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
+			Element->RemoveEventListener("click", PauseTitleClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
+			Element->RemoveEventListener("click", SaveScoreClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("exit-to-main-button"))
+			Element->RemoveEventListener("click", ExitToMainClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-menu-close"))
+			Element->RemoveEventListener("click", DebugMenuCloseClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-bad"))
+			Element->RemoveEventListener("click", DebugJumpBadClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-normal"))
+			Element->RemoveEventListener("click", DebugJumpNormalClickListener.get());
+		if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-good"))
+			Element->RemoveEventListener("click", DebugJumpGoodClickListener.get());
 		for (size_t Index = 0; Index < TitleButtonHoverEnterListeners.size() && Index < TitleButtonCount; ++Index)
 		{
 			if (Rml::Element* Element = RmlDocument->GetElementById(TitleButtonIds[Index]))
@@ -268,6 +339,17 @@ void GameUISystem::Shutdown()
 	StartClickListener.reset();
 	RetryClickListener.reset();
 	ExitClickListener.reset();
+	SettingsOpenClickListener.reset();
+	SettingsCloseClickListener.reset();
+	CreditsOpenClickListener.reset();
+	CreditsCloseClickListener.reset();
+	PauseTitleClickListener.reset();
+	SaveScoreClickListener.reset();
+	ExitToMainClickListener.reset();
+	DebugMenuCloseClickListener.reset();
+	DebugJumpBadClickListener.reset();
+	DebugJumpNormalClickListener.reset();
+	DebugJumpGoodClickListener.reset();
 	TitleButtonHoverEnterListeners.clear();
 	TitleButtonHoverLeaveListeners.clear();
 
@@ -318,12 +400,19 @@ void GameUISystem::RenderPanelsOnly(EUIRenderMode Mode)
 void GameUISystem::SetState(EGameUIState NewState)
 {
 	if (NewState == EGameUIState::Ending)
+	{
+		if (CurrentEndingType == EEndingType::None)
+			CurrentEndingType = EndingTypeFromId(FEndingSystem::Get().EvaluateEnding().EndingId);
 		EndingPanel::Reset();
+	}
 	if (NewState == EGameUIState::StartMenu && CurrentState != EGameUIState::StartMenu)
 		ResetTitleIntro();
 
 	CurrentState = NewState;
 	SetPauseMenuOpen(false);
+	bSettingsOpen = false;
+	bCreditsOpen = false;
+	EndSettingsSliderDrag();
 }
 
 bool GameUISystem::WantsMouseCursor() const
@@ -331,6 +420,8 @@ bool GameUISystem::WantsMouseCursor() const
 	return CurrentState == EGameUIState::StartMenu ||
 		   CurrentState == EGameUIState::Prologue ||
 		   CurrentState == EGameUIState::Ending ||
+		   bSettingsOpen ||
+		   bCreditsOpen ||
 		   bItemInspectOpen ||
 		   bPauseMenuOpen ||
 		   DialoguePanel::IsActive();
@@ -347,6 +438,22 @@ void GameUISystem::SetPauseMenuOpen(bool bOpen)
 		return;
 
 	bPauseMenuOpen = bOpen;
+	if (bPauseMenuOpen)
+	{
+		bSettingsOpen = false;
+		bCreditsOpen = false;
+		EndSettingsSliderDrag();
+	}
+	else
+	{
+		EndSettingsSliderDrag();
+	}
+}
+
+void GameUISystem::SetMouseSensitivityChangedCallback(std::function<void(float)> Callback)
+{
+	MouseSensitivityChangedCallback = std::move(Callback);
+	ApplySettings();
 }
 
 void GameUISystem::TogglePauseMenuIfInGame()
@@ -364,6 +471,9 @@ void GameUISystem::ResetGameData()
 	CurrentItemName.clear();
 	CurrentItemDesc.clear();
 	InteractionHintType = EInteractionHintType::None;
+	CurrentEndingType = EEndingType::None;
+	bSettingsOpen = false;
+	bCreditsOpen = false;
 	HideItemInspect();
 }
 
@@ -434,12 +544,59 @@ void GameUISystem::SetExitPlayCallback(std::function<void()> Callback)
 	ExitPlayCallback = std::move(Callback);
 }
 
+void GameUISystem::SetExitToTitleCallback(std::function<void()> Callback)
+{
+	ExitToTitleCallback = std::move(Callback);
+}
+
 void GameUISystem::RequestExitPlay()
 {
 	if (ExitPlayCallback)
 		ExitPlayCallback();
 	else
 		PostQuitMessage(0);
+}
+
+void GameUISystem::RequestExitToTitle()
+{
+	bPauseMenuOpen = false;
+	bSettingsOpen = false;
+	bCreditsOpen = false;
+	EndSettingsSliderDrag();
+	if (ExitToTitleCallback)
+	{
+		ExitToTitleCallback();
+	}
+	else
+	{
+		SetState(EGameUIState::StartMenu);
+		ResetGameData();
+	}
+}
+
+void GameUISystem::RequestSaveScore()
+{
+	const std::wstring SavesDir = FPaths::Combine(FPaths::RootDir(), L"Saves");
+	FPaths::CreateDir(SavesDir);
+
+	const std::wstring ScorePath = FPaths::Combine(SavesDir, L"Scores.txt");
+	std::ofstream File(FPaths::ToUtf8(ScorePath), std::ios::app);
+	if (!File.is_open())
+		return;
+
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+
+	char DateBuf[64];
+	std::snprintf(DateBuf, sizeof(DateBuf), "%04d-%02d-%02d %02d:%02d:%02d",
+		st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+	File << "[" << DateBuf << "] "
+		 << "Progress: " << static_cast<int>(CleanProgress * 100.0f) << "%, "
+		 << "Time: " << FormatTime(ElapsedTime) << ", "
+		 << "Items: " << ItemCount << "\n";
+	
+	File.close();
 }
 
 void GameUISystem::SetStartGameCallback(std::function<void()> Callback)
@@ -466,6 +623,227 @@ void GameUISystem::RequestStartGame()
 		SetState(EGameUIState::InGame);
 }
 
+void GameUISystem::OpenSettings()
+{
+	bSettingsOpen = true;
+	bCreditsOpen = false;
+}
+
+void GameUISystem::OpenCredits()
+{
+	bCreditsOpen = true;
+	bSettingsOpen = false;
+}
+
+void GameUISystem::CloseCredits()
+{
+	bCreditsOpen = false;
+}
+
+void GameUISystem::OpenDebugMenu()
+{
+	bDebugMenuOpen = true;
+	bSettingsOpen = false;
+	bCreditsOpen = false;
+	bPauseMenuOpen = false;
+}
+
+void GameUISystem::CloseDebugMenu()
+{
+	bDebugMenuOpen = false;
+}
+
+void GameUISystem::CloseSettings()
+{
+	bSettingsOpen = false;
+	EndSettingsSliderDrag();
+	SaveSettings();
+}
+
+void GameUISystem::ApplySettings()
+{
+	if (MouseSensitivityChangedCallback)
+	{
+		MouseSensitivityChangedCallback(MouseSensitivityScale);
+	}
+
+	FAudioSystem::Get().SetBusVolume(EAudioBus::Music, BgmVolume);
+	FAudioSystem::Get().SetBusVolume(EAudioBus::SFX, SfxVolume);
+}
+
+void GameUISystem::LoadSettings()
+{
+	const std::wstring SettingsPath = FPaths::Combine(FPaths::SettingsDir(), L"Game.ini");
+	std::ifstream File(FPaths::ToUtf8(SettingsPath));
+	if (!File.is_open())
+		return;
+
+	std::string Line;
+	while (std::getline(File, Line))
+	{
+		std::istringstream Is(Line);
+		std::string Key;
+		if (std::getline(Is, Key, '='))
+		{
+			std::string Value;
+			if (std::getline(Is, Value))
+			{
+				if (Key == "MouseSensitivity") MouseSensitivityScale = std::stof(Value);
+				else if (Key == "BgmVolume") BgmVolume = std::stof(Value);
+				else if (Key == "SfxVolume") SfxVolume = std::stof(Value);
+			}
+		}
+	}
+
+	ApplySettings();
+}
+
+void GameUISystem::SaveSettings()
+{
+	const std::wstring SettingsDir = FPaths::SettingsDir();
+	FPaths::CreateDir(SettingsDir);
+
+	const std::wstring SettingsPath = FPaths::Combine(SettingsDir, L"Game.ini");
+	std::ofstream File(FPaths::ToUtf8(SettingsPath));
+	if (!File.is_open())
+		return;
+
+	File << "MouseSensitivity=" << MouseSensitivityScale << "\n";
+	File << "BgmVolume=" << BgmVolume << "\n";
+	File << "SfxVolume=" << SfxVolume << "\n";
+}
+
+void GameUISystem::UpdateSettingsElements()
+{
+	SetElementText("settings-mouse-value", FormatSensitivity(MouseSensitivityScale));
+	SetElementText("settings-bgm-value", FormatValuePercent(BgmVolume));
+	SetElementText("settings-sfx-value", FormatValuePercent(SfxVolume));
+
+	const float MouseNormalized = GetSettingsSliderNormalized(ESettingsSlider::MouseSensitivity);
+	const float BgmNormalized = GetSettingsSliderNormalized(ESettingsSlider::Bgm);
+	const float SfxNormalized = GetSettingsSliderNormalized(ESettingsSlider::Sfx);
+
+	SetElementProperty("settings-mouse-fill", "width", FormatCssPercent(MouseNormalized));
+	SetElementProperty("settings-mouse-knob", "left", FormatCssPercent(MouseNormalized));
+	SetElementProperty("settings-bgm-fill", "width", FormatCssPercent(BgmNormalized));
+	SetElementProperty("settings-bgm-knob", "left", FormatCssPercent(BgmNormalized));
+	SetElementProperty("settings-sfx-fill", "width", FormatCssPercent(SfxNormalized));
+	SetElementProperty("settings-sfx-knob", "left", FormatCssPercent(SfxNormalized));
+}
+
+bool GameUISystem::TryBeginSettingsSliderDrag(float X, float Y)
+{
+	if (!bSettingsOpen)
+		return false;
+
+	const ESettingsSlider Sliders[] = { ESettingsSlider::MouseSensitivity, ESettingsSlider::Bgm, ESettingsSlider::Sfx };
+	for (ESettingsSlider Slider : Sliders)
+	{
+		float Left = 0.0f;
+		float Top = 0.0f;
+		float Width = 0.0f;
+		float Height = 0.0f;
+		if (!GetSettingsSliderRect(Slider, Left, Top, Width, Height))
+			continue;
+
+		if (X >= Left && X <= Left + Width && Y >= Top && Y <= Top + Height)
+		{
+			ActiveSettingsSlider = Slider;
+			UpdateSettingsSliderDrag(X, Y);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void GameUISystem::UpdateSettingsSliderDrag(float X, float Y)
+{
+	(void)Y;
+	if (ActiveSettingsSlider == ESettingsSlider::None)
+		return;
+
+	float Left = 0.0f;
+	float Top = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!GetSettingsSliderRect(ActiveSettingsSlider, Left, Top, Width, Height) || Width <= 0.0f)
+		return;
+
+	const float Normalized = std::clamp((X - Left) / Width, 0.0f, 1.0f);
+	SetSettingsSliderNormalized(ActiveSettingsSlider, Normalized);
+}
+
+void GameUISystem::EndSettingsSliderDrag()
+{
+	ActiveSettingsSlider = ESettingsSlider::None;
+}
+
+bool GameUISystem::GetSettingsSliderRect(ESettingsSlider Slider, float& Left, float& Top, float& Width, float& Height) const
+{
+	float RowTop = 0.0f;
+	switch (Slider)
+	{
+	case ESettingsSlider::MouseSensitivity:
+		RowTop = 88.0f;
+		break;
+	case ESettingsSlider::Bgm:
+		RowTop = 142.0f;
+		break;
+	case ESettingsSlider::Sfx:
+		RowTop = 196.0f;
+		break;
+	default:
+		return false;
+	}
+
+	const float PanelLeft = static_cast<float>(LastUiWidth) * 0.5f - SettingsPanelWidth * 0.5f;
+	const float PanelTop = static_cast<float>(LastUiHeight) * 0.5f - SettingsPanelHeight * 0.5f;
+	Left = PanelLeft + SettingsRowLeft + SettingsSliderLeft;
+	Top = PanelTop + RowTop + SettingsSliderTop - (SettingsSliderHitHeight - 8.0f) * 0.5f;
+	Width = SettingsSliderWidth;
+	Height = SettingsSliderHitHeight;
+	return true;
+}
+
+float GameUISystem::GetSettingsSliderNormalized(ESettingsSlider Slider) const
+{
+	switch (Slider)
+	{
+	case ESettingsSlider::MouseSensitivity:
+		return (std::clamp(MouseSensitivityScale, MouseSensitivityMin, MouseSensitivityMax) - MouseSensitivityMin) /
+			(MouseSensitivityMax - MouseSensitivityMin);
+	case ESettingsSlider::Bgm:
+		return std::clamp(BgmVolume, 0.0f, 1.0f);
+	case ESettingsSlider::Sfx:
+		return std::clamp(SfxVolume, 0.0f, 1.0f);
+	default:
+		return 0.0f;
+	}
+}
+
+void GameUISystem::SetSettingsSliderNormalized(ESettingsSlider Slider, float Normalized)
+{
+	Normalized = std::clamp(Normalized, 0.0f, 1.0f);
+	switch (Slider)
+	{
+	case ESettingsSlider::MouseSensitivity:
+		MouseSensitivityScale = MouseSensitivityMin + Normalized * (MouseSensitivityMax - MouseSensitivityMin);
+		break;
+	case ESettingsSlider::Bgm:
+		BgmVolume = Normalized;
+		break;
+	case ESettingsSlider::Sfx:
+		SfxVolume = Normalized;
+		break;
+	default:
+		return;
+	}
+
+	ApplySettings();
+	UpdateSettingsElements();
+}
+
 bool GameUISystem::OnUIMouseMove(float X, float Y)
 {
 	if (!bRmlUiInitialized || !RmlContext)
@@ -474,6 +852,11 @@ bool GameUISystem::OnUIMouseMove(float X, float Y)
 	CustomCursorX = X;
 	CustomCursorY = Y;
 	RmlContext->ProcessMouseMove(static_cast<int>(X), static_cast<int>(Y), 0);
+	if (ActiveSettingsSlider != ESettingsSlider::None)
+	{
+		UpdateSettingsSliderDrag(X, Y);
+		return true;
+	}
 	return WantsMouseCursor();
 }
 
@@ -484,6 +867,8 @@ bool GameUISystem::OnUIMouseButtonDown(int Button, float X, float Y)
 
 	RmlContext->ProcessMouseMove(static_cast<int>(X), static_cast<int>(Y), 0);
 	RmlContext->ProcessMouseButtonDown(Button, 0);
+	if (Button == 0 && TryBeginSettingsSliderDrag(X, Y))
+		return true;
 	return WantsMouseCursor();
 }
 
@@ -494,17 +879,51 @@ bool GameUISystem::OnUIMouseButtonUp(int Button, float X, float Y)
 
 	RmlContext->ProcessMouseMove(static_cast<int>(X), static_cast<int>(Y), 0);
 	RmlContext->ProcessMouseButtonUp(Button, 0);
+	if (Button == 0 && ActiveSettingsSlider != ESettingsSlider::None)
+	{
+		EndSettingsSliderDrag();
+		return true;
+	}
+	if (Button == 0 && CurrentState == EGameUIState::Ending && DialoguePanel::AdvanceOrSkip())
+		return true;
 	return WantsMouseCursor();
 }
 
 bool GameUISystem::OnUIKeyDown(int VK)
 {
+	if (VK == VK_OEM_3 && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) // Debug: Ctrl + Backtick key (`)
+	{
+		if (bDebugMenuOpen)
+			CloseDebugMenu();
+		else
+			OpenDebugMenu();
+		return true;
+	}
+
 	if (!bRmlUiInitialized || !RmlContext)
 		return false;
 
 	const Rml::Input::KeyIdentifier Key = ToRmlKey(VK);
 	if (Key != Rml::Input::KI_UNKNOWN)
 		RmlContext->ProcessKeyDown(Key, 0);
+
+	if (bSettingsOpen)
+	{
+		if (VK == VK_ESCAPE)
+		{
+			CloseSettings();
+		}
+		return true;
+	}
+
+	if (bCreditsOpen)
+	{
+		if (VK == VK_ESCAPE)
+		{
+			CloseCredits();
+		}
+		return true;
+	}
 
 	if (CurrentState == EGameUIState::StartMenu)
 	{
@@ -541,6 +960,12 @@ bool GameUISystem::OnUIKeyUp(int VK)
 	const Rml::Input::KeyIdentifier Key = ToRmlKey(VK);
 	if (Key != Rml::Input::KI_UNKNOWN)
 		RmlContext->ProcessKeyUp(Key, 0);
+
+	if (bSettingsOpen)
+		return true;
+
+	if (bCreditsOpen)
+		return true;
 
 	if (CurrentState == EGameUIState::StartMenu)
 		return true;
@@ -587,6 +1012,9 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	if (!RmlDocument)
 		return;
 
+	LastUiWidth = Width;
+	LastUiHeight = Height;
+
 	double Now = LastRmlUpdateTime;
 	if (RmlSystemInterface)
 		Now = RmlSystemInterface->GetElapsedTime();
@@ -598,29 +1026,43 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
 	TickTitleTransitions(DeltaTime);
+	if (CurrentState == EGameUIState::InGame && !bPauseMenuOpen && Mode == EUIRenderMode::Play)
+	{
+		ElapsedTime += std::max(0.0f, DeltaTime);
+	}
 
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
 
 	const bool bShowStart = CurrentState == EGameUIState::StartMenu && Mode == EUIRenderMode::Play;
 	const bool bShowHud = CurrentState == EGameUIState::InGame;
 	const bool bShowPause = CurrentState == EGameUIState::InGame && bPauseMenuOpen;
+	const bool bShowSettings = bSettingsOpen && (bShowStart || bShowPause);
+	const bool bShowCredits = bCreditsOpen && bShowStart;
 	const bool bShowDialogue = DialoguePanel::IsActive() &&
 		(CurrentState == EGameUIState::InGame || CurrentState == EGameUIState::Ending || CurrentState == EGameUIState::Prologue);
 	const bool bShowEnding = CurrentState == EGameUIState::Ending;
 	const bool bShowTheEnd = bShowEnding && EndingPanel::ShouldShowTheEnd();
+	const bool bShowEndingVisual = bShowEnding && !bShowTheEnd;
+	const bool bShowEndingButtons = bShowTheEnd && EndingPanel::GetFadeAlpha() >= 0.8f;
 	const bool bShowItemInspect = bShowHud && bItemInspectOpen;
 	const bool bShowInteractionHint = bShowHud && !bShowPause && !bShowDialogue && !bShowItemInspect && InteractionHintType != EInteractionHintType::None;
 
 	SetElementVisible("start-menu", bShowStart);
+	SetElementVisible("settings-layer", bShowSettings);
+	SetElementVisible("credits-layer", bShowCredits);
 	SetElementVisible("hud-panel", bShowHud);
+	SetElementVisible("elapsed-time-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
 	SetElementVisible("interaction-hint", bShowInteractionHint);
 	SetElementVisible("pause-layer", bShowPause);
 	SetElementVisible("item-inspect-panel", bShowItemInspect);
+	SetElementVisible("debug-menu-layer", bDebugMenuOpen);
 	SetElementVisible("dialogue-panel", bShowDialogue);
 	SetElementVisible("ending-panel", bShowEnding);
+	SetElementVisible("ending-visual-frame", bShowEndingVisual);
 	SetElementVisible("the-end", bShowTheEnd);
+	SetElementVisible("ending-buttons", bShowEndingButtons);
 	UpdateTitleTransitionElements();
 
 	const bool bShowCustomCursor = WantsCustomCursor();
@@ -659,8 +1101,11 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementText("item-count", std::to_string(ItemCount));
 	SetElementText("pause-item-count", std::to_string(ItemCount));
-	SetElementText("pause-time", FormatTime(ElapsedTime));
+	const std::string ElapsedTimeText = FormatTime(ElapsedTime);
+	SetElementText("elapsed-time-value", ElapsedTimeText);
+	SetElementText("pause-time", ElapsedTimeText);
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
+	UpdateSettingsElements();
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
 
 	const bool bShowInspectHint = InteractionHintType == EInteractionHintType::DropWithInspect;
@@ -710,7 +1155,10 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementText("dialogue-speaker", DialoguePanel::GetSpeaker());
 	SetElementText("dialogue-text", DialoguePanel::GetVisibleText());
+	SetElementText("dialogue-hint", CurrentState == EGameUIState::Ending ? "[CLICK] >" : "[SPACE] >");
 	SetElementVisible("dialogue-hint", DialoguePanel::IsTextComplete());
+
+	SetElementAttribute("ending-visual-image", "src", EndingPanel::GetImagePath());
 
 	const int Alpha = static_cast<int>(EndingPanel::GetFadeAlpha() * 255.0f);
 	SetElementProperty("the-end", "color", "rgba(220, 210, 190, " + std::to_string(Alpha) + ")");
@@ -766,13 +1214,27 @@ void GameUISystem::UpdateTitleTransitionElements()
 	const float IntroLayerAlpha = bInStartMenu && TitleIntroElapsed >= IntroFadeOutStart ? IntroIconAlpha : (bInStartMenu ? 1.0f : 0.0f);
 	const bool bShowIntro = bInStartMenu && TitleIntroElapsed < IntroTotalDuration && !bStartGameTransitionActive;
 
+	float IntroIconBlink = 0.0f;
+	constexpr float BlinkStartTime = 1.5f;
+	constexpr float BlinkDuration = 0.8f;
+	if (TitleIntroElapsed >= BlinkStartTime && TitleIntroElapsed < BlinkStartTime + BlinkDuration)
+	{
+		float t = (TitleIntroElapsed - BlinkStartTime) / BlinkDuration;
+		IntroIconBlink = std::sin(t * 3.14159265f);
+	}
+
+	if (RmlRenderInterface)
+	{
+		RmlRenderInterface->SetFlashFactor(IntroIconBlink);
+	}
+
 	constexpr float StartFadeDuration = 1.0f;
 	const float StartFadeAlpha = bStartGameTransitionActive ? std::clamp(StartGameTransitionElapsed / StartFadeDuration, 0.0f, 1.0f) : 0.0f;
 
 	SetElementVisible("title-intro-layer", bShowIntro);
 	SetElementProperty("title-intro-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, IntroLayerAlpha));
 	SetElementProperty("title-intro-icon", "opacity", FormatOpacity(IntroIconAlpha));
-
+	
 	SetElementVisible("screen-fade-layer", bStartGameTransitionActive);
 	SetElementProperty("screen-fade-layer", "background-color", FormatAlphaColor(0.0f, 0.0f, 0.0f, StartFadeAlpha));
 }
@@ -825,13 +1287,73 @@ void GameUISystem::BindRmlUiEvents()
 
 	RetryClickListener = std::make_unique<FRmlUiClickListener>([]()
 	{
-		GameUISystem::Get().ResetGameData();
 		GameUISystem::Get().SetPauseMenuOpen(false);
 	});
 
 	ExitClickListener = std::make_unique<FRmlUiClickListener>([]()
 	{
 		GameUISystem::Get().RequestExitPlay();
+	});
+
+	SettingsOpenClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().OpenSettings();
+	});
+
+	SettingsCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseSettings();
+	});
+
+	CreditsOpenClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().OpenCredits();
+	});
+
+	CreditsCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseCredits();
+	});
+
+	PauseTitleClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().RequestExitToTitle();
+	});
+
+	SaveScoreClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().RequestSaveScore();
+	});
+
+	ExitToMainClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().RequestExitToTitle();
+	});
+
+	DebugMenuCloseClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+	});
+
+	DebugJumpBadClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Bad);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	DebugJumpNormalClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Normal);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
+	});
+
+	DebugJumpGoodClickListener = std::make_unique<FRmlUiClickListener>([]()
+	{
+		GameUISystem::Get().CloseDebugMenu();
+		GameUISystem::Get().SetEndingType(EEndingType::Good);
+		GameUISystem::Get().SetState(EGameUIState::Ending);
 	});
 
 	if (Rml::Element* Element = RmlDocument->GetElementById("start-button"))
@@ -842,6 +1364,30 @@ void GameUISystem::BindRmlUiEvents()
 		Element->AddEventListener("click", ExitClickListener.get());
 	if (Rml::Element* Element = RmlDocument->GetElementById("pause-exit-button"))
 		Element->AddEventListener("click", ExitClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("settings-button"))
+		Element->AddEventListener("click", SettingsOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("pause-settings-button"))
+		Element->AddEventListener("click", SettingsOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("settings-close-button"))
+		Element->AddEventListener("click", SettingsCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("credits-button"))
+		Element->AddEventListener("click", CreditsOpenClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("credits-close-button"))
+		Element->AddEventListener("click", CreditsCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("pause-title-button"))
+		Element->AddEventListener("click", PauseTitleClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("save-score-button"))
+		Element->AddEventListener("click", SaveScoreClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("exit-to-main-button"))
+		Element->AddEventListener("click", ExitToMainClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-menu-close"))
+		Element->AddEventListener("click", DebugMenuCloseClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-bad"))
+		Element->AddEventListener("click", DebugJumpBadClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-normal"))
+		Element->AddEventListener("click", DebugJumpNormalClickListener.get());
+	if (Rml::Element* Element = RmlDocument->GetElementById("debug-jump-good"))
+		Element->AddEventListener("click", DebugJumpGoodClickListener.get());
 
 	for (const char* ButtonId : TitleButtonIds)
 	{

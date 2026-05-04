@@ -1,4 +1,4 @@
-#include "Game/UI/RmlUi/RmlUiRenderInterfaceD3D11.h"
+﻿#include "Game/UI/RmlUi/RmlUiRenderInterfaceD3D11.h"
 
 #include <cstddef>
 #include <cstring>
@@ -29,6 +29,9 @@ namespace
 	{
 		float ViewportSize[2];
 		float Translation[2];
+		float FlashFactor;
+		float IsTextured;
+		float Padding[2];
 	};
 
 	const char* RmlUiShaderSource = R"(
@@ -36,6 +39,8 @@ cbuffer RmlUiConstants : register(b0)
 {
 	float2 ViewportSize;
 	float2 Translation;
+	float FlashFactor;
+	float IsTextured;
 };
 
 struct VSInput
@@ -67,7 +72,12 @@ SamplerState LinearSampler : register(s0);
 
 float4 PSMain(VSOutput Input) : SV_TARGET
 {
-	return DiffuseTexture.Sample(LinearSampler, Input.TexCoord) * Input.Color;
+	float4 Color = DiffuseTexture.Sample(LinearSampler, Input.TexCoord) * Input.Color;
+	if (IsTextured > 0.5f)
+	{
+		Color.rgb += float3(1.0f, 1.0f, 1.0f) * FlashFactor * Color.a;
+	}
+	return Color;
 }
 )";
 
@@ -224,6 +234,8 @@ void FRmlUiRenderInterfaceD3D11::RenderGeometry(Rml::CompiledGeometryHandle Geom
 	Constants.ViewportSize[1] = static_cast<float>(Height);
 	Constants.Translation[0] = Translation.x;
 	Constants.Translation[1] = Translation.y;
+	Constants.FlashFactor = FlashFactor;
+	Constants.IsTextured = TextureHandle != 0 ? 1.0f : 0.0f;
 	Context->UpdateSubresource(ConstantBuffer.Get(), 0, nullptr, &Constants, 0, 0);
 
 	FTexture* Texture = reinterpret_cast<FTexture*>(TextureHandle);
@@ -468,6 +480,7 @@ void FRmlUiRenderInterfaceD3D11::SetPipelineState()
 	Context->PSSetShader(PixelShader.Get(), nullptr, 0);
 	ID3D11Buffer* Constants = ConstantBuffer.Get();
 	Context->VSSetConstantBuffers(0, 1, &Constants);
+	Context->PSSetConstantBuffers(0, 1, &Constants);
 	ID3D11SamplerState* Sampler = SamplerState.Get();
 	Context->PSSetSamplers(0, 1, &Sampler);
 }

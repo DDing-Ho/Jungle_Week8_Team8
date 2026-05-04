@@ -19,10 +19,69 @@
 		</div>
 	</div>
 
+	<div id="settings-layer">
+		<div id="settings-panel">
+			<div id="settings-title">SETTINGS</div>
+			<div id="settings-mouse-row" class="settings-row">
+				<span class="settings-label">Mouse Sensitivity</span>
+				<span id="settings-mouse-slider" class="settings-slider">
+					<span id="settings-mouse-fill" class="settings-slider-fill"></span>
+					<span id="settings-mouse-knob" class="settings-slider-knob"></span>
+				</span>
+				<span id="settings-mouse-value" class="settings-value">100%</span>
+			</div>
+			<div id="settings-bgm-row" class="settings-row">
+				<span class="settings-label">BGM Volume</span>
+				<span id="settings-bgm-slider" class="settings-slider">
+					<span id="settings-bgm-fill" class="settings-slider-fill"></span>
+					<span id="settings-bgm-knob" class="settings-slider-knob"></span>
+				</span>
+				<span id="settings-bgm-value" class="settings-value">100%</span>
+			</div>
+			<div id="settings-sfx-row" class="settings-row">
+				<span class="settings-label">SFX Volume</span>
+				<span id="settings-sfx-slider" class="settings-slider">
+					<span id="settings-sfx-fill" class="settings-slider-fill"></span>
+					<span id="settings-sfx-knob" class="settings-slider-knob"></span>
+				</span>
+				<span id="settings-sfx-value" class="settings-value">100%</span>
+			</div>
+			<div id="settings-close-button" class="pause-button">Back</div>
+		</div>
+	</div>
+
+	<div id="credits-layer">
+		<div id="credits-panel">
+			<div id="credits-title">CREDITS</div>
+			<div id="credits-row-1" class="credits-row">
+				<span class="credits-name">Yoonji Nam</span>
+				<span class="credits-role">Lead Developer</span>
+			</div>
+			<div id="credits-row-2" class="credits-row">
+				<span class="credits-name">Hyeongil Jeon</span>
+				<span class="credits-role">First Developer</span>
+			</div>
+			<div id="credits-row-3" class="credits-row">
+				<span class="credits-name">Seyoung Park</span>
+				<span class="credits-role">Master Developer</span>
+			</div>
+			<div id="credits-row-4" class="credits-row">
+				<span class="credits-name">Kihoon Kim</span>
+				<span class="credits-role">Best Developer</span>
+			</div>
+			<div id="credits-close-button" class="pause-button">Back</div>
+		</div>
+	</div>
+
 	<div id="hud-panel">
 		<div id="progress-track"></div>
 		<div id="progress-fill"></div>
 		<div id="progress-value">0%</div>
+	</div>
+
+	<div id="elapsed-time-panel">
+		<div id="elapsed-time-label">Time</div>
+		<div id="elapsed-time-value">0m 00s</div>
 	</div>
 
 	<div id="item-status">
@@ -65,12 +124,31 @@
 			<div id="pause-time-row" class="stat-row">Time: <span id="pause-time" class="stat-value">0m 00s</span></div>
 			<div id="pause-progress-row" class="stat-row">Progress: <span id="pause-progress" class="stat-value">0%</span></div>
 			<div id="retry-button" class="pause-button">Resume</div>
-			<div id="pause-exit-button" class="pause-button">Quit Game</div>
+			<div id="pause-settings-button" class="pause-button">Settings</div>
+			<div id="pause-title-button" class="pause-button">Exit to Title</div>
+			<div id="pause-exit-button" class="pause-button">Exit to Desktop</div>
 		</div>
 	</div>
 
 	<div id="ending-panel">
+		<div id="ending-visual-frame">
+			<img id="ending-visual-image" src="Asset/Texture/TitleBackground.png" />
+		</div>
 		<div id="the-end">THE END</div>
+		<div id="ending-buttons">
+			<div id="save-score-button" class="pause-button">Save Score</div>
+			<div id="exit-to-main-button" class="pause-button">Exit to Main Menu</div>
+		</div>
+	</div>
+
+	<div id="debug-menu-layer">
+		<div id="debug-menu-panel">
+			<div id="debug-menu-title">DEBUG: JUMP TO ENDING</div>
+			<div id="debug-jump-bad" class="pause-button">Bad Ending</div>
+			<div id="debug-jump-normal" class="pause-button">Normal Ending</div>
+			<div id="debug-jump-good" class="pause-button">Good Ending</div>
+			<div id="debug-menu-close" class="pause-button">Cancel</div>
+		</div>
 	</div>
 
 	<div id="dialogue-panel">

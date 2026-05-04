@@ -25,6 +25,7 @@ private:
 	void LoadStartupScene();
 	bool LoadGameScene(const FString& ScenePath);
 	void StartMainGame();
+	void ExitToTitle();
 
 private:
 	std::unique_ptr<FGameViewportClient> GameViewport;

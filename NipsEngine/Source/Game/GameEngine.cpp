@@ -76,6 +76,7 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	GameUISystem::Get().ResetGameData();
 	GameUISystem::Get().SetState(EGameUIState::StartMenu);
 	GameUISystem::Get().SetStartGameCallback([this]() { StartMainGame(); });
+	GameUISystem::Get().SetExitToTitleCallback([this]() { ExitToTitle(); });
 	Items.ResetRuntimeState();
 
 	LoadStartupScene();
@@ -83,6 +84,13 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	GameViewport = std::make_unique<FGameViewportClient>();
 	GameViewport->Initialize(InWindow);
 	GameViewport->SetWorld(GetWorld());
+	GameUISystem::Get().SetMouseSensitivityChangedCallback([this](float Scale)
+	{
+		if (GameViewport)
+		{
+			GameViewport->GetPlayerController().SetRotateSensitivity(0.15f * Scale);
+		}
+	});
 }
 
 void UGameEngine::LoadStartupScene()
@@ -140,6 +148,22 @@ void UGameEngine::StartMainGame()
 	BeginPlay();
 }
 
+void UGameEngine::ExitToTitle()
+{
+	FAudioSystem::Get().StopAll();
+	GGameContext::Get().Reset();
+	FItemSystem::Get().ResetRuntimeState();
+	GameUISystem::Get().ResetGameData();
+
+	LoadStartupScene();
+	if (GameViewport)
+	{
+		GameViewport->SetWorld(GetWorld());
+	}
+
+	GameUISystem::Get().SetState(EGameUIState::StartMenu);
+}
+
 void UGameEngine::Tick(float DeltaTime)
 {
 	FInputRouter::TickInputSystem();
@@ -161,6 +185,8 @@ void UGameEngine::Shutdown()
 	FItemSystem::Get().ResetRuntimeState();
 	GGameContext::Get().Reset();
 	GameUISystem::Get().SetStartGameCallback(nullptr);
+	GameUISystem::Get().ClearExitToTitleCallback();
+	GameUISystem::Get().SetMouseSensitivityChangedCallback(nullptr);
 	GameUISystem::Get().Shutdown();
 	GameViewport.reset();
 	UEngine::Shutdown();

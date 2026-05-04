@@ -1,4 +1,4 @@
-#include "Game/Systems/GameContext.h"
+﻿#include "Game/Systems/GameContext.h"
 
 #include "Component/DecalComponent.h"
 #include "Engine/GameFramework/AActor.h"
@@ -9,7 +9,7 @@
 
 namespace
 {
-	constexpr float CleanDecalThreshold = 0.95f;
+	constexpr float CleanDecalThreshold = 0.85f;
 
 	bool IsLiveObjectPointer(const UObject* Object)
 	{

@@ -146,6 +146,17 @@ void RegisterLuaBindings(sol::state& Lua)
 		else if (StateName == "Ending")    GameUISystem::Get().SetState(EGameUIState::Ending);
 	});
 
+	Lua.set_function("GetUIState", []()
+	{
+		EGameUIState State = GameUISystem::Get().GetState();
+		if      (State == EGameUIState::None)      return "None";
+		else if (State == EGameUIState::StartMenu) return "StartMenu";
+		else if (State == EGameUIState::Prologue)  return "Prologue";
+		else if (State == EGameUIState::InGame)    return "InGame";
+		else if (State == EGameUIState::Ending)    return "Ending";
+		return "Unknown";
+	});
+
 	Lua.set_function("SetProgress", [](float Progress)
 	{
 		GameUISystem::Get().SetProgress(Progress);
@@ -197,6 +208,15 @@ void RegisterLuaBindings(sol::state& Lua)
 	Lua.set_function("IsDialogueActive", []()
 	{
 		return GameUISystem::Get().IsDialogueActive();
+	});
+
+	Lua.set_function("GetEndingType", []()
+	{
+		EEndingType Type = GameUISystem::Get().GetEndingType();
+		if      (Type == EEndingType::Good)   return "Good";
+		else if (Type == EEndingType::Normal) return "Normal";
+		else if (Type == EEndingType::Bad)    return "Bad";
+		return "None";
 	});
 
 	// 아이템 상호작용

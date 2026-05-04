@@ -32,6 +32,14 @@ enum class EGameUIState
     Ending,      // 엔딩
 };
 
+enum class EEndingType
+{
+    None,
+    Good,
+    Normal,
+    Bad,
+};
+
 // -------------------------------------------------------
 // 렌더 모드
 //   Preview : 에디터 편집 모드 - 더미 데이터, 버튼 동작 안 함
@@ -95,6 +103,13 @@ public:
     bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
     bool WantsMouseCursor() const;
     bool WantsCustomCursor() const;
+    void SetMouseSensitivityChangedCallback(std::function<void(float)> Callback);
+    void SetExitToTitleCallback(std::function<void()> Callback);
+    void ClearExitToTitleCallback() { ExitToTitleCallback = nullptr; }
+
+    // 설정 저장 및 로드
+    void LoadSettings();
+    void SaveSettings();
 
     // 게임 데이터 초기화 (Retry 시 호출)
     void ResetGameData();
@@ -119,12 +134,20 @@ public:
     bool IsDialogueActive() const;
 
     // -------------------------------------------------------
+    // 엔딩 타입
+    // -------------------------------------------------------
+    void SetEndingType(EEndingType Type) { CurrentEndingType = Type; }
+    EEndingType GetEndingType() const { return CurrentEndingType; }
+
+    // -------------------------------------------------------
     // PIE / 플레이 종료 콜백
     //   에디터: StartPlaySession 에서 StopPlaySession 바인딩
     //   게임 빌드: 콜백이 없으면 윈도우 종료 요청
     // -------------------------------------------------------
     void SetExitPlayCallback(std::function<void()> Callback);
     void RequestExitPlay();   // EndingPanel 에서 호출
+    void RequestExitToTitle();
+    void RequestSaveScore();
 
     void SetStartGameCallback(std::function<void()> Callback);
     void RequestStartGame();
@@ -144,6 +167,27 @@ private:
     void TickTitleTransitions(float DeltaTime);
     void UpdateTitleTransitionElements();
     void FinishStartGameTransition();
+    void OpenSettings();
+    void CloseSettings();
+    void OpenCredits();
+    void CloseCredits();
+    void OpenDebugMenu();
+    void CloseDebugMenu();
+    void ApplySettings();
+    void UpdateSettingsElements();
+    enum class ESettingsSlider
+    {
+        None,
+        MouseSensitivity,
+        Bgm,
+        Sfx,
+    };
+    bool TryBeginSettingsSliderDrag(float X, float Y);
+    void UpdateSettingsSliderDrag(float X, float Y);
+    void EndSettingsSliderDrag();
+    bool GetSettingsSliderRect(ESettingsSlider Slider, float& Left, float& Top, float& Width, float& Height) const;
+    float GetSettingsSliderNormalized(ESettingsSlider Slider) const;
+    void SetSettingsSliderNormalized(ESettingsSlider Slider, float Normalized);
     bool CreateGameDocument();
     void BindRmlUiEvents();
     void SetElementVisible(const char* Id, bool bVisible);
@@ -164,9 +208,22 @@ private:
     std::unique_ptr<FRmlUiClickListener> StartClickListener;
     std::unique_ptr<FRmlUiClickListener> RetryClickListener;
     std::unique_ptr<FRmlUiClickListener> ExitClickListener;
+    std::unique_ptr<FRmlUiClickListener> SettingsOpenClickListener;
+    std::unique_ptr<FRmlUiClickListener> SettingsCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> CreditsOpenClickListener;
+    std::unique_ptr<FRmlUiClickListener> CreditsCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> PauseTitleClickListener;
+    std::unique_ptr<FRmlUiClickListener> SaveScoreClickListener;
+    std::unique_ptr<FRmlUiClickListener> ExitToMainClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugMenuCloseClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpBadClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpNormalClickListener;
+    std::unique_ptr<FRmlUiClickListener> DebugJumpGoodClickListener;
     std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverEnterListeners;
     std::vector<std::unique_ptr<FRmlUiClickListener>> TitleButtonHoverLeaveListeners;
     double LastRmlUpdateTime = 0.0;
+    int LastUiWidth = 1280;
+    int LastUiHeight = 720;
 
     float TitleIntroElapsed = 0.0f;
     float CustomCursorX = 0.0f;
@@ -175,6 +232,14 @@ private:
     bool bStartGameTransitionActive = false;
     float StartGameTransitionElapsed = 0.0f;
     bool bStartGameTransitionReady = false;
+    bool bSettingsOpen = false;
+    bool bCreditsOpen = false;
+    bool bDebugMenuOpen = false;
+    EEndingType CurrentEndingType = EEndingType::None;
+    ESettingsSlider ActiveSettingsSlider = ESettingsSlider::None;
+    float MouseSensitivityScale = 1.0f;
+    float BgmVolume = 1.0f;
+    float SfxVolume = 1.0f;
 
     // 게임 데이터
     float       CleanProgress    = 0.f;
@@ -189,5 +254,7 @@ private:
     std::string InspectItemIconPath;
 
     std::function<void()> ExitPlayCallback;
+    std::function<void()> ExitToTitleCallback;
     std::function<void()> StartGameCallback;
+    std::function<void(float)> MouseSensitivityChangedCallback;
 };
