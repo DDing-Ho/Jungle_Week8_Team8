@@ -38,7 +38,6 @@ function Tick(owner, deltaTime)
     -- 데칼을 맞췄는지 확인
     local decal = hit:GetDecalComponent()
     if not decal then
-        print("No Decal")
         return
     end
 

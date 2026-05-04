@@ -1,5 +1,6 @@
 #include "Component/Movement/CharacterMovementComponent.h"
 
+#include "Audio/AudioSystem.h"
 #include "Component/Physics/RigidBodyComponent.h"
 #include "Component/SceneComponent.h"
 #include "Core/Logger.h"
@@ -14,6 +15,22 @@
 namespace
 {
 	constexpr float GravityAcceleration = 9.8f;
+	constexpr float DefaultFootstepVolume = 0.8f;
+	constexpr float DefaultFootstepStepDistance = 1.70f;
+	constexpr float DefaultFootstepMinSpeed = 0.35f;
+
+	const FString& GetFootstepPath(int32 Index)
+	{
+		static const FString Paths[] = {
+			"Asset/Audio/Linoleum_Mono_01.WAV",
+			"Asset/Audio/Linoleum_Mono_02.WAV",
+			"Asset/Audio/Linoleum_Mono_03.WAV",
+			"Asset/Audio/Linoleum_Mono_04.WAV",
+			"Asset/Audio/Linoleum_Mono_05.WAV",
+		};
+		constexpr int32 Count = static_cast<int32>(sizeof(Paths) / sizeof(Paths[0]));
+		return Paths[Index % Count];
+	}
 }
 
 DEFINE_CLASS(UCharacterMovementComponent, UMovementComponent)
@@ -44,9 +61,25 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	Ar << "MaxFallSpeed" << MaxFallSpeed;
 	Ar << "GroundStickVelocity" << GroundStickVelocity;
 	Ar << "GroundProbeDistance" << GroundProbeDistance;
+	Ar << "EnableFootsteps" << bEnableFootsteps;
+	Ar << "FootstepVolume" << FootstepVolume;
+	Ar << "FootstepStepDistance" << FootstepStepDistance;
+	Ar << "FootstepMinSpeed" << FootstepMinSpeed;
 
 	if (Ar.IsLoading())
 	{
+		const bool bLooksLikeLegacyFootstepDefaults =
+			!bEnableFootsteps &&
+			FootstepVolume <= 0.0f &&
+			FootstepStepDistance <= 0.1001f &&
+			FootstepMinSpeed <= 0.0f;
+		if (bLooksLikeLegacyFootstepDefaults)
+		{
+			bEnableFootsteps = true;
+			FootstepVolume = DefaultFootstepVolume;
+			FootstepStepDistance = DefaultFootstepStepDistance;
+			FootstepMinSpeed = DefaultFootstepMinSpeed;
+		}
 		ClampEditableValues();
 	}
 }
@@ -62,6 +95,10 @@ void UCharacterMovementComponent::GetEditableProperties(TArray<FPropertyDescript
 	OutProps.push_back({ "Max Fall Speed", EPropertyType::Float, &MaxFallSpeed, 0.0f, 100.0f, 0.5f });
 	OutProps.push_back({ "Ground Stick Velocity", EPropertyType::Float, &GroundStickVelocity, -10.0f, 0.0f, 0.05f });
 	OutProps.push_back({ "Ground Probe Distance", EPropertyType::Float, &GroundProbeDistance, 0.0f, 1.0f, 0.01f });
+	OutProps.push_back({ "Enable Footsteps", EPropertyType::Bool, &bEnableFootsteps });
+	OutProps.push_back({ "Footstep Volume", EPropertyType::Float, &FootstepVolume, 0.0f, 2.0f, 0.05f });
+	OutProps.push_back({ "Footstep Step Distance", EPropertyType::Float, &FootstepStepDistance, 0.1f, 5.0f, 0.05f });
+	OutProps.push_back({ "Footstep Min Speed", EPropertyType::Float, &FootstepMinSpeed, 0.0f, 5.0f, 0.05f });
 }
 
 void UCharacterMovementComponent::TickComponent(float DeltaTime)
@@ -150,6 +187,8 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	{
 		Velocity.Y = 0.0f;
 	}
+
+	UpdateFootsteps(DeltaTime, ActualDelta);
 }
 
 void UCharacterMovementComponent::RefreshUpdatedReferences()
@@ -187,7 +226,10 @@ void UCharacterMovementComponent::ClampEditableValues()
 	GravityScale = std::max(0.0f, GravityScale);
 	MaxFallSpeed = std::max(0.0f, MaxFallSpeed);
 	GroundStickVelocity = std::min(0.0f, GroundStickVelocity);
-	GroundProbeDistance = std::max(0.0f, GroundProbeDistance);
+	GroundProbeDistance = std::max(0.08f, GroundProbeDistance);
+	FootstepVolume = std::clamp(FootstepVolume, 0.0f, 2.0f);
+	FootstepStepDistance = std::max(0.1f, FootstepStepDistance);
+	FootstepMinSpeed = std::max(0.0f, FootstepMinSpeed);
 }
 
 float UCharacterMovementComponent::MoveToward(float Current, float Target, float MaxDelta) const
@@ -198,4 +240,44 @@ float UCharacterMovementComponent::MoveToward(float Current, float Target, float
 	}
 
 	return Current + (Target > Current ? MaxDelta : -MaxDelta);
+}
+
+void UCharacterMovementComponent::UpdateFootsteps(float DeltaTime, const FVector& ActualDelta)
+{
+	if (!bEnableFootsteps || DeltaTime <= 0.0f)
+	{
+		FootstepAccumulatedDistance = 0.0f;
+		return;
+	}
+
+	const FVector HorizontalDelta(ActualDelta.X, ActualDelta.Y, 0.0f);
+	const float HorizontalDistance = HorizontalDelta.Size();
+	const float HorizontalSpeed = HorizontalDistance / DeltaTime;
+	const bool bNotFallingFast = Velocity.Z > -0.5f;
+
+	if (!bNotFallingFast || HorizontalSpeed < FootstepMinSpeed)
+	{
+		FootstepAccumulatedDistance = 0.0f;
+		return;
+	}
+
+	FootstepAccumulatedDistance += HorizontalDistance;
+	while (FootstepAccumulatedDistance >= FootstepStepDistance)
+	{
+		FootstepAccumulatedDistance -= FootstepStepDistance;
+		PlayFootstep();
+	}
+}
+
+void UCharacterMovementComponent::PlayFootstep()
+{
+	const FString& FootstepPath = GetFootstepPath(FootstepIndex);
+	FAudioPlayParams Params;
+	Params.bSpatial = false;
+	Params.bLoop = false;
+	Params.bAffectedByAudioZones = false;
+	Params.Bus = EAudioBus::SFX;
+	Params.Volume = FootstepVolume;
+	FAudioSystem::Get().Play(FootstepPath, Params);
+	++FootstepIndex;
 }

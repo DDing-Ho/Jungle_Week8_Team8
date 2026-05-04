@@ -28,6 +28,8 @@ private:
 	void RefreshUpdatedReferences();
 	void ClampEditableValues();
 	float MoveToward(float Current, float Target, float MaxDelta) const;
+	void UpdateFootsteps(float DeltaTime, const FVector& ActualDelta);
+	void PlayFootstep();
 
 private:
 	URigidBodyComponent* RigidBody = nullptr;
@@ -39,5 +41,11 @@ private:
 	float MaxFallSpeed = 18.0f;
 	float GroundStickVelocity = -0.5f;
 	float GroundProbeDistance = 0.08f;
+	bool bEnableFootsteps = true;
+	float FootstepVolume = 0.8f;
+	float FootstepStepDistance = 1.70f;
+	float FootstepMinSpeed = 0.35f;
+	float FootstepAccumulatedDistance = 0.0f;
+	int32 FootstepIndex = 0;
 	bool bGrounded = false;
 };
