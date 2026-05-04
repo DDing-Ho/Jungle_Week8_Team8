@@ -43,6 +43,7 @@ void UCharacterMovementComponent::Serialize(FArchive& Ar)
 	Ar << "GravityScale" << GravityScale;
 	Ar << "MaxFallSpeed" << MaxFallSpeed;
 	Ar << "GroundStickVelocity" << GroundStickVelocity;
+	Ar << "GroundProbeDistance" << GroundProbeDistance;
 
 	if (Ar.IsLoading())
 	{
@@ -60,6 +61,7 @@ void UCharacterMovementComponent::GetEditableProperties(TArray<FPropertyDescript
 	OutProps.push_back({ "Gravity Scale", EPropertyType::Float, &GravityScale, 0.0f, 10.0f, 0.05f });
 	OutProps.push_back({ "Max Fall Speed", EPropertyType::Float, &MaxFallSpeed, 0.0f, 100.0f, 0.5f });
 	OutProps.push_back({ "Ground Stick Velocity", EPropertyType::Float, &GroundStickVelocity, -10.0f, 0.0f, 0.05f });
+	OutProps.push_back({ "Ground Probe Distance", EPropertyType::Float, &GroundProbeDistance, 0.0f, 1.0f, 0.01f });
 }
 
 void UCharacterMovementComponent::TickComponent(float DeltaTime)
@@ -91,9 +93,9 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	Velocity.X = MoveToward(Velocity.X, DesiredHorizontalVelocity.X, HorizontalStep);
 	Velocity.Y = MoveToward(Velocity.Y, DesiredHorizontalVelocity.Y, HorizontalStep);
 
-	if (bGrounded && Velocity.Z < 0.0f)
+	if (bGrounded)
 	{
-		Velocity.Z = GroundStickVelocity;
+		Velocity.Z = 0.0f;
 	}
 	else
 	{
@@ -105,41 +107,36 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	FVector TargetLocation = StartLocation + Velocity * DeltaTime;
 	const FVector RequestedDelta = TargetLocation - StartLocation;
 
-	bool bMovedByJolt = false;
-	if (RigidBody != nullptr && FJoltPhysicsSystem::Get().IsBodyManaged(RigidBody))
+	bool bMovedByCharacter = false;
+	if (RigidBody != nullptr && FJoltPhysicsSystem::Get().IsInitialized())
 	{
-		const FQuat Rotation = UpdatedComponent->GetWorldTransform().GetRotation();
-		FVector ResolvedTargetLocation = TargetLocation;
-		bMovedByJolt = FJoltPhysicsSystem::Get().MoveKinematicBody(RigidBody, ResolvedTargetLocation, Rotation, DeltaTime);
-		if (bMovedByJolt)
+		FVector ResolvedLocation = TargetLocation;
+		FVector ResolvedVelocity = Velocity;
+		bool bResolvedGrounded = false;
+		bMovedByCharacter = FJoltPhysicsSystem::Get().MoveCharacter(
+			RigidBody,
+			Velocity,
+			DeltaTime,
+			GroundProbeDistance,
+			ResolvedLocation,
+			ResolvedVelocity,
+			bResolvedGrounded);
+		if (bMovedByCharacter)
 		{
-			TargetLocation = ResolvedTargetLocation;
+			TargetLocation = ResolvedLocation;
+			Velocity = ResolvedVelocity;
+			bGrounded = bResolvedGrounded;
 		}
 	}
 
-	if (!bMovedByJolt)
-	{
-		UpdatedComponent->SetWorldLocation(TargetLocation);
-	}
+	UpdatedComponent->SetWorldLocation(TargetLocation);
 
 	const FVector ActualDelta = TargetLocation - StartLocation;
-	if (!Input.IsNearlyZero())
+	if (!bMovedByCharacter)
 	{
-		static int32 MoveLogCounter = 0;
-		if ((MoveLogCounter++ % 30) == 0)
-		{
-			UE_LOG("[PlayerMove] CharacterMovement tick owner=%s input=(%.2f, %.2f, %.2f) start=(%.2f, %.2f, %.2f) target=(%.2f, %.2f, %.2f) actualDelta=(%.3f, %.3f, %.3f) jolt=%d",
-				Owner ? Owner->GetFName().ToString().c_str() : "None",
-				Input.X, Input.Y, Input.Z,
-				StartLocation.X, StartLocation.Y, StartLocation.Z,
-				TargetLocation.X, TargetLocation.Y, TargetLocation.Z,
-				ActualDelta.X, ActualDelta.Y, ActualDelta.Z,
-				bMovedByJolt ? 1 : 0);
-		}
+		const bool bHitGround = RequestedDelta.Z < -0.0001f && ActualDelta.Z > RequestedDelta.Z + 0.001f;
+		bGrounded = bHitGround;
 	}
-
-	const bool bHitGround = RequestedDelta.Z < -0.0001f && ActualDelta.Z > RequestedDelta.Z + 0.001f;
-	bGrounded = bHitGround;
 	if (bGrounded && Velocity.Z < 0.0f)
 	{
 		Velocity.Z = 0.0f;
@@ -190,6 +187,7 @@ void UCharacterMovementComponent::ClampEditableValues()
 	GravityScale = std::max(0.0f, GravityScale);
 	MaxFallSpeed = std::max(0.0f, MaxFallSpeed);
 	GroundStickVelocity = std::min(0.0f, GroundStickVelocity);
+	GroundProbeDistance = std::max(0.0f, GroundProbeDistance);
 }
 
 float UCharacterMovementComponent::MoveToward(float Current, float Target, float MaxDelta) const

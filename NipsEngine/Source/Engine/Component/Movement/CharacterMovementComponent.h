@@ -38,5 +38,6 @@ private:
 	float GravityScale = 1.0f;
 	float MaxFallSpeed = 18.0f;
 	float GroundStickVelocity = -0.5f;
+	float GroundProbeDistance = 0.08f;
 	bool bGrounded = false;
 };
