@@ -7,6 +7,7 @@
 #include "Game/UI/RmlUi/RmlUiDocumentsResource.h"
 #include "Game/UI/RmlUi/RmlUiRenderInterfaceD3D11.h"
 #include "Game/UI/RmlUi/RmlUiSystemInterface.h"
+#include "Game/UI/RmlUi/RmlUiFileInterface.h"
 #include "Game/UI/StartMenuPanel.h"
 
 #include "Audio/AudioSystem.h"
@@ -272,8 +273,10 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 	D3DContext = Context;
 	RmlSystemInterface = std::make_unique<FRmlUiSystemInterface>();
 	RmlRenderInterface = std::make_unique<FRmlUiRenderInterfaceD3D11>();
+	RmlFileInterface = std::make_unique<FRmlUiFileInterface>();
 	if (!RmlRenderInterface->Initialize(Device, Context))
 	{
+		RmlFileInterface.reset();
 		RmlRenderInterface.reset();
 		RmlSystemInterface.reset();
 		D3DContext = nullptr;
@@ -282,8 +285,10 @@ void GameUISystem::Init(HWND__* Hwnd, ID3D11Device* Device, ID3D11DeviceContext*
 
 	Rml::SetSystemInterface(RmlSystemInterface.get());
 	Rml::SetRenderInterface(RmlRenderInterface.get());
+	Rml::SetFileInterface(RmlFileInterface.get());
 	if (!Rml::Initialise())
 	{
+		RmlFileInterface.reset();
 		RmlRenderInterface.reset();
 		RmlSystemInterface.reset();
 		D3DContext = nullptr;
@@ -396,6 +401,7 @@ void GameUISystem::Shutdown()
 
 	RmlRenderInterface.reset();
 	RmlSystemInterface.reset();
+	RmlFileInterface.reset();
 	D3DContext = nullptr;
 	LastRmlUpdateTime = 0.0;
 }

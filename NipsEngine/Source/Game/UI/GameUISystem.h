@@ -12,6 +12,7 @@ struct ID3D11Device;
 struct ID3D11DeviceContext;
 class FRmlUiRenderInterfaceD3D11;
 class FRmlUiSystemInterface;
+class FRmlUiFileInterface;
 class FRmlUiClickListener;
 
 namespace Rml
@@ -217,6 +218,7 @@ private:
     bool bRmlUiInitialized = false;
     std::unique_ptr<FRmlUiSystemInterface> RmlSystemInterface;
     std::unique_ptr<FRmlUiRenderInterfaceD3D11> RmlRenderInterface;
+    std::unique_ptr<FRmlUiFileInterface> RmlFileInterface;
     Rml::Context* RmlContext = nullptr;
     Rml::ElementDocument* RmlDocument = nullptr;
     ID3D11DeviceContext* D3DContext = nullptr;

@@ -811,6 +811,9 @@
     <ClCompile Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="Source\Game\UI\RmlUi\RmlUiFileInterface.cpp">
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Game\Viewport\GameViewportClient.cpp">
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
@@ -1090,6 +1093,7 @@
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiDocumentsResource.h" />
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiRenderInterfaceD3D11.h" />
     <ClInclude Include="Source\Game\UI\RmlUi\RmlUiSystemInterface.h" />
+    <ClInclude Include="Source\Game\UI\RmlUi\RmlUiFileInterface.h" />
     <ClInclude Include="Source\Game\Viewport\GameViewportClient.h" />
     <ClInclude Include="ThirdParty\ImGui\imconfig.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui.h" />
