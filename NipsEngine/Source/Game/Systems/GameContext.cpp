@@ -4,12 +4,14 @@
 #include "Engine/GameFramework/AActor.h"
 #include "Engine/GameFramework/World.h"
 #include "Object/Object.h"
+#include "Scripting/LuaScriptSystem.h"
 
 #include <algorithm>
 
 namespace
 {
 	constexpr float CleanDecalThreshold = 0.85f;
+	constexpr const char* CleanlinessItemId = "crumpled_paper";
 
 	bool IsLiveObjectPointer(const UObject* Object)
 	{
@@ -27,6 +29,18 @@ namespace
 		}
 
 		return false;
+	}
+
+	bool IsCleanlinessItemActor(const AActor* Actor)
+	{
+		if (Actor == nullptr)
+		{
+			return false;
+		}
+
+		const FString RegisteredItemId =
+			FLuaScriptSystem::Get().GetStringGameStateValue("Item:" + Actor->GetFName().ToString());
+		return RegisteredItemId == CleanlinessItemId;
 	}
 }
 
@@ -106,9 +120,16 @@ void GGameContext::RegisterMapDecals(UWorld* World)
 				}
 			}
 		}
+
+		if (IsCleanlinessItemActor(Actor)
+			&& std::find(MapCleanlinessItemActors.begin(), MapCleanlinessItemActors.end(), Actor) == MapCleanlinessItemActors.end())
+		{
+			MapCleanlinessItemActors.push_back(Actor);
+		}
 	}
 
 	InitialDecalCount = static_cast<int32>(MapDecals.size());
+	InitialCleanlinessItemCount = static_cast<int32>(MapCleanlinessItemActors.size());
 	RefreshCleanProgressFromDecals();
 }
 
@@ -116,18 +137,21 @@ void GGameContext::ClearMapDecals()
 {
 	MapDecals.clear();
 	InitialDecalCount = 0;
+	MapCleanlinessItemActors.clear();
+	InitialCleanlinessItemCount = 0;
 }
 
 void GGameContext::RefreshCleanProgressFromDecals()
 {
-	if (InitialDecalCount <= 0)
+	const int32 InitialCleanableCount = InitialDecalCount + InitialCleanlinessItemCount;
+	if (InitialCleanableCount <= 0)
 	{
 		SetCleanProgress(1.0f);
 		return;
 	}
 
-	const int32 RemainingDecalCount = GetRemainingDecalCount();
-	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingDecalCount) / static_cast<float>(InitialDecalCount));
+	const int32 RemainingCleanableCount = GetRemainingDecalCount() + GetRemainingCleanlinessItemCount();
+	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingCleanableCount) / static_cast<float>(InitialCleanableCount));
 	SetCleanProgress(CleanedRatio);
 }
 
@@ -152,6 +176,28 @@ int32 GGameContext::GetRemainingDecalCount() const
 		{
 			++RemainingCount;
 		}
+	}
+
+	return RemainingCount;
+}
+
+int32 GGameContext::GetRemainingCleanlinessItemCount() const
+{
+	int32 RemainingCount = 0;
+
+	for (AActor* Actor : MapCleanlinessItemActors)
+	{
+		if (!IsLiveObjectPointer(Actor))
+		{
+			continue;
+		}
+
+		if (!Actor->IsActive())
+		{
+			continue;
+		}
+
+		++RemainingCount;
 	}
 
 	return RemainingCount;
