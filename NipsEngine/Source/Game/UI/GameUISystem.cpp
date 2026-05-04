@@ -598,6 +598,10 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	if (CurrentState == EGameUIState::Ending)
 		EndingPanel::Tick(DeltaTime);
 	TickTitleTransitions(DeltaTime);
+	if (CurrentState == EGameUIState::InGame && !bPauseMenuOpen && Mode == EUIRenderMode::Play)
+	{
+		ElapsedTime += std::max(0.0f, DeltaTime);
+	}
 
 	RmlDocument->SetClass("is-preview", Mode == EUIRenderMode::Preview);
 
@@ -613,6 +617,7 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementVisible("start-menu", bShowStart);
 	SetElementVisible("hud-panel", bShowHud);
+	SetElementVisible("elapsed-time-panel", bShowHud);
 	SetElementVisible("item-status", bShowHud);
 	SetElementVisible("crosshair-dot", bShowHud && !bShowPause);
 	SetElementVisible("interaction-hint", bShowInteractionHint);
@@ -659,7 +664,9 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementText("item-count", std::to_string(ItemCount));
 	SetElementText("pause-item-count", std::to_string(ItemCount));
-	SetElementText("pause-time", FormatTime(ElapsedTime));
+	const std::string ElapsedTimeText = FormatTime(ElapsedTime);
+	SetElementText("elapsed-time-value", ElapsedTimeText);
+	SetElementText("pause-time", ElapsedTimeText);
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
 

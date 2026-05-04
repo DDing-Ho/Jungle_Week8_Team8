@@ -133,6 +133,31 @@ body {
 	color: #ffffff;
 }
 
+#elapsed-time-panel {
+	position: absolute;
+	left: 34px;
+	top: 34px;
+	width: 132px;
+	height: 52px;
+	padding: 8px 12px;
+	background-color: rgba(13, 15, 20, 185);
+	border-width: 1px;
+	border-color: rgba(110, 130, 150, 150);
+}
+
+#elapsed-time-label {
+	display: block;
+	font-size: 13px;
+	color: rgba(220, 230, 240, 210);
+}
+
+#elapsed-time-value {
+	display: block;
+	margin-top: 4px;
+	font-size: 20px;
+	color: #9bd2ff;
+}
+
 #item-status {
 	position: absolute;
 	right: 36px;

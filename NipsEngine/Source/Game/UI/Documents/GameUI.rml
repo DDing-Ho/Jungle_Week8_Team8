@@ -25,6 +25,11 @@
 		<div id="progress-value">0%</div>
 	</div>
 
+	<div id="elapsed-time-panel">
+		<div id="elapsed-time-label">Time</div>
+		<div id="elapsed-time-value">0m 00s</div>
+	</div>
+
 	<div id="item-status">
 		<div id="current-item-name">No item</div>
 	</div>
