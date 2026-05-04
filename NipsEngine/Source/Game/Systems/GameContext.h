@@ -51,6 +51,7 @@ public:
 	const TArray<UDecalComponent*>& GetMapDecals() const { return MapDecals; }
 	int32 GetInitialDecalCount() const { return InitialDecalCount; }
 	int32 GetRemainingDecalCount() const;
+	bool HasCleanedAnyDecal() const;
 	const TArray<AActor*>& GetMapCleanlinessItemActors() const { return MapCleanlinessItemActors; }
 	int32 GetInitialCleanlinessItemCount() const { return InitialCleanlinessItemCount; }
 	int32 GetRemainingCleanlinessItemCount() const;

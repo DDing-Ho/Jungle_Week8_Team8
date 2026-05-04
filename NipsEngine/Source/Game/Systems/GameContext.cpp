@@ -168,10 +168,6 @@ void GGameContext::SetCleanProgress(float InProgress)
 	}
 
 	CleanProgress = ClampedProgress;
-	if (InitialDecalCount > 0 && CleanProgress > 0.0f)
-	{
-		CompleteMissionInternal(EGameMissionType::CleanDust);
-	}
 	BroadcastChanged();
 }
 
@@ -235,6 +231,10 @@ void GGameContext::RefreshCleanProgressFromDecals()
 	const int32 RemainingCleanableCount = GetRemainingDecalCount() + GetRemainingCleanlinessItemCount();
 	const float CleanedRatio = 1.0f - (static_cast<float>(RemainingCleanableCount) / static_cast<float>(InitialCleanableCount));
 	SetCleanProgress(CleanedRatio);
+	if (HasCleanedAnyDecal() && CompleteMissionInternal(EGameMissionType::CleanDust))
+	{
+		BroadcastChanged();
+	}
 }
 
 int32 GGameContext::GetRemainingDecalCount() const
@@ -261,6 +261,16 @@ int32 GGameContext::GetRemainingDecalCount() const
 	}
 
 	return RemainingCount;
+}
+
+bool GGameContext::HasCleanedAnyDecal() const
+{
+	if (InitialDecalCount <= 0)
+	{
+		return false;
+	}
+
+	return GetRemainingDecalCount() < InitialDecalCount;
 }
 
 int32 GGameContext::GetRemainingCleanlinessItemCount() const
