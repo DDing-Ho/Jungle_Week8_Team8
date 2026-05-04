@@ -32,8 +32,10 @@
 	<div id="crosshair-dot"></div>
 
 	<div id="interaction-hint">
-		<span id="interaction-key">E</span>
-		<span id="interaction-hint-text"></span>
+		<span id="interaction-secondary-key" class="interaction-key">Q</span>
+		<span id="interaction-secondary-text" class="interaction-hint-text">살펴보기</span>
+		<span id="interaction-key" class="interaction-key">E</span>
+		<span id="interaction-hint-text" class="interaction-hint-text"></span>
 	</div>
 
 	<div id="item-inspect-panel">

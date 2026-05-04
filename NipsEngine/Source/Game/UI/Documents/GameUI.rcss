@@ -177,7 +177,7 @@ body {
 	text-align: center;
 }
 
-#interaction-key {
+.interaction-key {
 	display: inline-block;
 	width: 34px;
 	height: 30px;
@@ -192,7 +192,7 @@ body {
 	border-color: rgba(255, 255, 255, 255);
 }
 
-#interaction-hint-text {
+.interaction-hint-text {
 	display: inline-block;
 	padding: 8px 18px;
 	font-size: 20px;
@@ -201,6 +201,10 @@ body {
 	background-color: rgba(15, 13, 10, 185);
 	border-width: 1px;
 	border-color: rgba(230, 205, 150, 155);
+}
+
+#interaction-secondary-text {
+	margin-right: 18px;
 }
 
 #item-inspect-panel {

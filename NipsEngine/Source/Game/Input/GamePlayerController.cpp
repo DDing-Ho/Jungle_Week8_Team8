@@ -826,17 +826,25 @@ void FGamePlayerController::TogglePickup()
 
 void FGamePlayerController::TryInspectHoveredItem()
 {
-	if (!World || !IsInputEnabled() || HoveredPickableActor == nullptr)
+	if (!World || !IsInputEnabled())
 	{
 		return;
 	}
 
-	if (!FindCleaningToolIdFromActor(HoveredPickableActor, false).empty())
+	UPhysicsHandleComponent* Handle = GetPhysicsHandle();
+	if (Handle == nullptr || !Handle->IsHolding())
 	{
 		return;
 	}
 
-	const FString ItemId = FindItemIdFromActor(HoveredPickableActor);
+	URigidBodyComponent* HeldBody = Handle->GetHeldBody();
+	AActor* HeldActor = HeldBody ? HeldBody->GetOwner() : nullptr;
+	if (HeldActor == nullptr || !FindCleaningToolIdFromActor(HeldActor, false).empty())
+	{
+		return;
+	}
+
+	const FString ItemId = FindItemIdFromActor(HeldActor);
 	if (ItemId.empty())
 	{
 		return;
@@ -939,10 +947,18 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 
 	if (Handle->IsHolding())
 	{
-		if (!GGameContext::Get().GetCurrentToolId().empty())
+		EInteractionHintType HintType = EInteractionHintType::Drop;
+		if (URigidBodyComponent* HeldBody = Handle->GetHeldBody())
 		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Clean);
+			if (AActor* HeldActor = HeldBody->GetOwner())
+			{
+				if (GGameContext::Get().GetCurrentToolId().empty() && !FindItemIdFromActor(HeldActor).empty())
+				{
+					HintType = EInteractionHintType::DropWithInspect;
+				}
+			}
 		}
+		GameUISystem::Get().SetInteractionHint(HintType);
 		return;
 	}
 
@@ -956,16 +972,7 @@ void FGamePlayerController::UpdateHoveredPickableActor()
 	if (URigidBodyComponent* Body = Handle->FindPickableBody(World, CameraLocation, CameraForward))
 	{
 		HoveredPickableActor = Body->GetOwner();
-		const bool bIsCleaningTool = !FindCleaningToolIdFromActor(HoveredPickableActor, false).empty();
-		const bool bIsItem = !FindItemIdFromActor(HoveredPickableActor).empty();
-		if (!bIsCleaningTool && bIsItem)
-		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Inspect);
-		}
-		else
-		{
-			GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
-		}
+		GameUISystem::Get().SetInteractionHint(EInteractionHintType::Pickup);
 	}
 }
 

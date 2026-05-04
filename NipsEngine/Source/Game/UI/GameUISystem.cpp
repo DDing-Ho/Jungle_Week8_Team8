@@ -660,19 +660,19 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 	SetElementText("current-item-name", CurrentItemName.empty() ? "No item" : CurrentItemName);
 	// SetElementText("current-item-desc", CurrentItemDesc.empty() ? "Nothing selected" : CurrentItemDesc);
 
+	const bool bShowInspectHint = InteractionHintType == EInteractionHintType::DropWithInspect;
+	SetElementProperty("interaction-secondary-key", "display", bShowInspectHint ? "inline-block" : "none");
+	SetElementProperty("interaction-secondary-text", "display", bShowInspectHint ? "inline-block" : "none");
 	switch (InteractionHintType)
 	{
 	case EInteractionHintType::Pickup:
 		SetElementText("interaction-key", "E");
-		SetElementText("interaction-hint-text", "잡기");
+		SetElementText("interaction-hint-text", "들기");
 		break;
-	case EInteractionHintType::Clean:
+	case EInteractionHintType::Drop:
+	case EInteractionHintType::DropWithInspect:
 		SetElementText("interaction-key", "E");
 		SetElementText("interaction-hint-text", "놓기");
-		break;
-	case EInteractionHintType::Inspect:
-		SetElementText("interaction-key", "Q");
-		SetElementText("interaction-hint-text", "살펴보기");
 		break;
 	default:
 		SetElementText("interaction-key", "");

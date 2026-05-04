@@ -47,8 +47,8 @@ enum class EInteractionHintType
 {
     None,
     Pickup,
-    Clean,
-    Inspect,
+    Drop,
+    DropWithInspect,
 };
 
 // -------------------------------------------------------
