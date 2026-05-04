@@ -1056,7 +1056,11 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 		return false;
 	}
 
-	if (!FItemSystem::Get().PlaceItemInDecisionBox(ItemId, BoxType))
+	const bool bPlacedInDecisionBox = FItemSystem::Get().PlaceItemInDecisionBox(ItemId, BoxType);
+	const bool bAllowRepeatedResolvedItemPlacement =
+		!bPlacedInDecisionBox
+		&& (GGameContext::Get().HasKeptItem(ItemId) || GGameContext::Get().HasDiscardedItem(ItemId));
+	if (!bPlacedInDecisionBox && !bAllowRepeatedResolvedItemPlacement)
 	{
 		return false;
 	}
@@ -1080,6 +1084,8 @@ bool FGamePlayerController::TryPlaceHeldItemInHoveredDecisionBox()
 	HoveredPickableActor = nullptr;
 	HoveredDecisionBoxActor = nullptr;
 	GameUISystem::Get().SetInteractionHint(EInteractionHintType::None);
+	GGameContext::Get().RefreshCleanProgressFromDecals();
+	GameUISystem::Get().SetProgress(GGameContext::Get().GetCleanProgress());
 
 	UE_LOG("[ItemDecisionBox] Placed item=%s into box=%s actor=%s",
 		   ItemId.c_str(),

@@ -51,6 +51,9 @@ public:
 	const TArray<UDecalComponent*>& GetMapDecals() const { return MapDecals; }
 	int32 GetInitialDecalCount() const { return InitialDecalCount; }
 	int32 GetRemainingDecalCount() const;
+	const TArray<AActor*>& GetMapCleanlinessItemActors() const { return MapCleanlinessItemActors; }
+	int32 GetInitialCleanlinessItemCount() const { return InitialCleanlinessItemCount; }
+	int32 GetRemainingCleanlinessItemCount() const;
 
 	void SetCurrentTool(const FString& ToolId);
 	const FString& GetCurrentToolId() const { return CurrentToolId; }
@@ -107,6 +110,8 @@ private:
 	float CleanProgress = 0.0f;
 	TArray<UDecalComponent*> MapDecals;
 	int32 InitialDecalCount = 0;
+	TArray<AActor*> MapCleanlinessItemActors;
+	int32 InitialCleanlinessItemCount = 0;
 	FString CurrentToolId;
 	FString CurrentInspectedItemId;
 	FHeldObjectInfo HeldObjectInfo;
