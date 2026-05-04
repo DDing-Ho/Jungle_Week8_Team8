@@ -72,7 +72,7 @@ void UDecalComponent::BeginPlay()
 	LifeTime = 0.0f;
 
 	//GameJam
-	InitializeMask(256, 256);
+	ResizeMaskToDecalSize();
 }
 
 void UDecalComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -102,6 +102,10 @@ void UDecalComponent::PostEditProperty(const char* PropertyName)
 			}
 			SetMaterial(i, Materials[i]);
 		}
+	}
+	else if (std::strcmp(PropertyName, "Size") == 0 || std::strcmp(PropertyName, "Transform") == 0)
+	{
+		ResizeMaskToDecalSize();
 	}
 }
 
@@ -238,6 +242,25 @@ void UDecalComponent::SetFadeOut(float InStartDelay, float InDuration, bool bInD
 	bDestroyOwnerAfterFade = bInDestroyOwnerAfterFade;
 }
 
+void UDecalComponent::ResizeMaskToDecalSize()
+{
+    // 기준: DecalSize (5,5,5) → 256x256. 월드 크기에 비례해 해상도를 조정한다.
+    // UV.X = Local.Y, UV.Y = Local.Z 이므로 Width는 Y축, Height는 Z축 기준.
+    constexpr float BaseUnit       = 5.0f;
+    constexpr uint32 BaseRes       = 256;
+    constexpr uint32 MinRes        = 64;
+    constexpr uint32 MaxRes        = 2048;
+
+    const FVector WorldSize = DecalSize * GetRelativeScale();
+
+    auto Clamp = [](uint32 V, uint32 Lo, uint32 Hi) { return V < Lo ? Lo : (V > Hi ? Hi : V); };
+
+    const uint32 W = Clamp(static_cast<uint32>(WorldSize.Y / BaseUnit * BaseRes), MinRes, MaxRes);
+    const uint32 H = Clamp(static_cast<uint32>(WorldSize.Z / BaseUnit * BaseRes), MinRes, MaxRes);
+
+    InitializeMask(W, H);
+}
+
 void UDecalComponent::InitializeMask(uint32 InWidth, uint32 InHeight)
 {
     MaskWidth = InWidth;
@@ -275,12 +298,16 @@ void UDecalComponent::PaintMask(FVector2 UV, float Radius, uint8 Value)
     int32 CenterY = static_cast<int32>(UV.Y * MaskHeight);
     int32 PixelRadius = static_cast<int32>(Radius * MaskWidth);
 
+	if (PixelRadius <= 0)
+        return;
+
 	int32 StartX = MathUtil::Clamp(CenterX - PixelRadius, 0, (int32)MaskWidth - 1);
 	int32 EndX = MathUtil::Clamp(CenterX + PixelRadius, 0, (int32)MaskWidth - 1);
 	int32 StartY = MathUtil::Clamp(CenterY - PixelRadius, 0, (int32)MaskHeight - 1);
     int32 EndY = MathUtil::Clamp(CenterY + PixelRadius, 0, (int32)MaskHeight - 1);
 
-	int32 RadiusSq = PixelRadius * PixelRadius;
+	float InvPixelRadius = 1.0f / static_cast<float>(PixelRadius);
+    float RadiusSq = static_cast<float>(PixelRadius * PixelRadius);
 
 	for (int32 y = StartY; y <= EndY; y++)
 	{
@@ -300,7 +327,7 @@ void UDecalComponent::PaintMask(FVector2 UV, float Radius, uint8 Value)
 				int32 AppliedValue = static_cast<int32>(Value * Falloff + 0.5f);
 
                 int32 CurrentValue = MaskPixels[y * MaskWidth + x];
-                int32 NewValue = CurrentValue - Value;
+                int32 NewValue = CurrentValue - AppliedValue;
 
 				MaskPixels[y * MaskWidth + x] = static_cast<uint8>(NewValue < 0 ? 0 : NewValue);
 
