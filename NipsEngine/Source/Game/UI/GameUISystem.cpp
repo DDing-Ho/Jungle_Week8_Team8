@@ -1596,8 +1596,8 @@ void GameUISystem::UpdateRmlUiDocument(EUIRenderMode Mode, int Width, int Height
 
 	SetElementAttribute("ending-visual-image", "src", EndingPanel::GetImagePath());
 
-	const float FrameWidth = static_cast<float>(Width) * 0.9f;
-	const float FrameHeight = static_cast<float>(Height) * 0.6f;
+	const float FrameWidth = static_cast<float>(Width) * 0.92f;
+	const float FrameHeight = static_cast<float>(Height) * 0.68f;
 	constexpr float EndingAspect = 16.0f / 9.0f;
 	float ImgWidth = FrameWidth;
 	float ImgHeight = FrameHeight;

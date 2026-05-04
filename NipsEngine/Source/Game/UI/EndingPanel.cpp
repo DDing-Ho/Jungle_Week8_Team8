@@ -20,7 +20,7 @@ std::vector<const char*> GetEndingLines(EEndingType Type)
 	case EEndingType::Good:
 		return {
 			"고생하셨어요.",
-			"계속 두고만 있었는데…",
+			"계속 두고만 있었는데...",
 			"이제는 정리해야겠죠.",
 			"이건...",
 			"(소라를 가만히 귀에 가져다 댄다.)",
