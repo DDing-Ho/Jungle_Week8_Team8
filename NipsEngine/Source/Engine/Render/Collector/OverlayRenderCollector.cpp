@@ -6,6 +6,7 @@
 #include "Component/BillboardComponent.h"
 #include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/CapsuleComponent.h"
+#include "Component/Collision/CylinderComponent.h"
 #include "Component/Collision/ShapeComponent.h"
 #include "Component/Collision/SphereComponent.h"
 #include "Component/GizmoComponent.h"
@@ -165,6 +166,24 @@ namespace
 				CapsuleComponent->GetUpVector(),
 				CapsuleComponent->GetRightVector(),
 				CapsuleComponent->GetForwardVector(),
+				ShapeColor);
+			return true;
+		}
+		case ECollisionType::Cylinder:
+		{
+			const UCylinderComponent* CylinderComponent = Cast<UCylinderComponent>(const_cast<UPrimitiveComponent*>(PrimitiveComponent));
+			if (CylinderComponent == nullptr)
+			{
+				return true;
+			}
+
+			LineBatcher->AddCylinder(
+				CylinderComponent->GetWorldLocation(),
+				std::fabs(CylinderComponent->GetCylinderHalfHeight()),
+				std::fabs(CylinderComponent->GetCylinderRadius()),
+				CylinderComponent->GetUpVector(),
+				CylinderComponent->GetRightVector(),
+				CylinderComponent->GetForwardVector(),
 				ShapeColor);
 			return true;
 		}

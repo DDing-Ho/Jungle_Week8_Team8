@@ -26,6 +26,9 @@ public:
 	void SetBodyKinematic(URigidBodyComponent* Body);
 	void SetBodyDynamic(URigidBodyComponent* Body);
 	void SetBodyTransformFromComponent(URigidBodyComponent* Body);
+	void SetHeldBodyOwner(URigidBodyComponent* HeldBody, URigidBodyComponent* HolderBody);
+	void ClearHeldBodyOwner(URigidBodyComponent* HeldBody);
+	void SetHeldBodyCollisionSuppressed(URigidBodyComponent* HeldBody, bool bSuppressed);
 	bool CheckKinematicGround(URigidBodyComponent* Body, float ProbeDistance, float& OutGroundDistance);
 	bool MoveKinematicBody(URigidBodyComponent* Body, FVector& InOutTargetLocation, const FQuat& TargetRotation, float DeltaTime);
 	bool MoveCharacter(URigidBodyComponent* Body, const FVector& DesiredVelocity, float DeltaTime, float GroundStickDistance, FVector& OutLocation, FVector& OutVelocity, bool& bOutGrounded);

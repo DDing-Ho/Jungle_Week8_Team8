@@ -20,6 +20,7 @@
 #include "Component/Collision/BoxComponent.h"
 #include "Component/Collision/SphereComponent.h"
 #include "Component/Collision/CapsuleComponent.h"
+#include "Component/Collision/CylinderComponent.h"
 #include "Component/LuaScriptComponent.h"
 #include "Component/AudioComponent.h"
 #include "Component/AudioZoneComponent.h"
@@ -157,6 +158,7 @@ const TArray<FComponentMenuEntry>& FEditorComponentFactory::GetMenuRegistry()
         { "Box Component", "Collision", RegisterComp<UBoxComponent> },
         { "Sphere Component", "Collision", RegisterComp<USphereComponent> },
         { "Capsule Component", "Collision", RegisterComp<UCapsuleComponent> },
+        { "Cylinder Component", "Collision", RegisterComp<UCylinderComponent> },
     };
 
     return Registry;

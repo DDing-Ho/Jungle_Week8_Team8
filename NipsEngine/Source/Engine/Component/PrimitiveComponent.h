@@ -13,7 +13,8 @@ enum ECollisionType
     None,
     Box,
     Sphere,
-    Capsule
+    Capsule,
+    Cylinder
 };
 
 class UPrimitiveComponent : public USceneComponent
@@ -30,6 +31,9 @@ public:
     /* Visibility */
     void SetVisibility(bool bVisible);
     bool IsVisible() const { return bIsVisible; }
+
+    void SetSceneQueryEnabled(bool bEnabled);
+    bool IsSceneQueryEnabled() const { return bSceneQueryEnabled; }
 
     void SetEnableCull(const bool bInEnableCull) { bEnableCull = bInEnableCull; }
     bool IsEnableCull() const { return bEnableCull; }
@@ -98,6 +102,7 @@ protected:
 protected:
     mutable FAABB WorldAABB;
     bool bIsVisible = true;
+    bool bSceneQueryEnabled = true;
     bool bEnableCull = true; // frustum, occlusion culling으로 컬링될지 여부 판정
     int32 DebugBoundsVisibility = static_cast<int32>(EDebugDrawVisibility::UseGlobal);
     

@@ -29,6 +29,7 @@ public:
 
 	bool IsHolding() const { return HeldBody != nullptr; }
 	URigidBodyComponent* GetHeldBody() const { return HeldBody; }
+	void SetHeldMovementCollisionSuppressed(bool bSuppress);
 
 	void SetTraceDistance(float InTraceDistance) { TraceDistance = InTraceDistance; }
 	void SetHoldDistance(float InHoldDistance, bool bUseSizeDistanceOffset = true)
@@ -45,6 +46,7 @@ public:
 
 private:
 	URigidBodyComponent* FindRigidBodyFromHit(const FHitResult& Hit) const;
+	URigidBodyComponent* FindOwnerRigidBody() const;
 	FVector GetHoldTarget(const FVector& CameraLocation, const FVector& CameraForward, const FVector& TargetOffset) const;
 	float ComputeHoldDistanceOffset(URigidBodyComponent* Body, const FVector& CameraLocation, const FVector& CameraForward) const;
 	void ClampEditableValues();
@@ -57,6 +59,7 @@ private:
 	FVector LastHoldLocation = FVector::ZeroVector;
 	float HoldDistanceOffset = 0.0f;
 	float CurrentHoldDistance = 0.0f;
+	bool bHeldMovementCollisionSuppressed = false;
 
 	float TraceDistance = 5.0f;
 	float DefaultHoldDistance = 4.0f;

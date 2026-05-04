@@ -23,6 +23,8 @@ namespace
 			return "Sphere";
 		case ECollisionType::Capsule:
 			return "Capsule";
+		case ECollisionType::Cylinder:
+			return "Cylinder";
 		default:
 			return "None";
 		}

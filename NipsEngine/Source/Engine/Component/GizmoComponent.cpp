@@ -1,5 +1,6 @@
 ﻿#include "GizmoComponent.h"
 #include "Component/Collision/BoxComponent.h"
+#include "Component/Collision/CylinderComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"
 #include "Render/Mesh/MeshManager.h"
@@ -206,6 +207,25 @@ void UGizmoComponent::ScaleTarget(float DragAmount)
             NewExtent.Y = std::max(0.001f, NewExtent.Y);
             NewExtent.Z = std::max(0.001f, NewExtent.Z);
             Box->SetBoxExtent(NewExtent);
+        }
+        else if (UCylinderComponent* Cylinder = Cast<UCylinderComponent>(TargetComponent))
+        {
+            float NewHalfHeight = Cylinder->GetCylinderHalfHeight();
+            float NewRadius = Cylinder->GetCylinderRadius();
+            switch (SelectedAxis)
+            {
+            case 0:
+            case 1:
+                NewRadius += ScaleDelta;
+                break;
+            case 2:
+                NewHalfHeight += ScaleDelta;
+                break;
+            }
+
+            NewHalfHeight = std::max(0.001f, NewHalfHeight);
+            NewRadius = std::max(0.001f, NewRadius);
+            Cylinder->SetCylinderSize(NewHalfHeight, NewRadius);
         }
         else
         {

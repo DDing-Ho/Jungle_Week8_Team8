@@ -672,3 +672,26 @@ void FLineBatcher::AddCapsule(const FVector& Position, float HalfHeight, float R
         AddHalfCircle(BottomCenter, Axis, -Up);
     }
 }
+
+void FLineBatcher::AddCylinder(const FVector& Position, float HalfHeight, float Radius, const FVector& UpVector, const FVector& RightVector, const FVector& ForwardVector, const FColor& InColor)
+{
+	const FVector4 CylinderColor = InColor.ToVector4();
+	const FVector Up = UpVector.GetSafeNormal();
+	const FVector Right = RightVector.GetSafeNormal();
+	const FVector Forward = ForwardVector.GetSafeNormal();
+	const float SafeHalfHeight = std::max(0.0f, HalfHeight);
+	const float SafeRadius = std::max(0.0f, Radius);
+	const FVector TopCenter = Position + (Up * SafeHalfHeight);
+	const FVector BottomCenter = Position - (Up * SafeHalfHeight);
+
+	AddCircle(TopCenter, Right, Forward, SafeRadius, CylinderColor);
+	AddCircle(BottomCenter, Right, Forward, SafeRadius, CylinderColor);
+
+	constexpr int32 VerticalLineCount = 8;
+	for (int32 i = 0; i < VerticalLineCount; ++i)
+	{
+		const float Angle = (static_cast<float>(i) / VerticalLineCount) * MathUtil::TwoPi;
+		const FVector SideAxis = Right * std::cos(Angle) + Forward * std::sin(Angle);
+		AddLine(TopCenter + SideAxis * SafeRadius, BottomCenter + SideAxis * SafeRadius, CylinderColor);
+	}
+}
